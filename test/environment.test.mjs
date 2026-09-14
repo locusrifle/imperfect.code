@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PI_OPENING, applyEnvironment } from '../native/environment-prompt.mjs';
+import { PI_OPENING, applyEnvironment, fillEnvironment } from '../native/environment-prompt.mjs';
 
 const root = dirname(fileURLToPath(new URL('../package.json', import.meta.url)));
 
@@ -14,19 +14,28 @@ test('environment replaces Pi opening, not the whole prompt', () => {
   assert.doesNotMatch(start, /systemPrompt:\s/);
 });
 
-test('environment names the two trees and wikilinks apps', () => {
+test('environment names the person, the two trees, and the wikilinks', () => {
   const environment = readFileSync(join(root, 'environment.md'), 'utf8');
+  assert.match(environment, /\{\{NAME\}\}/);
   assert.match(environment, /\/opt\/imperfect\/data/);
-  assert.match(environment, /Not only a coding assistant/);
-  assert.match(environment, /\[\[apps\]\]/);
-  assert.match(environment, /\[\[snapshot\]\]/);
+  assert.match(environment, /To put a page in the interface, read \[\[apps\]\]/);
+  assert.match(environment, /What lasts when this computer sleeps or moves: \[\[snapshot\]\]/);
+});
+
+test('signup handle becomes the name in the opening', () => {
+  const template = readFileSync(join(root, 'environment.md'), 'utf8');
+  const noah = fillEnvironment(template, 'noah');
+  assert.match(noah, /^You are Noah's personal computing assistant/);
+  assert.doesNotMatch(noah, /\{\{NAME\}\}/);
+  const unknown = fillEnvironment(template, '');
+  assert.match(unknown, /^You are this person's personal computing assistant/);
 });
 
 test('Pi tools stay after the environment opening', () => {
-  const environment = readFileSync(join(root, 'environment.md'), 'utf8').trim();
+  const environment = fillEnvironment(readFileSync(join(root, 'environment.md'), 'utf8'), 'noah');
   const built = `${PI_OPENING}\n\nAvailable tools:\n- bash\n\nGuidelines:\n- Be concise`;
   const next = applyEnvironment(built, environment);
-  assert.match(next, /^You are the agent on this person's computer/);
+  assert.match(next, /^You are Noah's personal computing assistant/);
   assert.doesNotMatch(next, /expert coding assistant/);
   assert.match(next, /Available tools:/);
   assert.match(next, /Be concise/);

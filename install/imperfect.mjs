@@ -434,6 +434,7 @@ function mergeConfig(existing, opts) {
   if (opts.origins != null) next.origins = opts.origins;
   if (opts.product != null) next.product = opts.product;
   if (opts.brand != null) next.brand = opts.brand;
+  if (opts.person != null) next.person = opts.person;
   return normalizeConfig(next);
 }
 
@@ -543,7 +544,7 @@ async function main(argv) {
     print(`imperfect.computer installer
   pack [--out file]
   check
-  install --artifact file [--runtime-tarball file | --fetch-runtime] [--prefix dir] [--port N] [--origins url,url] [--user name] [--ingress-password secret] [--unprivileged]
+  install --artifact file [--runtime-tarball file | --fetch-runtime] [--prefix dir] [--port N] [--origins url,url] [--user name] [--person handle] [--ingress-password secret] [--unprivileged]
   update --artifact file [--prefix dir]
   rollback [--prefix dir]
   status [--prefix dir]
@@ -588,6 +589,7 @@ Pi ${PI_VERSION}. Default prefix ${DEFAULT_PREFIX}, user ${DEFAULT_USER}, loopba
       unprivileged: flag(args, 'unprivileged'),
       product: arg(args, 'product'),
       brand: arg(args, 'brand'),
+      person: arg(args, 'person'),
       ingressPassword: arg(args, 'ingress-password'),
       ingressUser: arg(args, 'ingress-user'),
       ingressPort: arg(args, 'ingress-port'),

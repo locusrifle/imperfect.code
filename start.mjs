@@ -10,6 +10,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const prefix = resolvePrefix();
 const p = await ensureDataDirs(prefix);
 const config = await readConfig(prefix);
+if (config.person) process.env.IMPERFECT_PERSON = config.person;
 
 const app = await createGueyServer({
   host: config.host,

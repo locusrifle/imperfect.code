@@ -81,6 +81,7 @@ export function defaultConfig() {
     liveSessions: false,
     // Desktop streaming is not part of this baseline. The shell does not offer it.
     desktop: false,
+    person: '',
   };
 }
 
@@ -95,6 +96,7 @@ export function normalizeConfig(raw = {}, fallback = defaultConfig()) {
   next.ownArchive = next.ownArchive !== false;
   next.liveSessions = next.liveSessions === true;
   next.desktop = false;
+  next.person = typeof next.person === 'string' ? next.person.trim() : '';
   if ('boxApiKey' in next || 'apiKey' in next || 'token' in next) {
     throw new Error('machine.json must not carry fleet secrets');
   }
