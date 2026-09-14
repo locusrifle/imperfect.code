@@ -2,7 +2,7 @@
 # Easy clone → window. Hosted Box install is install/imperfect.mjs, not this.
 set -euo pipefail
 
-REPO="${IMPERFECT_REPO:-https://github.com/locusrifle/imperfect.computer.git}"
+REPO="${IMPERFECT_REPO:-https://github.com/imperfect/imperfect.computer.git}"
 DEST="${IMPERFECT_HOME:-$HOME/imperfect.computer}"
 
 if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then

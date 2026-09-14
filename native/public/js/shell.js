@@ -1,6 +1,6 @@
 // The phone shell: one full viewport per open application.
 //
-// #locus-world is a horizontal pager, not a canvas of free-floating windows.
+// #imperfect-world is a horizontal pager, not a canvas of free-floating windows.
 // Each open application owns a slot the width of the viewport; a swipe moves
 // between them, which is Hyprland's workspace feel in the phone's own language.
 // Omarchy's wallpaper sits behind, showing through the gap around every frame.
@@ -55,7 +55,7 @@ export function formatClock(pattern, date = new Date()) {
 }
 
 export function mountShell(options = {}) {
-	const world = options.world ?? document.getElementById('locus-world');
+	const world = options.world ?? document.getElementById('imperfect-world');
 	const slots = new Map();          // id -> slot element
 	const order = [];                 // ids, left to right
 	const titles = new Map();

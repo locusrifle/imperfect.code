@@ -1,4 +1,4 @@
-// Shared Locus machine launcher for vaita and Box.
+// Shared imperfect computer launcher for vaita and Box.
 // Loopback app; ingress stays on the existing authenticated proxy.
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -29,7 +29,7 @@ const app = await createGueyServer({
   origins: config.origins,
   serviceOptions: {
     resourceLoaderOptions: {
-      additionalExtensionPaths: [join(here, 'extensions/locus-environment')],
+      additionalExtensionPaths: [join(here, 'extensions/imperfect-environment')],
     },
   },
 });

@@ -1,6 +1,6 @@
 # antiburn-bridge
 
-locusrifle-only. Guey stock does not ship this.
+imperfect-only. Guey stock does not ship this.
 
 Pins **antiburn-local** (the upstream engine) and prints one JSON usage report
 for `/usage` in the harness. Bump the pin; do not copy detectors.

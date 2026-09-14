@@ -9,7 +9,7 @@
 	--om-bar-h: 44px;
 }
 
-body.locusrifle {
+body.imperfect {
 	margin: 0;
 	background: var(--om-bg-darker, #f2e4cd);
 	overscroll-behavior: none;
@@ -40,7 +40,7 @@ body.locusrifle {
 
 /* ---- the pager: one slot per open application ---- */
 
-#locus-world.om-pager {
+#imperfect-world.om-pager {
 	position: fixed;
 	inset: 0;
 	z-index: 1;
@@ -60,14 +60,14 @@ body.locusrifle {
 	padding-bottom: calc(var(--om-bar-h) + env(safe-area-inset-bottom, 0px));
 	box-sizing: border-box;
 }
-body[data-bar="top"] #locus-world.om-pager {
+body[data-bar="top"] #imperfect-world.om-pager {
 	padding-top: calc(var(--om-bar-h) + env(safe-area-inset-top, 0px));
 	padding-bottom: 0;
 }
-#locus-world.om-pager::-webkit-scrollbar { display: none; }
+#imperfect-world.om-pager::-webkit-scrollbar { display: none; }
 /* Nothing open is not a broken state: it is the wallpaper, and the menu is the
    way in. The pager must not swallow taps meant for the bar. */
-body.shell-empty #locus-world.om-pager { pointer-events: none; }
+body.shell-empty #imperfect-world.om-pager { pointer-events: none; }
 
 .om-slot {
 	flex: 0 0 100%;
@@ -236,7 +236,7 @@ body.shell-empty #locus-world.om-pager { pointer-events: none; }
    because the OS keyboard and a usable drop do not both fit a short viewport.
    Rotating is how an application gets the larger view. */
 @media (orientation: landscape) and (max-height: 560px) {
-	body.locusrifle #terminal-entry,
-	body.locusrifle #harness-reach { display: none !important; }
+	body.imperfect #terminal-entry,
+	body.imperfect #harness-reach { display: none !important; }
 	:root { --om-gap: 5px; --om-bar-h: 36px; }
 }

@@ -20,7 +20,7 @@ test('the window installer is a script, not a second product', () => {
   const rust = readFileSync(join(ROOT, 'desktop/src-tauri/src/main.rs'), 'utf8');
   assert.match(rust, /start\.mjs/);
   assert.match(rust, /127\.0\.0\.1/);
-  assert.equal(rust.includes('locus-garden'), false);
+  assert.equal(rust.includes('imperfect-door'), false);
 });
 
 test('the hosted pack does not carry the window', () => {

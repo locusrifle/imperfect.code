@@ -1,14 +1,14 @@
 // The home screen: your apps on the ruled ground, with the agent one keystroke away.
 //
-// The framing this serves: Locus is where somebody keeps the things they have built. An app here
+// The framing this serves: an imperfect computer is where somebody keeps the things they have built. An app here
 // is a page this computer serves, so a project that becomes a page becomes a tile without anything
 // learning a new window kind. The harness is a drop over the top rather than the whole screen,
 // because the screen belongs to the apps.
 const $ = id => document.getElementById(id);
 const harness = $("terminal-entry");
-const home = $("locus-home");
+const home = $("imperfect-home");
 const frame = $("window-frame");
-const windowLayer = $("locus-window");
+const windowLayer = $("imperfect-window");
 
 // Everything here is a page this application already serves. Adding one is adding a line.
 const APPS = [
@@ -16,7 +16,7 @@ const APPS = [
 	{ id: "antiburn", title: "antiburn", note: "what you are spending", src: "/antiburn.html" },
 	// The screen of the machine itself. Its address is asked for at the moment it is opened and
 	// never kept: the URL carries an access token, and a token nobody stores is a token nobody
-	// leaks. Locus holds the fleet credential that mints it; this computer does not.
+	// leaks. The door holds the fleet credential that mints it; this computer does not.
 	{ id: "desktop", title: "desktop", note: "the screen of this machine", remote: "/__desktop" },
 ];
 

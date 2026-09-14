@@ -1,9 +1,9 @@
 # Desktop window
 
-Same machine as the hosted computer. This is a window around `node start.mjs`, not a second app and not the locus.garden door.
+Same machine as the hosted computer. This is a window around `node start.mjs`, not a second app and not the imperfect.computer door.
 
 ```sh
-git clone https://github.com/locusrifle/imperfect.computer.git
+git clone https://github.com/imperfect/imperfect.computer.git
 cd imperfect.computer
 ./desktop/install.sh
 ```

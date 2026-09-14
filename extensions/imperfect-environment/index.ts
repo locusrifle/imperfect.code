@@ -27,7 +27,7 @@ function personPage() {
   }
 }
 
-export default function locusEnvironment(pi: ExtensionAPI) {
+export default function imperfectEnvironment(pi: ExtensionAPI) {
   pi.on("before_agent_start", (event) => {
     const block = [fillEnvironment(template, person()), personPage()].filter(Boolean).join("\n\n");
     return { systemPrompt: applyEnvironment(event.systemPrompt, block) };

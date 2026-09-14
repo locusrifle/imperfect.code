@@ -2,8 +2,8 @@
    a pointer, 70% on a phone so the custom keys can stand on the remaining 30%.
    Every colour below comes from the Omarchy theme the server reads; the literal
    values are the shell's own now; Omarchy no longer supplies a theme here. */
-html:has(body.locusrifle),
-body.locusrifle {
+html:has(body.imperfect),
+body.imperfect {
   touch-action: none;
   overscroll-behavior: none;
   /* Omarchy supplied these until it was removed on 2026-09-14, and every use of them across the
@@ -26,7 +26,7 @@ body.locusrifle {
   --accent: var(--om-accent);
   --strand-a: var(--om-muted);
   --strand-b: var(--om-accent);
-  --major: var(--locus-grid-major, 24px);
+  --major: var(--ic-grid-major, 24px);
   --tui-pageBg: var(--scene-void);
   --tui-cardBg: var(--om-bg-dark, color-mix(in srgb, var(--scene-void) 88%, #fff));
   --tui-userMessageBg: var(--om-selection, color-mix(in srgb, var(--scene-void) 72%, #000));
@@ -45,7 +45,7 @@ body.locusrifle {
   /* shell.css paints the ground behind the wallpaper layer. */
   background-image: none;
 }
-body.locusrifle::before { content: none; }
+body.imperfect::before { content: none; }
 body {
   font-size: 13px;
   line-height: 1.5;
@@ -57,7 +57,7 @@ body {
    2026-09-14 -- and the OS keyboard now resizes the layout viewport rather than covering it, so
    dvh shrinks with the keys and the composer stays above them. */
 @media (pointer: coarse) {
-	body.locusrifle { --entry-terminal-height: 70dvh; }
+	body.imperfect { --entry-terminal-height: 70dvh; }
 }
 
 #terminal-entry { touch-action: none; }
@@ -66,25 +66,25 @@ body {
 }
 #entry-input { touch-action: manipulation; }
 #session-rail { touch-action: pan-y; }
-body.locusrifle .session-rail-close {
+body.imperfect .session-rail-close {
   width: 2.75em;
   min-height: 2.75em;
 }
 
-body.locusrifle .drop-handle { cursor: grab; }
-body.locusrifle #entry-spend { display: none; }
-body.locusrifle .entry-status { display: none; }
-body.locusrifle #entry-input-zone {
+body.imperfect .drop-handle { cursor: grab; }
+body.imperfect #entry-spend { display: none; }
+body.imperfect .entry-status { display: none; }
+body.imperfect #entry-input-zone {
   min-height: 0;
   margin: 0;
   padding: 0;
 }
-body.locusrifle #entry-input-zone::before { display: none; }
-body.locusrifle #entry-input-zone::after {
+body.imperfect #entry-input-zone::before { display: none; }
+body.imperfect #entry-input-zone::after {
   left: 0;
   right: 0;
 }
-body.locusrifle #entry-work {
+body.imperfect #entry-work {
   position: relative;
   box-sizing: border-box;
   display: flex;
@@ -94,13 +94,13 @@ body.locusrifle #entry-work {
   width: 100%;
   min-height: 1.35em;
   margin: 0;
-  padding: 0 var(--entry-gutter, var(--locus-grid-major, 24px));
+  padding: 0 var(--entry-gutter, var(--ic-grid-major, 24px));
   color: var(--tui-muted, var(--pi-muted));
   font-style: normal;
 }
-body.locusrifle #entry-work[hidden] { display: flex; }
-body.locusrifle #entry-work::before { content: none; }
-body.locusrifle #entry-work::after {
+body.imperfect #entry-work[hidden] { display: flex; }
+body.imperfect #entry-work::before { content: none; }
+body.imperfect #entry-work::after {
   content: "";
   position: absolute;
   left: 0;
@@ -111,17 +111,17 @@ body.locusrifle #entry-work::after {
   border-top: 1px solid var(--stock-think-border, var(--tui-accent));
   height: 0;
 }
-body.locusrifle #entry-work .entry-spinner,
-body.locusrifle #entry-work .entry-work-status,
-body.locusrifle #entry-work #entry-pi-label,
-body.locusrifle #entry-work #entry-thinking,
-body.locusrifle #entry-work #entry-context {
+body.imperfect #entry-work .entry-spinner,
+body.imperfect #entry-work .entry-work-status,
+body.imperfect #entry-work #entry-pi-label,
+body.imperfect #entry-work #entry-thinking,
+body.imperfect #entry-work #entry-context {
   position: relative;
   z-index: 1;
   background: var(--tui-pageBg, var(--pi-bg));
   line-height: 1;
 }
-body.locusrifle #entry-work .entry-spinner {
+body.imperfect #entry-work .entry-spinner {
   width: auto;
   margin: 0;
   padding: 0 0.35em 0 0;
@@ -130,9 +130,9 @@ body.locusrifle #entry-work .entry-spinner {
   font-style: normal;
   font-weight: 400;
 }
-body.locusrifle #entry-work #entry-pi-label,
-body.locusrifle #entry-work #entry-thinking,
-body.locusrifle #entry-work #entry-context {
+body.imperfect #entry-work #entry-pi-label,
+body.imperfect #entry-work #entry-thinking,
+body.imperfect #entry-work #entry-context {
   display: block;
   appearance: none;
   border: 0;
@@ -144,25 +144,25 @@ body.locusrifle #entry-work #entry-context {
   line-height: 1;
   text-transform: uppercase;
 }
-body.locusrifle #entry-work #entry-pi-label { margin-left: -1ch; padding: 0 0.4em 0 1ch; }
-body.locusrifle #entry-work #entry-thinking { padding: 0 0.4em; }
-body.locusrifle #entry-work #entry-context { margin-left: auto; margin-right: -1ch; padding: 0 1ch 0 0.4em; }
-body.locusrifle #entry-work .entry-work-gap {
+body.imperfect #entry-work #entry-pi-label { margin-left: -1ch; padding: 0 0.4em 0 1ch; }
+body.imperfect #entry-work #entry-thinking { padding: 0 0.4em; }
+body.imperfect #entry-work #entry-context { margin-left: auto; margin-right: -1ch; padding: 0 1ch 0 0.4em; }
+body.imperfect #entry-work .entry-work-gap {
   flex: 1 1 auto;
-  min-width: calc(var(--entry-gutter, var(--locus-grid-major, 24px)) - 1ch);
+  min-width: calc(var(--entry-gutter, var(--ic-grid-major, 24px)) - 1ch);
   height: 1px;
   align-self: center;
 }
-body.locusrifle #entry-thinking:empty,
-body.locusrifle #entry-context:empty { display: none; }
-body.locusrifle #entry-input-zone.working #entry-work,
-body.locusrifle #entry-input-zone.working #entry-pi-label,
-body.locusrifle #entry-input-zone.working #entry-thinking,
-body.locusrifle #entry-input-zone.working #entry-context,
-body.locusrifle #entry-input-zone.working .entry-work-status {
+body.imperfect #entry-thinking:empty,
+body.imperfect #entry-context:empty { display: none; }
+body.imperfect #entry-input-zone.working #entry-work,
+body.imperfect #entry-input-zone.working #entry-pi-label,
+body.imperfect #entry-input-zone.working #entry-thinking,
+body.imperfect #entry-input-zone.working #entry-context,
+body.imperfect #entry-input-zone.working .entry-work-status {
   color: var(--tui-accent, var(--pi-accent));
 }
-body.locusrifle #entry-work .entry-work-status {
+body.imperfect #entry-work .entry-work-status {
   padding: 0 0.6em;
   font-family: var(--font-pi);
   font-size: 11px;
@@ -170,8 +170,8 @@ body.locusrifle #entry-work .entry-work-status {
   letter-spacing: 0;
   text-transform: none;
 }
-body.locusrifle .entry-model-line { display: none; }
-body.locusrifle .entry-input-stack {
+body.imperfect .entry-model-line { display: none; }
+body.imperfect .entry-input-stack {
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -179,16 +179,16 @@ body.locusrifle .entry-input-stack {
   width: 100%;
   min-height: 2.7em;
   height: auto;
-  padding: 0.55em calc(var(--locus-grid-major, 24px) + env(safe-area-inset-right, 0px)) 0.85em calc(var(--locus-grid-major, 24px) + env(safe-area-inset-left, 0px));
+  padding: 0.55em calc(var(--ic-grid-major, 24px) + env(safe-area-inset-right, 0px)) 0.85em calc(var(--ic-grid-major, 24px) + env(safe-area-inset-left, 0px));
 }
-body.locusrifle .entry-prompt { display: none; }
-body.locusrifle .entry-input-mirror {
+body.imperfect .entry-prompt { display: none; }
+body.imperfect .entry-input-mirror {
   flex: 1 1 auto;
   min-width: 0;
   min-height: 1.35em;
   line-height: 1.35;
 }
-body.locusrifle #entry-input {
+body.imperfect #entry-input {
   flex: none;
   align-self: stretch;
   min-width: 0;
@@ -201,18 +201,18 @@ body.locusrifle #entry-input {
   overflow-y: auto;
   scrollbar-width: none;
 }
-body.locusrifle .mobile-input-display {
+body.imperfect .mobile-input-display {
   color: var(--pi-text-bright, #f7f1fb);
   -webkit-text-fill-color: var(--pi-text-bright, #f7f1fb);
   line-height: 1.35;
   overflow: hidden;
 }
-body.locusrifle #entry-input::-webkit-scrollbar { display: none; }
-body.locusrifle #entry-output .entry-queue {
+body.imperfect #entry-input::-webkit-scrollbar { display: none; }
+body.imperfect #entry-output .entry-queue {
   padding-left: 0;
   padding-right: 0;
 }
-body.locusrifle .entry-attach {
+body.imperfect .entry-attach {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -223,20 +223,20 @@ body.locusrifle .entry-attach {
   align-self: center !important;
   line-height: 1;
 }
-body.locusrifle .entry-attach span {
+body.imperfect .entry-attach span {
   display: grid;
   place-items: center;
   line-height: 1;
 }
-body.locusrifle #entry-pi-label,
-body.locusrifle #entry-thinking,
-body.locusrifle #entry-context {
+body.imperfect #entry-pi-label,
+body.imperfect #entry-thinking,
+body.imperfect #entry-context {
   flex: 0 0 auto;
   margin: 0;
   color: inherit;
   white-space: nowrap;
 }
-body.locusrifle #entry-terminal{
+body.imperfect #entry-terminal{
   background: var(--scene-void, #000);
   color: var(--pi-text, #eadff0);
 }
@@ -294,7 +294,7 @@ body.locusrifle #entry-terminal{
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  padding: 8px var(--locus-grid-major, 24px) 4px;
+  padding: 8px var(--ic-grid-major, 24px) 4px;
 }
 .entry-pending[hidden] { display: none; }
 .entry-pending-chip {
@@ -362,7 +362,7 @@ body.watching #entry-source { color: var(--pi-accent); }
 /* Jobs sit above the composer as a strip, not a debug dump in the transcript. */
 .entry-widgets {
   flex: 0 0 auto;
-  padding: 0 var(--locus-grid-major, 24px) 6px;
+  padding: 0 var(--ic-grid-major, 24px) 6px;
   color: var(--pi-muted);
   letter-spacing: 0.02em;
 }
@@ -414,7 +414,7 @@ body[data-bar="top"] #knowledge-graph-host {
   flex-direction: column;
   box-sizing: border-box;
   margin: 0;
-  padding: calc(var(--locus-grid-major, 24px) * 0.15);
+  padding: calc(var(--ic-grid-major, 24px) * 0.15);
   border: 0;
   appearance: none;
   -webkit-appearance: none;
@@ -446,7 +446,7 @@ body[data-bar="top"] #knowledge-graph-host {
 #knowledge-cards .node-label {
   color: var(--tui-text, var(--ink));
   font-family: ui-monospace, monospace;
-  font-size: calc(var(--locus-grid-major, 24px) * 0.5);
+  font-size: calc(var(--ic-grid-major, 24px) * 0.5);
   line-height: 1.15;
   display: flex;
   flex-direction: column;
@@ -478,8 +478,8 @@ body[data-bar="top"] #knowledge-graph-host {
   position: absolute;
   top: auto;
   bottom: 0;
-  width: var(--locus-grid-major, 24px);
-  height: var(--locus-grid-major, 24px);
+  width: var(--ic-grid-major, 24px);
+  height: var(--ic-grid-major, 24px);
   border: 0;
   background: var(--tui-accent, var(--orange));
   color: var(--paper);
@@ -487,10 +487,10 @@ body[data-bar="top"] #knowledge-graph-host {
   pointer-events: auto;
 }
 #knowledge-graph-close { right: 0; }
-#knowledge-close { right: var(--locus-grid-major, 24px); }
+#knowledge-close { right: var(--ic-grid-major, 24px); }
 #knowledge-back {
-  right: calc(var(--locus-grid-major, 24px) * 2);
-  width: calc(var(--locus-grid-major, 24px) * 3);
+  right: calc(var(--ic-grid-major, 24px) * 2);
+  width: calc(var(--ic-grid-major, 24px) * 3);
 }
 .knowledge-wiki {
   background: none;

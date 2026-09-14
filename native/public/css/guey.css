@@ -1,8 +1,8 @@
 /* Layout glue. Colors come from /theme.css (stock Pi TUI tokens). */
 :root {
-  --locus-grid-major: 24px;
-  --locus-grid-origin-x: 0px;
-  --locus-grid-origin-y: 0px;
+  --ic-grid-major: 24px;
+  --ic-grid-origin-x: 0px;
+  --ic-grid-origin-y: 0px;
   --garden: var(--tui-pageBg);
   --paper: var(--tui-pageBg);
   --ink: var(--tui-text);
@@ -49,7 +49,7 @@ body.guey-tui .entry-screen {
   color: var(--tui-text);
 }
 
-/* Stock Guey: one full-window conversation, not the locusrifle quake drop.
+/* Stock Guey: one full-window conversation, not the imperfect quake drop.
    entry-terminal.css sets `#terminal-entry.harness #entry-terminal` to 40dvh
    (two IDs). These selectors must beat that, not merely restyle body. */
 html:has(body.guey-stock),
@@ -241,7 +241,7 @@ body.guey-tui #entry-context {
 }
 body.guey-tui .entry-flash {
   flex: 0 0 auto;
-  padding: 0.35em var(--locus-grid-major, 24px) 0.15em;
+  padding: 0.35em var(--ic-grid-major, 24px) 0.15em;
   color: var(--tui-muted, var(--pi-muted));
 }
 body.guey-tui .entry-flash[hidden] { display: none; }
@@ -307,7 +307,7 @@ body.guey-tui #entry-input-zone {
   position: relative;
   min-height: 0;
   margin: 0;
-  padding: 0.2em var(--locus-grid-major, 24px);
+  padding: 0.2em var(--ic-grid-major, 24px);
   justify-content: center;
   border: 0;
 }
@@ -315,8 +315,8 @@ body.guey-tui #entry-input-zone::before,
 body.guey-tui #entry-input-zone::after {
   content: "";
   position: absolute;
-  left: var(--locus-grid-major, 24px);
-  right: var(--locus-grid-major, 24px);
+  left: var(--ic-grid-major, 24px);
+  right: var(--ic-grid-major, 24px);
   border-top: 1px solid var(--stock-think-border);
 }
 body.guey-tui #entry-input-zone::before { top: 0; }

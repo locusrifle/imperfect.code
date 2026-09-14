@@ -258,7 +258,7 @@ export class TuiBridge {
 		}
 		if (type === "ui_prompt_start") {
 			this.broadcast({
-				type: "locus.tui_waiting",
+				type: "imperfect.tui_waiting",
 				waiting: true,
 				kind: event?.kind,
 				title: event?.title,
@@ -266,7 +266,7 @@ export class TuiBridge {
 			return;
 		}
 		if (type === "ui_prompt_end") {
-			this.broadcast({ type: "locus.tui_waiting", waiting: false });
+			this.broadcast({ type: "imperfect.tui_waiting", waiting: false });
 			return;
 		}
 		if (type === "input") {
@@ -336,7 +336,7 @@ export class TuiBridge {
 	}
 
 	private changed(reason: string): void {
-		this.broadcast({ type: "locus.session_changed", reason });
+		this.broadcast({ type: "imperfect.session_changed", reason });
 	}
 
 	private writeAd(): void {
@@ -359,7 +359,7 @@ export class TuiBridge {
 	private readyPayload(): Record<string, unknown> {
 		const sm = this.ctx?.sessionManager;
 		return {
-			type: "locus.ready",
+			type: "imperfect.ready",
 			pi: true,
 			cwd: this.ctx?.cwd,
 			capabilities: [...SUPPORTED_COMMANDS],
@@ -383,9 +383,9 @@ export class TuiBridge {
 	private envelope(payload: unknown): unknown {
 		if (!payload || typeof payload !== "object" || Array.isArray(payload)) return payload;
 		const rec = payload as Record<string, unknown>;
-		if (typeof rec.locusSeq === "number") return payload;
+		if (typeof rec.imperfectSeq === "number") return payload;
 		this.eventSeq += 1;
-		return { ...rec, locusSeq: this.eventSeq };
+		return { ...rec, imperfectSeq: this.eventSeq };
 	}
 
 	private sendAll(payload: unknown): void {

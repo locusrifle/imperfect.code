@@ -17,7 +17,7 @@ const isPhone = () => matchMedia("(pointer: coarse)").matches;
 
 function measureGrid() {
 	grid();
-	dispatchEvent(new CustomEvent("locus:gridchange"));
+	dispatchEvent(new CustomEvent("imperfect:gridchange"));
 }
 measureGrid();
 
@@ -124,13 +124,13 @@ async function listedApps() {
 }
 
 const shell = mountShell({
-	world: el("locus-world"),
+	world: el("imperfect-world"),
 	apps: listedApps,
 	onError: (error) => console.warn("application did not open", error),
 });
 
 const knowledge = mountKnowledgeGraph({
-	world: el("locus-world"),
+	world: el("imperfect-world"),
 });
 
 const pi = mountGueyPi({

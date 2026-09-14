@@ -22,26 +22,26 @@ function stubRuntime(cwd) {
   };
 }
 
-test('product resolution: explicit stock vs live locusrifle default', () => {
+test('product resolution: explicit stock vs live imperfect default', () => {
   assert.equal(resolveProduct({ product: 'stock' }), 'stock');
-  assert.equal(resolveProduct({ product: 'locusrifle' }), 'locusrifle');
+  assert.equal(resolveProduct({ product: 'imperfect' }), 'imperfect');
 });
 
 test('a deployment may wear its own name, and only a plain one', async () => {
   assert.equal(resolveBrand({}), 'Guey');
-  assert.equal(resolveBrand({ brand: 'Locus' }), 'Locus');
-  assert.equal(resolveBrand({ brand: '  Locus  ' }), 'Locus');
+  assert.equal(resolveBrand({ brand: 'imperfect computers' }), 'imperfect computers');
+  assert.equal(resolveBrand({ brand: '  imperfect computers  ' }), 'imperfect computers');
   // The name reaches a script and a document title, so markup must not survive.
   assert.equal(resolveBrand({ brand: '</script><script>x' }), 'Guey');
   assert.equal(resolveBrand({ brand: 'x'.repeat(33) }), 'Guey');
 
   const root = await mkdtemp(join(tmpdir(), 'guey-brand-'));
-  const app = await createGueyServer({ port: 0, host: '127.0.0.1', stateDir: root, runtime: stubRuntime(root), product: 'stock', brand: 'Locus' });
+  const app = await createGueyServer({ port: 0, host: '127.0.0.1', stateDir: root, runtime: stubRuntime(root), product: 'stock', brand: 'imperfect computers' });
   try {
     const { port } = await app.listen();
     const base = `http://127.0.0.1:${port}`;
     const script = await (await fetch(base + '/brand.js')).text();
-    assert.match(script, /window\.GUEY_BRAND="Locus"/);
+    assert.match(script, /window\.GUEY_BRAND="imperfect computers"/);
     // This console's CSP refuses inline script, so the name must be applied from here.
     assert.match(script, /document\.title=window\.GUEY_BRAND/);
     const page = await (await fetch(base + '/')).text();
@@ -54,11 +54,11 @@ test('a deployment may wear its own name, and only a plain one', async () => {
   }
 });
 
-test('stock shell has no upload control; locusrifle index keeps it', async () => {
+test('stock shell has no upload control; imperfect index keeps it', async () => {
   const root = await mkdtemp(join(tmpdir(), 'guey-product-html-'));
   const runtime = stubRuntime(root);
   const stock = await createGueyServer({ port: 0, host: '127.0.0.1', stateDir: join(root, 'stock'), runtime, product: 'stock' });
-  const personal = await createGueyServer({ port: 0, host: '127.0.0.1', stateDir: join(root, 'personal'), runtime, product: 'locusrifle' });
+  const personal = await createGueyServer({ port: 0, host: '127.0.0.1', stateDir: join(root, 'personal'), runtime, product: 'imperfect' });
   try {
     const sAddr = await stock.listen();
     const pAddr = await personal.listen();
@@ -67,7 +67,7 @@ test('stock shell has no upload control; locusrifle index keeps it', async () =>
     const sHealth = await (await fetch(sBase + '/health')).json();
     const pHealth = await (await fetch(pBase + '/health')).json();
     assert.equal(sHealth.product, 'stock');
-    assert.equal(pHealth.product, 'locusrifle');
+    assert.equal(pHealth.product, 'imperfect');
     const sHtml = await (await fetch(sBase + '/')).text();
     const pHtml = await (await fetch(pBase + '/')).text();
     assert.match(sHtml, /guey-stock/);
@@ -105,13 +105,13 @@ test('stock shell has no upload control; locusrifle index keeps it', async () =>
     assert.doesNotMatch(pHtml, /realtime\.js/);
     const stockJs = await (await fetch(sBase + '/js/stock.js')).text();
     const siteJs = await (await fetch(pBase + '/js/site.js')).text();
-    assert.doesNotMatch(sHtml, /locus-scene|scene\.js/);
+    assert.doesNotMatch(sHtml, /imperfect-scene|scene\.js/);
     assert.doesNotMatch(stockJs, /scene\.js|realtime\.js/);
     assert.doesNotMatch(siteJs, /scene\.js/);
     assert.doesNotMatch(siteJs, /realtime\.js/);
-    assert.doesNotMatch(pHtml, /locus-scene/);
-    const personalCss = await (await fetch(pBase + '/css/locusrifle.css')).text();
-    assert.doesNotMatch(personalCss, /#locus-scene/);
+    assert.doesNotMatch(pHtml, /imperfect-scene/);
+    const personalCss = await (await fetch(pBase + '/css/imperfect.css')).text();
+    assert.doesNotMatch(personalCss, /#imperfect-scene/);
     // Omarchy's theme, wallpaper and bar arrangement were removed on 2026-09-14: they only ever
     // existed on one laptop, and a hosted machine has none of those files. The routes are gone.
     for (const path of ['/omarchy.css', '/omarchy/bar', '/omarchy/background']) {
@@ -138,7 +138,7 @@ test('stock shell has no upload control; locusrifle index keeps it', async () =>
     assert.equal(changed.status, 200);
     assert.equal((await fetch(pBase + '/js/site.js')).headers.get('cache-control'), 'no-store');
     const stockCss = await (await fetch(sBase + '/css/guey.css')).text();
-    assert.doesNotMatch(stockCss, /locus-scene/);
+    assert.doesNotMatch(stockCss, /imperfect-scene/);
     // Screen-off push went with realtime voice on 2026-09-14; neither composition serves it, and
     // the browser no longer talks to a provider directly.
     assert.equal((await fetch(sBase + '/push/vapid')).status, 404);
@@ -161,7 +161,7 @@ test('ownArchive does not auto-resume the shared Pi session tree', async () => {
   const sessionDir = join(stateDir, 'sessions');
   await mkdir(cwd, { recursive: true });
   const foreign = SessionManager.create(cwd, join(agent, 'sessions'));
-  foreign.appendMessage({ role: 'user', content: 'locusrifle transcript', timestamp: Date.now() });
+  foreign.appendMessage({ role: 'user', content: 'imperfect transcript', timestamp: Date.now() });
   foreign.appendMessage({ role: 'assistant', content: [{ type: 'text', text: 'saved answer' }], timestamp: Date.now(), stopReason: 'stop', usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } } });
   const runtime = await createRuntime({
     cwd, agentDir: agent, stateDir, sessionDir, liveSessions: false, ownArchive: true,
@@ -178,7 +178,7 @@ test('ownArchive does not auto-resume the shared Pi session tree', async () => {
     const after = runtime.snapshot();
     assert.ok(after.sessionFile.startsWith(sessionDir + '/'), after.sessionFile);
     assert.notEqual(after.sessionFile, foreign.getSessionFile());
-    assert.ok(after.messages.some(m => m.content === 'locusrifle transcript' || m.content?.[0]?.text === 'locusrifle transcript' || m.content?.[0]?.text === 'saved answer'));
+    assert.ok(after.messages.some(m => m.content === 'imperfect transcript' || m.content?.[0]?.text === 'imperfect transcript' || m.content?.[0]?.text === 'saved answer'));
   } finally {
     await runtime.close();
     await rm(root, { recursive: true, force: true });

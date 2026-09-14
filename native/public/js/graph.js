@@ -10,9 +10,9 @@ function svg(name, attrs) {
 function phase() {
 	const cs = getComputedStyle(document.documentElement);
 	return {
-		unit: parseFloat(cs.getPropertyValue('--locus-grid-major')) || grid().unit || 24,
-		ox: parseFloat(cs.getPropertyValue('--locus-grid-origin-x')) || 0,
-		oy: parseFloat(cs.getPropertyValue('--locus-grid-origin-y')) || 0,
+		unit: parseFloat(cs.getPropertyValue('--ic-grid-major')) || grid().unit || 24,
+		ox: parseFloat(cs.getPropertyValue('--ic-grid-origin-x')) || 0,
+		oy: parseFloat(cs.getPropertyValue('--ic-grid-origin-y')) || 0,
 	};
 }
 const snap = (n, origin, unit) => origin + Math.round((n - origin) / unit) * unit;
@@ -250,7 +250,7 @@ export function mountKnowledgeGraph({ getPan = () => ({ x: 0, y: 0 }) } = {}) {
 	back.onclick = () => { history.pop(); void openPage(history.at(-1), false); };
 	close.onclick = closeGraph;
 	addEventListener('resize', () => { if (open) layout(); });
-	addEventListener('locus:gridchange', () => { if (open) layout(); });
+	addEventListener('imperfect:gridchange', () => { if (open) layout(); });
 	host.openKnowledgePage = openPage;
 	return {
 		isOpen: () => open,

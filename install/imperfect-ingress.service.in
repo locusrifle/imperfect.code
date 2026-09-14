@@ -1,5 +1,5 @@
 [Unit]
-Description=Locus ingress (password gate)
+Description=imperfect computers ingress (password gate)
 After=network-online.target imperfect.service
 Wants=network-online.target
 

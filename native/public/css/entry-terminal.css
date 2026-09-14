@@ -26,7 +26,7 @@
   pointer-events: none;
 }
 #keybind-popdown {
-  --keybind-unit: var(--locus-grid-major, 24px);
+  --keybind-unit: var(--ic-grid-major, 24px);
   --keybind-line: 12px;
   --keybind-space: calc(var(--keybind-unit) * 1.75 - var(--keybind-line) * 0.75);
   appearance: none;
@@ -195,7 +195,7 @@
   line-height: 1.42;
 }
 #entry-output {
-  --entry-gutter: var(--locus-grid-major, 24px);
+  --entry-gutter: var(--ic-grid-major, 24px);
   min-height: 0;
   flex: 1;
   padding: var(--entry-gutter) var(--entry-gutter) 0;
@@ -366,9 +366,9 @@
   position: relative;
   box-sizing: border-box;
   flex: 0 0 auto;
-  min-height: calc(var(--locus-grid-major, 24px) * 2);
+  min-height: calc(var(--ic-grid-major, 24px) * 2);
   margin: 0;
-  padding: 0 var(--locus-grid-major, 24px);
+  padding: 0 var(--ic-grid-major, 24px);
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -395,14 +395,14 @@
   min-width: 0;
   display: flex;
   align-items: center;
-  height: var(--locus-grid-major, 24px);
+  height: var(--ic-grid-major, 24px);
 }
 #entry-input-zone[hidden] { display: none; }
 .entry-prompt {
   display: flex;
   align-items: center;
-  height: var(--locus-grid-major, 24px);
-  line-height: var(--locus-grid-major, 24px);
+  height: var(--ic-grid-major, 24px);
+  line-height: var(--ic-grid-major, 24px);
   color: var(--pi-accent);
 }
 #entry-input {
@@ -421,9 +421,9 @@
   overflow: hidden;
   white-space: pre-wrap;
   word-break: break-word;
-  line-height: var(--locus-grid-major, 24px);
-  height: var(--locus-grid-major, 24px);
-  min-height: var(--locus-grid-major, 24px);
+  line-height: var(--ic-grid-major, 24px);
+  height: var(--ic-grid-major, 24px);
+  min-height: var(--ic-grid-major, 24px);
   user-select: text;
   -webkit-user-select: text;
 }
@@ -486,7 +486,7 @@
   flex: 0 0 auto;
   height: auto;
   min-height: 0;
-  padding: calc(var(--locus-grid-major, 24px) * 0.5) var(--locus-grid-major, 24px);
+  padding: calc(var(--ic-grid-major, 24px) * 0.5) var(--ic-grid-major, 24px);
   display: flex;
   align-items: center;
   color: var(--pi-muted);
@@ -560,8 +560,8 @@
 
 @media (max-width: 700px) {
   .entry-screen { --entry-text-size: clamp(0.55rem, 2.2vw, 0.76rem); font-size: var(--entry-text-size); gap: 0; }
-  #entry-output { --entry-gutter: var(--locus-grid-major, 24px); }
-  .entry-status { padding: calc(var(--locus-grid-major, 24px) * 0.5) var(--locus-grid-major, 24px); }
+  #entry-output { --entry-gutter: var(--ic-grid-major, 24px); }
+  .entry-status { padding: calc(var(--ic-grid-major, 24px) * 0.5) var(--ic-grid-major, 24px); }
   .entry-status-line { gap: 0.5rem 0.8rem; white-space: normal; overflow: visible; }
   .entry-status-line > span:first-child { overflow: visible; text-overflow: clip; }
 }
@@ -573,23 +573,23 @@ body.pi-harness {
   background-image:
     linear-gradient(var(--rule-fine) 0 1px, transparent 1px 4px),
     linear-gradient(90deg, var(--rule-fine) 0 1px, transparent 1px 4px),
-    linear-gradient(var(--rule-minor) 0 1px, transparent 1px var(--locus-grid-major, 24px)),
-    linear-gradient(90deg, var(--rule-minor) 0 1px, transparent 1px var(--locus-grid-major, 24px)),
+    linear-gradient(var(--rule-minor) 0 1px, transparent 1px var(--ic-grid-major, 24px)),
+    linear-gradient(90deg, var(--rule-minor) 0 1px, transparent 1px var(--ic-grid-major, 24px)),
     radial-gradient(circle at center, transparent 2px, var(--garden) 2px 100%),
-    linear-gradient(var(--rule-major) 0 1px, transparent 1px var(--locus-grid-major, 24px)),
-    linear-gradient(90deg, var(--rule-major) 0 1px, transparent 1px var(--locus-grid-major, 24px));
+    linear-gradient(var(--rule-major) 0 1px, transparent 1px var(--ic-grid-major, 24px)),
+    linear-gradient(90deg, var(--rule-major) 0 1px, transparent 1px var(--ic-grid-major, 24px));
   background-size:
     4px 4px, 4px 4px,
-    var(--locus-grid-major, 24px) var(--locus-grid-major, 24px), var(--locus-grid-major, 24px) var(--locus-grid-major, 24px),
-    var(--locus-grid-major, 24px) var(--locus-grid-major, 24px), var(--locus-grid-major, 24px) var(--locus-grid-major, 24px), var(--locus-grid-major, 24px) var(--locus-grid-major, 24px);
+    var(--ic-grid-major, 24px) var(--ic-grid-major, 24px), var(--ic-grid-major, 24px) var(--ic-grid-major, 24px),
+    var(--ic-grid-major, 24px) var(--ic-grid-major, 24px), var(--ic-grid-major, 24px) var(--ic-grid-major, 24px), var(--ic-grid-major, 24px) var(--ic-grid-major, 24px);
   background-position:
-    var(--locus-grid-origin-x, 0px) var(--locus-grid-origin-y, 0px),
-    var(--locus-grid-origin-x, 0px) var(--locus-grid-origin-y, 0px),
-    var(--locus-grid-origin-x, 0px) var(--locus-grid-origin-y, 0px),
-    var(--locus-grid-origin-x, 0px) var(--locus-grid-origin-y, 0px),
-    calc(var(--locus-grid-origin-x, 0px) - var(--locus-grid-major, 24px) * 0.5) calc(var(--locus-grid-origin-y, 0px) - var(--locus-grid-major, 24px) * 0.5),
-    var(--locus-grid-origin-x, 0px) var(--locus-grid-origin-y, 0px),
-    var(--locus-grid-origin-x, 0px) var(--locus-grid-origin-y, 0px);
+    var(--ic-grid-origin-x, 0px) var(--ic-grid-origin-y, 0px),
+    var(--ic-grid-origin-x, 0px) var(--ic-grid-origin-y, 0px),
+    var(--ic-grid-origin-x, 0px) var(--ic-grid-origin-y, 0px),
+    var(--ic-grid-origin-x, 0px) var(--ic-grid-origin-y, 0px),
+    calc(var(--ic-grid-origin-x, 0px) - var(--ic-grid-major, 24px) * 0.5) calc(var(--ic-grid-origin-y, 0px) - var(--ic-grid-major, 24px) * 0.5),
+    var(--ic-grid-origin-x, 0px) var(--ic-grid-origin-y, 0px),
+    var(--ic-grid-origin-x, 0px) var(--ic-grid-origin-y, 0px);
 }
 #terminal-entry.harness #entry-terminal {
   height: min(var(--entry-terminal-height, 40dvh), 100dvh);
@@ -604,7 +604,7 @@ body.pi-harness {
   box-sizing: border-box;
   max-height: 60%;
   overflow-y: auto;
-  padding: 12px var(--locus-grid-major, 24px);
+  padding: 12px var(--ic-grid-major, 24px);
   background: var(--pi-bg-raised);
   /* One rule, and it belongs to whatever is at the top of the interactive block. */
   border-top: 1px solid var(--pi-accent);
@@ -735,7 +735,7 @@ body.pi-harness {
 .usage-reset, .usage-note, .usage-empty { margin: 0; color: var(--pi-muted); }
 .entry-widgets {
   flex: 0 0 auto;
-  padding: 6px var(--locus-grid-major, 24px);
+  padding: 6px var(--ic-grid-major, 24px);
   color: var(--pi-muted);
   white-space: pre-wrap;
 }
@@ -747,9 +747,9 @@ body.pi-harness {
 @media (max-width: 700px) {
   #entry-dialog { font-size: clamp(0.55rem, 2.2vw, 0.76rem); }
   #entry-dialog.session-picker {
-    padding: 8px var(--locus-grid-major, 24px);
-    height: min(64dvh, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - var(--locus-keys-height, 36dvh)));
-    max-height: min(64dvh, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - var(--locus-keys-height, 36dvh)));
+    padding: 8px var(--ic-grid-major, 24px);
+    height: min(64dvh, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - var(--ic-keys-height, 36dvh)));
+    max-height: min(64dvh, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - var(--ic-keys-height, 36dvh)));
   }
   #entry-dialog .entry-dialog-option { padding: 2px 0; }
   .entry-session-head { margin: 0 0 4px; gap: 0.6rem; }
@@ -773,7 +773,7 @@ body.pi-harness {
   left: 0;
   z-index: 39;
   width: 100vw;
-  height: var(--locus-grid-major, 24px);
+  height: var(--ic-grid-major, 24px);
   margin: 0;
   padding: 0;
   border: 0;
@@ -789,7 +789,7 @@ body.pi-harness {
    keeps the single row as a floor. */
 .entry-input-stack {
   height: auto;
-  min-height: var(--locus-grid-major, 24px);
+  min-height: var(--ic-grid-major, 24px);
   align-items: flex-start;
 }
 /* The phone's mirror sits on the field itself, not the padded stack, so the

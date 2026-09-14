@@ -1,6 +1,6 @@
 # imperfect.computer
 
-Private source for the Locus machine app. People still reach it as **Locus** at **locus.garden**. This is not the account door (`vaita:/home/dacre/locus-garden`) and not Noah's laptop console.
+Private source for the imperfect computer machine app. People reach it as **imperfect computers** at **imperfect.computer**. This is not the account door (`vaita:/home/dacre/imperfect-door`) and not Noah's laptop console.
 
 Pi 0.85.1 under a graphical Guey shell. Users can later rearrange UI and add apps; this tree does not redesign that today.
 
@@ -8,7 +8,7 @@ Pi 0.85.1 under a graphical Guey shell. Users can later rearrange UI and add app
 
 ```sh
 npm ci
-IMPERFECT_PREFIX=/tmp/locus-dev node start.mjs
+IMPERFECT_PREFIX=/tmp/imperfect-dev node start.mjs
 ```
 
 Write `machine.json` in that prefix first, or copy the defaults from `machine.mjs`. The process binds loopback only.
@@ -18,7 +18,7 @@ Write `machine.json` in that prefix first, or copy the defaults from `machine.mj
 Same machine, no browser chrome. Needs Node 22+ and Rust.
 
 ```sh
-git clone https://github.com/locusrifle/imperfect.computer.git
+git clone https://github.com/imperfect/imperfect.computer.git
 cd imperfect.computer
 ./desktop/install.sh
 ```

@@ -9,14 +9,14 @@ function wholeEven(length, unit, minimum) {
 export function grid() {
   const unit =
     Number.parseFloat(
-      getComputedStyle(document.documentElement).getPropertyValue("--locus-grid-major")
+      getComputedStyle(document.documentElement).getPropertyValue("--ic-grid-major")
     ) || 24;
   const columns = Math.max(NOTE_COLUMNS, wholeEven(innerWidth, unit, 2));
   const rows = Math.max(NOTE_ROWS, wholeEven(innerHeight, unit, 2));
   const mobile = innerWidth < 1000;
   const originX = mobile ? (innerWidth - columns * unit) / 2 : 0;
   const originY = mobile ? (innerHeight - rows * unit) / 2 : 0;
-  document.documentElement.style.setProperty("--locus-grid-major", `${unit}px`);
+  document.documentElement.style.setProperty("--ic-grid-major", `${unit}px`);
   return { unit, originX, originY, columns, rows };
 }
 
@@ -64,4 +64,4 @@ export function bindHarnessKeys({ onHarness, onFullscreen } = {}) {
 
 layoutPiCard();
 addEventListener("resize", layoutPiCard);
-addEventListener("locus:gridchange", layoutPiCard);
+addEventListener("imperfect:gridchange", layoutPiCard);

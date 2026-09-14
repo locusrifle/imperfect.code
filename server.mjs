@@ -39,7 +39,7 @@ function assetPath(publicDir, urlPath) {
 }
 
 export async function createGueyServer(options = {}) {
-  // Bind comes from the caller. The live unit passes LOCUS_SITE_* at the
+  // Bind comes from the caller. The live unit passes IMPERFECT_* at the
   // entrypoint; tests and agent probes must not inherit that address, or
   // `port: 0` listens on the tailnet and a fetch to 127.0.0.1 never returns.
   const host = options.host ?? '127.0.0.1';
@@ -47,11 +47,11 @@ export async function createGueyServer(options = {}) {
   if (!privateHost(host)) throw new Error('GUEY is a private console: bind a loopback or tailnet IP');
   const cwd = resolve(options.cwd ?? process.env.GUEY_CWD ?? process.cwd());
   const product = resolveProduct(options);
-  const personal = product === 'locusrifle';
+  const personal = product === 'imperfect';
   const brand = resolveBrand(options);
   const knowledgeRoot = resolve(options.knowledgeRoot ?? process.env.GUEY_KNOWLEDGE_ROOT ?? (personal ? homedir() : cwd));
   // What the files app is allowed to see. On a laptop this is home and always has been. On a
-  // machine Locus hosts, home is where the control plane keeps its secrets, so that deployment
+  // machine imperfect computers hosts, home is where the control plane keeps its secrets, so that deployment
   // passes the workspace instead -- and must, because a browser is not a shell and the person
   // reading it may not be the person who owns the host.
   const files = createFiles({ root: resolve(options.filesRoot ?? process.env.GUEY_FILES_ROOT ?? (personal ? homedir() : cwd)) });
@@ -578,8 +578,8 @@ export async function createGueyServer(options = {}) {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const app = await createGueyServer({
-    host: process.env.LOCUS_SITE_HOST,
-    port: process.env.LOCUS_SITE_PORT ? Number(process.env.LOCUS_SITE_PORT) : undefined,
+    host: process.env.IMPERFECT_HOST,
+    port: process.env.IMPERFECT_PORT ? Number(process.env.IMPERFECT_PORT) : undefined,
   });
   try { const address = await app.listen(); console.log(`GUEY native GUI: http://${address.address}:${address.port} (${app.stateDir})`); }
   catch (error) { await app.close(); throw error; }

@@ -31,7 +31,7 @@ sudo node install/imperfect.mjs install \
   --runtime-tarball ./node-v22.23.2-linux-x64.tar.xz \
   --prefix /opt/imperfect \
   --port 5067 \
-  --origins https://HANDLE.locus.garden \
+  --origins https://HANDLE.imperfect.computer \
   --user imperfect
 ```
 
@@ -71,7 +71,7 @@ This does not create the `imperfect` user or a system unit. It is not OS isolati
 
 ## Preserve on vaita
 
-The live Pi profile is `~/.pi/locus` with real provider auth. Do not reset it. Do not copy it into a customer template.
+The live Pi profile is `~/.pi/imperfect` with real provider auth. Do not reset it. Do not copy it into a customer template.
 
 A reviewed migration bundle is staged, not activated:
 
@@ -82,8 +82,8 @@ vaita:/home/dacre/imperfect-staging/20260914T025517Z/
   before.txt                     workshop health at staging time
 ```
 
-An administrator with real root runs `sudo bash ADMIN-RUN-AS-ROOT.sh`. That installs on **port 5068** so the existing `locus-machine` user unit on 5067 is left running. There is no cutover in that script. Root's `PATH` must include a Node binary new enough to run the installer (vaita's dacre Node is v22.22.0). The installer then fetches and pins official Node 22.23.2 under `/opt/imperfect/runtime`.
+An administrator with real root runs `sudo bash ADMIN-RUN-AS-ROOT.sh`. That installs on **port 5068** so the existing `imperfect-machine` user unit on 5067 is left running. There is no cutover in that script. Root's `PATH` must include a Node binary new enough to run the installer (vaita's dacre Node is v22.22.0). The installer then fetches and pins official Node 22.23.2 under `/opt/imperfect/runtime`.
 
-When root is available and a cutover is intended, copy `~/.pi/locus` into `/opt/imperfect/data/agent` as user `imperfect` as a deliberate step, then point the unit at it. A same-uid user service is not isolation and is not a substitute.
+When root is available and a cutover is intended, copy `~/.pi/imperfect` into `/opt/imperfect/data/agent` as user `imperfect` as a deliberate step, then point the unit at it. A same-uid user service is not isolation and is not a substitute.
 
 Desktop streaming is pending; leave it off.

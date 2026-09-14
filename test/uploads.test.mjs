@@ -38,7 +38,7 @@ async function withApp(options, fn) {
 		host: "127.0.0.1",
 		stateDir: join(root, "state"),
 		runtime,
-		product: "locusrifle",
+		product: "imperfect",
 		...options,
 	});
 	try {

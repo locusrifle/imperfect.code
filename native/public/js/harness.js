@@ -454,7 +454,7 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 		playDoneSound();
 		if (looking) return;
 		if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-			try { new Notification(personal ? 'locusrifle' : 'Guey', { body: 'done', silent: false }); } catch {}
+			try { new Notification(personal ? 'imperfect' : 'Guey', { body: 'done', silent: false }); } catch {}
 		}
 	}
 	function connect() {

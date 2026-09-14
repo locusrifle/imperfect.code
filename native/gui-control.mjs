@@ -36,8 +36,8 @@ function parseArgv(argv) {
 }
 
 const extra = parseArgv(process.argv.slice(2));
-const host = process.env.LOCUS_SITE_HOST || '127.0.0.1';
-const port = process.env.LOCUS_SITE_PORT || '5057';
+const host = process.env.IMPERFECT_HOST || '127.0.0.1';
+const port = process.env.IMPERFECT_PORT || '5057';
 const url = `ws://${host}:${port}/pi`;
 const ws = new WebSocket(url, { headers: { Host: `${host}:${port}` } });
 await new Promise((resolve, reject) => { ws.once('open', resolve); ws.once('error', reject); });

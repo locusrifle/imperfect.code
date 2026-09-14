@@ -1,4 +1,4 @@
-// Machine layout and config for a Locus host (vaita or Box).
+// Machine layout and config for an imperfect computer (vaita or Box).
 // Releases and runtime live under prefix; personal data is separate and captured.
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -9,8 +9,8 @@ export const DEFAULT_PREFIX = '/opt/imperfect';
 export const DEFAULT_USER = 'imperfect';
 export const DEFAULT_PORT = 5067;
 export const DEFAULT_HOST = '127.0.0.1';
-export const DEFAULT_PRODUCT = 'locusrifle';
-export const DEFAULT_BRAND = 'Locus';
+export const DEFAULT_PRODUCT = 'imperfect';
+export const DEFAULT_BRAND = 'imperfect computers';
 
 export const NODE_RUNTIME = {
   version: '22.23.2',

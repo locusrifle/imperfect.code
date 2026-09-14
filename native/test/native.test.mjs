@@ -244,9 +244,9 @@ test('TUI theme css is served and a settings.json change bumps the snapshot', as
 });
 
 test('port 0 stays on loopback even when the live bind env is set', async () => {
-  const previous = { host: process.env.LOCUS_SITE_HOST, port: process.env.LOCUS_SITE_PORT };
-  process.env.LOCUS_SITE_HOST = '100.98.240.45';
-  process.env.LOCUS_SITE_PORT = '5057';
+  const previous = { host: process.env.IMPERFECT_HOST, port: process.env.IMPERFECT_PORT };
+  process.env.IMPERFECT_HOST = '100.98.240.45';
+  process.env.IMPERFECT_PORT = '5057';
   const root = await mkdtemp(join(tmpdir(), 'guey-bind-'));
   const events = new EventEmitter();
   const runtime = { events, snapshot: () => ({ sessionId: 't', messages: [] }), async command() {}, async close() {} };
@@ -258,8 +258,8 @@ test('port 0 stays on loopback even when the live bind env is set', async () => 
     assert.notEqual(address.port, 5057);
     assert.equal((await fetch(`http://127.0.0.1:${address.port}/health`)).status, 200);
   } finally {
-    if (previous.host === undefined) delete process.env.LOCUS_SITE_HOST; else process.env.LOCUS_SITE_HOST = previous.host;
-    if (previous.port === undefined) delete process.env.LOCUS_SITE_PORT; else process.env.LOCUS_SITE_PORT = previous.port;
+    if (previous.host === undefined) delete process.env.IMPERFECT_HOST; else process.env.IMPERFECT_HOST = previous.host;
+    if (previous.port === undefined) delete process.env.IMPERFECT_PORT; else process.env.IMPERFECT_PORT = previous.port;
     await app?.close();
     await rm(root, { recursive: true, force: true });
   }

@@ -109,13 +109,13 @@ means; it does not mean a backup feature exists. Writing one is outstanding work
 ## Admin migration to vaita
 
 Root is not available on vaita: `sudo -n true` is denied, root SSH is denied, and the docker
-socket is denied. The existing workshop runs as a **user** service (`locus-machine` under
+socket is denied. The existing workshop runs as a **user** service (`imperfect-machine` under
 `dacre`), which does not meet the isolation boundary above. Faking it with a same-uid service
 would not be isolation, so it is not offered.
 
 The reviewed artifact and an exact root command are **staged** at
 `vaita:/home/dacre/imperfect-staging/20260914T025517Z` (digest `39972f0c…`, `ADMIN-RUN-AS-ROOT.sh`
-written but not run). It would install on port **5068** so `locus-machine` on 5067 stays up.
+written but not run). It would install on port **5068** so `imperfect-machine` on 5067 stays up.
 The existing unit is left running and untouched until an administrator with real root runs that
-script. Noah's authenticated Pi profile at `~/.pi/locus` must be preserved and must **never**
+script. Noah's authenticated Pi profile at `~/.pi/imperfect` must be preserved and must **never**
 be copied into a customer template.

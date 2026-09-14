@@ -1,4 +1,4 @@
-// Pure helpers for the locusrifle voice mediator. No DOM, no network.
+// Pure helpers for the imperfect voice mediator. No DOM, no network.
 
 export const VOICE_MODEL = 'gpt-live-1';
 export const VOICE_KEEP_EXCHANGES = 4;

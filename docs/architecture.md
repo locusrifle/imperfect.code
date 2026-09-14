@@ -2,9 +2,9 @@
 
 ## What this is
 
-A Pi/Guey-backed personal computer, reached through the existing locus.garden door and authenticated proxy. Users can rearrange UI and add apps later; this migration does not redesign memory or the shell.
+A Pi/Guey-backed personal computer, reached through the existing imperfect.computer door and authenticated proxy. Users can rearrange UI and add apps later; this migration does not redesign memory or the shell.
 
-Brand and domain stay Locus / locus.garden. The source repository is imperfect.computer.
+Brand and domain are imperfect computers / imperfect.computer. The source repository is imperfect.computer.
 
 ## Layout on a machine
 

@@ -37,7 +37,7 @@ test('busy tab-close without closeConfirmed is rejected at the server', async ()
     async command() { ran += 1; return { ok: true }; },
     async close() {},
   };
-  const app = await createGueyServer({ port: 0, host: '127.0.0.1', stateDir: root, runtime, product: 'locusrifle' });
+  const app = await createGueyServer({ port: 0, host: '127.0.0.1', stateDir: root, runtime, product: 'imperfect' });
   try {
     const addr = await app.listen();
     const { WebSocket } = await import('ws');
@@ -157,7 +157,7 @@ test('stale expected session rejects prompt without dispatch', async () => {
     async command() { ran += 1; return { accepted: true }; },
     async close() {},
   };
-  const app = await createGueyServer({ port: 0, host: '127.0.0.1', stateDir: root, runtime, product: 'locusrifle' });
+  const app = await createGueyServer({ port: 0, host: '127.0.0.1', stateDir: root, runtime, product: 'imperfect' });
   try {
     const addr = await app.listen();
     const { WebSocket } = await import('ws');

@@ -26,7 +26,7 @@
   "pi": {
     "extensions": [
       "./extensions/guey-live",
-      "./extensions/locus-environment"
+      "./extensions/imperfect-environment"
     ],
     "themes": [
       "./themes"
@@ -35,5 +35,5 @@
   "devDependencies": {
     "playwright": "1.63.0"
   },
-  "description": "Private Locus machine app (imperfect.computer). Pi GUI on the supported SDK."
+  "description": "Private imperfect computer machine app (imperfect.computer). Pi GUI on the supported SDK."
 }

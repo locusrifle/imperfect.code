@@ -5,7 +5,7 @@
   --paper: #f2e4cd; --ink: #2a1a10; --muted: #8a7259; --orange: #d9451a;
   --strand-a: #8a7259; --strand-b: #d9451a;
   --rule-fine: rgba(66,40,24,.05); --rule-minor: rgba(66,40,24,.09); --rule-major: rgba(66,40,24,.16);
-  --locus-grid-major: 24px; --locus-grid-origin-x: 0px; --locus-grid-origin-y: 0px;
+  --ic-grid-major: 24px; --ic-grid-origin-x: 0px; --ic-grid-origin-y: 0px;
   color-scheme: light; font-family: "Commit Mono", ui-monospace, monospace;
 }
 /* One palette, not two. The ground is a painting made in daylight and every panel is lit by it, so
@@ -32,11 +32,11 @@ button, textarea { font: inherit; }
 /* The opening instruction is written into the ruling: one glyph occupies one square. */
 #entry-hint {
   --hint-fine: 4px;
-  --hint-unit: min(var(--locus-grid-major, 24px), max(var(--hint-fine), round(down, calc((100vw - var(--locus-grid-major, 24px)) / var(--hint-cells, 15)), var(--hint-fine))));
+  --hint-unit: min(var(--ic-grid-major, 24px), max(var(--hint-fine), round(down, calc((100vw - var(--ic-grid-major, 24px)) / var(--hint-cells, 15)), var(--hint-fine))));
   --hint-width: calc(var(--hint-cells, 15) * var(--hint-unit));
   position: absolute;
-  left: calc(var(--locus-grid-origin-x, 0px) + round(calc(50vw - var(--hint-width) / 2 - var(--locus-grid-origin-x, 0px)), var(--hint-unit)));
-  top: calc(var(--locus-grid-origin-y, 0px) + var(--hint-unit) * 3);
+  left: calc(var(--ic-grid-origin-x, 0px) + round(calc(50vw - var(--hint-width) / 2 - var(--ic-grid-origin-x, 0px)), var(--hint-unit)));
+  top: calc(var(--ic-grid-origin-y, 0px) + var(--hint-unit) * 3);
   z-index: 9;
   display: grid;
   grid-auto-flow: column;

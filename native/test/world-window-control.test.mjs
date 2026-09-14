@@ -67,7 +67,7 @@ function connect(port) {
 }
 
 test('personal window-open stores an in-app window; stock refuses; foreign URLs refused', async () => {
-  await rpc(0, 'locusrifle', async ({ send }) => {
+  await rpc(0, 'imperfect', async ({ send }) => {
     assert.equal((await send('h', { type: 'hello', kind: 'phone' })).success, true);
     const src = '/content/media/1277046e60949e6f/dafde4200f652cdb';
     const opened = await send('w1', { type: 'window-open', kind: 'video', title: 'Clip', src, windowId: 'clip' });
@@ -87,7 +87,7 @@ test('personal window-open stores an in-app window; stock refuses; foreign URLs 
 
 test('closing a window on one view closes it on the other', async () => {
   const root = await mkdtemp(join(tmpdir(), 'guey-window-share-'));
-  const app = await createGueyServer({ host: '127.0.0.1', port: 0, stateDir: join(root, 's'), runtime: stubRuntime(root), product: 'locusrifle' });
+  const app = await createGueyServer({ host: '127.0.0.1', port: 0, stateDir: join(root, 's'), runtime: stubRuntime(root), product: 'imperfect' });
   const addr = await app.listen();
   const phone = connect(addr.port);
   const laptop = connect(addr.port);

@@ -1,5 +1,5 @@
 [Unit]
-Description=Locus (imperfect.computer)
+Description=imperfect computers (imperfect.computer)
 After=network-online.target
 Wants=network-online.target
 

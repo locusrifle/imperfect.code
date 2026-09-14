@@ -7,8 +7,8 @@ import { tmpdir } from 'node:os';
 import { createRuntime } from '../runtime.mjs';
 
 // A stand-in for the guey-live bridge inside a running `pi`, speaking the
-// protocol its own tests pin: LF JSONL, a locus.ready greeting, unicast
-// responses, and locusSeq-stamped live events.
+// protocol its own tests pin: LF JSONL, a imperfect.ready greeting, unicast
+// responses, and imperfectSeq-stamped live events.
 async function fakeBridge(runtimeDir, { pid = process.pid, sessionFile = '/tmp/terminal-session.jsonl', cwd = '/home/noah' } = {}) {
 	const socketPath = join(runtimeDir, `${pid}.sock`);
 	const received = [];
@@ -16,7 +16,7 @@ async function fakeBridge(runtimeDir, { pid = process.pid, sessionFile = '/tmp/t
 	let messages = [{ role: 'user', content: 'what is in this repo?' }];
 	const server = createServer(s => {
 		socket = s;
-		write({ type: 'locus.ready', pi: true, cwd, source: 'tui', sessionId: 'terminal-1', sessionFile,
+		write({ type: 'imperfect.ready', pi: true, cwd, source: 'tui', sessionId: 'terminal-1', sessionFile,
 			capabilities: ['get_state', 'get_messages', 'get_session_stats', 'prompt', 'steer', 'abort', 'set_model', 'set_session_name'] });
 		let buffer = '';
 		s.on('data', chunk => {
@@ -43,7 +43,7 @@ async function fakeBridge(runtimeDir, { pid = process.pid, sessionFile = '/tmp/t
 	function reply(cmd, data) { write({ type: 'response', id: cmd.id, command: cmd.type, success: true, data }); }
 	return {
 		received, socketPath,
-		emit(event) { write({ ...event, locusSeq: ++seq }); },
+		emit(event) { write({ ...event, imperfectSeq: ++seq }); },
 		settle(message) { messages = [...messages, message]; this.emit({ type: 'message_end', message }); this.emit({ type: 'agent_settled' }); },
 		dropTerminal() { socket?.destroy(); },
 		async close() { socket?.destroy(); await new Promise(r => server.close(r)); await rm(join(runtimeDir, `${pid}.json`), { force: true }); await rm(socketPath, { force: true }); },
@@ -121,10 +121,10 @@ test('watching a terminal session: streams its turn, pushes text into it, and ne
 		assert.equal(host.snapshot().live.pid, process.pid);
 
 		// A prompt the terminal is answering at its own keyboard is announced, not offered as a dialog.
-		bridge.emit({ type: 'locus.tui_waiting', waiting: true, kind: 'select', title: 'Pick a branch' });
+		bridge.emit({ type: 'imperfect.tui_waiting', waiting: true, kind: 'select', title: 'Pick a branch' });
 		await settles(host, s => Boolean(s.ui.statuses.terminal), 'terminal-waiting was not surfaced');
 		assert.equal(host.snapshot().ui.dialogs.length, 0);
-		bridge.emit({ type: 'locus.tui_waiting', waiting: false });
+		bridge.emit({ type: 'imperfect.tui_waiting', waiting: false });
 
 		// Detaching returns to the GUI's own session, still exactly where it was.
 		await host.command({ type: 'detach' });

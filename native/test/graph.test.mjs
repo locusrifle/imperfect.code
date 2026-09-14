@@ -30,11 +30,11 @@ async function fixture() {
   const outside = join(root, 'outside.md');
   await mkdir(home);
   await writeFile(outside, '# secret\n');
-  await writeFile(join(home, 'agents.md'), '# Agents\nSee [[locus.garden]] and [[locus.site|portfolio]] and [[gone#heading]] and [[locusrifle]] and [[escape]].\n<script>alert(1)</script>\n');
+  await writeFile(join(home, 'agents.md'), '# Agents\nSee [[imperfect.computer]] and [[locus.site|portfolio]] and [[gone#heading]] and [[imperfect]] and [[escape]].\n<script>alert(1)</script>\n');
   await symlink(join(home, 'agents.md'), join(home, 'AGENTS.md'));
-  await writeFile(join(home, 'locus.garden.md'), '# Garden\nBack [[agents]].\n');
+  await writeFile(join(home, 'imperfect.computer.md'), '# Garden\nBack [[agents]].\n');
   await writeFile(join(home, 'locus.site.md'), '# Site\nBack [[AGENTS]].\n');
-  await writeFile(join(home, 'locusrifle.md'), '# Rifle\nParent [[agents]]. Escape [[../outside]] and [[/etc/passwd]].\n');
+  await writeFile(join(home, 'imperfect.md'), '# Rifle\nParent [[agents]]. Escape [[../outside]] and [[/etc/passwd]].\n');
   await symlink(outside, join(home, 'escape.md'));
   return { root, home };
 }
@@ -54,14 +54,14 @@ test('walk follows wikilinks, aliases, cycles, symlink root, missing, and refuse
     const ids = graph.nodes.map(n => n.id).sort();
     assert.equal(graph.root, 'agents');
     assert.ok(ids.includes('agents'));
-    assert.ok(ids.includes('locus.garden'));
+    assert.ok(ids.includes('imperfect.computer'));
     assert.ok(ids.includes('locus.site'));
-    assert.ok(ids.includes('locusrifle'));
+    assert.ok(ids.includes('imperfect'));
     assert.ok(ids.some(id => id.startsWith('missing:')));
     assert.ok(!ids.includes('outside'));
     assert.ok(!ids.includes('escape'));
     assert.ok(!graph.nodes.some(n => n.path && n.path.includes('..')));
-    const cycle = graph.edges.filter(e => e.from === 'locus.garden' && e.to === 'agents');
+    const cycle = graph.edges.filter(e => e.from === 'imperfect.computer' && e.to === 'agents');
     assert.equal(cycle.length, 1);
     const alias = graph.edges.find(e => e.alias === 'portfolio');
     assert.ok(alias);
@@ -121,7 +121,7 @@ test('personal graph endpoints; stock 404; path escape 404', async () => {
   const { root, home } = await fixture();
   const runtime = stubRuntime(home);
   const personal = await createGueyServer({
-    port: 0, host: '127.0.0.1', stateDir: join(root, 'p'), runtime, product: 'locusrifle', knowledgeRoot: home,
+    port: 0, host: '127.0.0.1', stateDir: join(root, 'p'), runtime, product: 'imperfect', knowledgeRoot: home,
   });
   const stock = await createGueyServer({
     port: 0, host: '127.0.0.1', stateDir: join(root, 's'), runtime, product: 'stock', knowledgeRoot: home,

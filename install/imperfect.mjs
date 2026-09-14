@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Pack, install, update, and roll back a Locus machine. No fleet secrets.
+// Pack, install, update, and roll back an imperfect computer. No fleet secrets.
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createReadStream, existsSync, lstatSync, readdirSync, readFileSync, readlinkSync } from 'node:fs';
@@ -269,7 +269,7 @@ function quoteEnv(value) {
   return `'${String(value).replaceAll("'", "'\\''")}'`;
 }
 
-export async function writeIngress({ prefix, password, user = 'locus', port = 8080, backendPort }) {
+export async function writeIngress({ prefix, password, user = 'imperfect', port = 8080, backendPort }) {
   if (!password) throw new Error('ingress password is required');
   if (/[\r\n]/.test(password)) throw new Error('ingress password must be one line');
   const p = paths(prefix);
@@ -374,7 +374,7 @@ export function systemdActivation(unit = 'imperfect.service') {
 function ensureUser(name, home) {
   const probe = spawnSync('id', ['-u', name], { encoding: 'utf8' });
   if (probe.status === 0) return;
-  run(['useradd', '--system', '--home-dir', home, '--create-home', '--shell', '/usr/sbin/nologin', '--comment', 'Locus machine', name]);
+  run(['useradd', '--system', '--home-dir', home, '--create-home', '--shell', '/usr/sbin/nologin', '--comment', 'imperfect computer', name]);
 }
 
 export function createMockRunner({ nodeBin = process.execPath } = {}) {
@@ -485,7 +485,7 @@ export async function installMachine(opts = {}) {
       await writeIngress({
         prefix,
         password: opts.ingressPassword,
-        user: opts.ingressUser || 'locus',
+        user: opts.ingressUser || 'imperfect',
         port: opts.ingressPort || 8080,
         backendPort: config.port,
       });

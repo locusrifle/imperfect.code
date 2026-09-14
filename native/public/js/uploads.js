@@ -1,4 +1,4 @@
-// Immediate HTTP upload for locusrifle. The file lands on disk before any
+// Immediate HTTP upload for imperfect. The file lands on disk before any
 // prompt; the composer later names the saved path. Not used by stock Guey.
 
 export const MAX_UPLOAD_BYTES = 1024 * 1024 * 1024;

@@ -125,21 +125,21 @@ export function connectLive({ socketPath, pid, onChange }) {
 	}
 
 	function apply(event) {
-		// The bridge stamps a monotonic locusSeq; a gap means we missed events,
+		// The bridge stamps a monotonic imperfectSeq; a gap means we missed events,
 		// so fall back to the authoritative transcript rather than guessing.
-		if (typeof event.locusSeq === 'number') {
-			if (seen >= 0 && event.locusSeq > seen + 1) scheduleRefresh(0);
-			seen = event.locusSeq;
+		if (typeof event.imperfectSeq === 'number') {
+			if (seen >= 0 && event.imperfectSeq > seen + 1) scheduleRefresh(0);
+			seen = event.imperfectSeq;
 		}
 		switch (event.type) {
-			case 'locus.ready':
+			case 'imperfect.ready':
 				state.ready = event; state.capabilities = event.capabilities ?? [];
 				state.connected = true; scheduleRefresh(0); return;
-			case 'locus.tui_waiting':
+			case 'imperfect.tui_waiting':
 				// The terminal is holding its own prompt open. Only the person at
 				// the keyboard can answer it, so say so rather than offering a dialog.
 				state.waiting = event.waiting ? { kind: event.kind, title: event.title } : null; changed(); return;
-			case 'locus.session_changed':
+			case 'imperfect.session_changed':
 				state.partial = null; state.runningTools = {}; scheduleRefresh(0); return;
 			case 'agent_start': case 'turn_start':
 				state.partial = null; changed(); return;
@@ -202,7 +202,7 @@ export function connectLive({ socketPath, pid, onChange }) {
 				let event;
 				try { event = JSON.parse(line); } catch { continue; }
 				try { apply(event); } catch (error) { state.error = error.message; changed(); }
-				if (event.type === 'locus.ready') resolve();
+				if (event.type === 'imperfect.ready') resolve();
 			}
 		});
 		socket.on('error', error => { state.error = error.message; state.connected = false; reject(error); changed(); });

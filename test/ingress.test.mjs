@@ -41,7 +41,7 @@ test('ingress requires the password, strips it, and rewrites Host to the loopbac
     listenPort,
     backendHost: '127.0.0.1',
     backendPort: app.port,
-    user: 'locus',
+    user: 'imperfect',
     password: 'secret-gate',
   });
   await ingress.listen();
@@ -51,13 +51,13 @@ test('ingress requires the password, strips it, and rewrites Host to the loopbac
     assert.match(bare.headers.get('www-authenticate') || '', /Basic/);
 
     const wrong = await fetch(`http://127.0.0.1:${listenPort}/health`, {
-      headers: { authorization: 'Basic ' + Buffer.from('locus:nope').toString('base64') },
+      headers: { authorization: 'Basic ' + Buffer.from('imperfect:nope').toString('base64') },
     });
     assert.equal(wrong.status, 401);
 
     const ok = await fetch(`http://127.0.0.1:${listenPort}/health`, {
       headers: {
-        authorization: 'Basic ' + Buffer.from('locus:secret-gate').toString('base64'),
+        authorization: 'Basic ' + Buffer.from('imperfect:secret-gate').toString('base64'),
         origin: 'https://evil.invalid',
       },
     });

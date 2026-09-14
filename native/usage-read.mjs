@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// locusrifle /usage: Omarchy collectors first; Codex session files if RPC is empty.
+// imperfect /usage: Omarchy collectors first; Codex session files if RPC is empty.
 // Omarchy percents are 0–1. The harness bars use 0–100.
 import { spawn } from 'node:child_process';
 import { readdir, readFile, stat, writeFile } from 'node:fs/promises';

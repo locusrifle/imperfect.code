@@ -1,13 +1,13 @@
 // Two product compositions share one server. Stock is the ready-to-run Pi GUI.
-// locusrifle is Noah's overlay. Unset GUEY_PRODUCT keeps today's live unit
-// (LOCUS_SITE_HOST) personal; desktop sets stock explicitly.
+// imperfect is Noah's overlay. Unset GUEY_PRODUCT keeps today's live unit
+// (IMPERFECT_HOST) personal; desktop sets stock explicitly.
 
 export function resolveProduct(options = {}) {
   const raw = options.product ?? process.env.GUEY_PRODUCT;
   if (raw === 'stock' || raw === 'guey') return 'stock';
-  if (raw === 'locusrifle') return 'locusrifle';
-  if (process.env.LOCUS_SITE_HOST) return 'locusrifle';
-  return options.defaultProduct ?? 'locusrifle';
+  if (raw === 'imperfect') return 'imperfect';
+  if (process.env.IMPERFECT_HOST) return 'imperfect';
+  return options.defaultProduct ?? 'imperfect';
 }
 
 // The customer-facing name. A deployment may sell this foundation under its own

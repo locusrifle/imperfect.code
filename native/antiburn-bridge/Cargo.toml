@@ -3,7 +3,7 @@ name = "antiburn-bridge"
 version = "0.1.0"
 edition = "2024"
 publish = false
-description = "locusrifle adapter: pin antiburn-local and print a JSON usage report"
+description = "imperfect adapter: pin antiburn-local and print a JSON usage report"
 
 [dependencies]
 antiburn-local = { path = "/home/noah/.local/src/antiburn-local-0.7.1" }

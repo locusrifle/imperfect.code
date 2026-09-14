@@ -405,12 +405,12 @@ async function openPersonalComposer(page, address) {
 	await page.waitForFunction(() => document.getElementById('terminal-entry').classList.contains('open'));
 }
 
-test('locusrifle plus opens the native picker for photos, audio and video; stock has none', async (t) => {
+test('imperfect plus opens the native picker for photos, audio and video; stock has none', async (t) => {
 	const executablePath = browserPath();
 	if (executablePath === null) return t.skip('No chromium available; run `npx playwright install chromium`');
 	const root = await mkdtemp(join(tmpdir(), 'guey-browser-plus-'));
 	const runtime = scriptedRuntime(root);
-	const personal = await createGueyServer({ port: 0, host: '127.0.0.1', stateDir: join(root, 'p'), runtime, product: 'locusrifle' });
+	const personal = await createGueyServer({ port: 0, host: '127.0.0.1', stateDir: join(root, 'p'), runtime, product: 'imperfect' });
 	const stock = await createGueyServer({ port: 0, host: '127.0.0.1', stateDir: join(root, 's'), runtime, product: 'stock' });
 	const browser = await chromium.launch({ executablePath, args: ['--no-sandbox'] });
 	try {
@@ -466,12 +466,12 @@ test('locusrifle plus opens the native picker for photos, audio and video; stock
 	}
 });
 
-test('locusrifle takes a past recording from the picker and from a share', async (t) => {
+test('imperfect takes a past recording from the picker and from a share', async (t) => {
 	const executablePath = browserPath();
 	if (executablePath === null) return t.skip('No chromium available; run `npx playwright install chromium`');
 	const root = await mkdtemp(join(tmpdir(), 'guey-browser-recording-'));
 	const runtime = scriptedRuntime(root);
-	const app = await createGueyServer({ port: 0, host: '127.0.0.1', stateDir: join(root, 'state'), runtime, product: 'locusrifle' });
+	const app = await createGueyServer({ port: 0, host: '127.0.0.1', stateDir: join(root, 'state'), runtime, product: 'imperfect' });
 	const address = await app.listen();
 	const browser = await chromium.launch({ executablePath, args: ['--no-sandbox'] });
 	const page = await browser.newPage();
@@ -522,13 +522,13 @@ test('locusrifle takes a past recording from the picker and from a share', async
 	}
 });
 
-test('locusrifle uploads while the agent is busy and sends no prompt until Enter', async (t) => {
+test('imperfect uploads while the agent is busy and sends no prompt until Enter', async (t) => {
 	const executablePath = browserPath();
 	if (executablePath === null) return t.skip('No chromium available; run `npx playwright install chromium`');
 	const root = await mkdtemp(join(tmpdir(), 'guey-browser-upload-busy-'));
 	const runtime = scriptedRuntime(root);
 	runtime.data.busy = true;
-	const app = await createGueyServer({ port: 0, host: '127.0.0.1', stateDir: join(root, 'state'), runtime, product: 'locusrifle' });
+	const app = await createGueyServer({ port: 0, host: '127.0.0.1', stateDir: join(root, 'state'), runtime, product: 'imperfect' });
 	const address = await app.listen();
 	const browser = await chromium.launch({ executablePath, args: ['--no-sandbox'] });
 	const page = await browser.newPage();
@@ -552,12 +552,12 @@ test('locusrifle uploads while the agent is busy and sends no prompt until Enter
 	}
 });
 
-test('locusrifle upload chip shows a percentage while bytes are in flight', async (t) => {
+test('imperfect upload chip shows a percentage while bytes are in flight', async (t) => {
 	const executablePath = browserPath();
 	if (executablePath === null) return t.skip('No chromium available; run `npx playwright install chromium`');
 	const root = await mkdtemp(join(tmpdir(), 'guey-browser-upload-progress-'));
 	const runtime = scriptedRuntime(root);
-	const app = await createGueyServer({ port: 0, host: '127.0.0.1', stateDir: join(root, 'state'), runtime, product: 'locusrifle' });
+	const app = await createGueyServer({ port: 0, host: '127.0.0.1', stateDir: join(root, 'state'), runtime, product: 'imperfect' });
 	const address = await app.listen();
 	const browser = await chromium.launch({ executablePath, args: ['--no-sandbox'] });
 	const page = await browser.newPage();
@@ -1013,13 +1013,13 @@ test('theme picker arrows preview without saving, escape restores', async (t) =>
 	}
 });
 
-test('stock Guey is a full-window Pi shell without personal controls; locusrifle keeps them', async (t) => {
+test('stock Guey is a full-window Pi shell without personal controls; imperfect keeps them', async (t) => {
 	const executablePath = browserPath();
 	if (executablePath === null) return t.skip('No chromium available; run `npx playwright install chromium`');
 	const root = await mkdtemp(join(tmpdir(), 'guey-product-browser-'));
 	const runtime = scriptedRuntime(root);
 	const stock = await createGueyServer({ port: 0, host: '127.0.0.1', stateDir: join(root, 'stock'), runtime, product: 'stock' });
-	const personal = await createGueyServer({ port: 0, host: '127.0.0.1', stateDir: join(root, 'personal'), runtime, product: 'locusrifle' });
+	const personal = await createGueyServer({ port: 0, host: '127.0.0.1', stateDir: join(root, 'personal'), runtime, product: 'imperfect' });
 	const browser = await chromium.launch({ executablePath, args: ['--no-sandbox'] });
 	try {
 		const sAddr = await stock.listen();
@@ -1259,12 +1259,12 @@ async function pastePng(page) {
 	}, TINY_PNG);
 }
 
-test('clipboard image paste attaches; locusrifle composer grows with lines', async (t) => {
+test('clipboard image paste attaches; imperfect composer grows with lines', async (t) => {
 	const executablePath = browserPath();
 	if (executablePath === null) return t.skip('No chromium available; run `npx playwright install chromium`');
 	const root = await mkdtemp(join(tmpdir(), 'guey-browser-paste-'));
 	const runtime = scriptedRuntime(root);
-	const personal = await createGueyServer({ port: 0, host: '127.0.0.1', stateDir: join(root, 'personal'), runtime, product: 'locusrifle' });
+	const personal = await createGueyServer({ port: 0, host: '127.0.0.1', stateDir: join(root, 'personal'), runtime, product: 'imperfect' });
 	const stock = await createGueyServer({ port: 0, host: '127.0.0.1', stateDir: join(root, 'stock'), runtime, product: 'stock' });
 	const pAddr = await personal.listen();
 	const sAddr = await stock.listen();
@@ -1293,7 +1293,7 @@ test('clipboard image paste attaches; locusrifle composer grows with lines', asy
 
 		await page.fill('#entry-input', 'one\ntwo\nthree\nfour\nfive');
 		const height = await page.locator('#entry-input').evaluate(n => n.getBoundingClientRect().height);
-		assert.ok(height > 28, `locusrifle composer ${height}px should show more than one line`);
+		assert.ok(height > 28, `imperfect composer ${height}px should show more than one line`);
 
 		await page.goto(`http://127.0.0.1:${sAddr.port}`);
 		await page.waitForFunction(() => (document.getElementById('entry-pi-label')?.textContent || '').includes('fixture-model'));
@@ -1311,12 +1311,12 @@ test('/graph opens personal map on grid; read/back/close; phone; failed load; st
 	const root = await mkdtemp(join(tmpdir(), 'guey-browser-graph-'));
 	const home = join(root, 'home');
 	await mkdir(home);
-	await writeFile(join(home, 'agents.md'), '# Agents of the long knowledge title\n[[locus.garden]] [[locus.site]] [[locusrifle]]\n');
-	await writeFile(join(home, 'locus.garden.md'), '# locus.garden\nBack [[agents]].\n');
+	await writeFile(join(home, 'agents.md'), '# Agents of the long knowledge title\n[[imperfect.computer]] [[locus.site]] [[imperfect]]\n');
+	await writeFile(join(home, 'imperfect.computer.md'), '# imperfect.computer\nBack [[agents]].\n');
 	await writeFile(join(home, 'locus.site.md'), '# locus.site\nBack [[agents]].\n');
-	await writeFile(join(home, 'locusrifle.md'), '# locusrifle\nBack [[agents]].\n');
+	await writeFile(join(home, 'imperfect.md'), '# imperfect\nBack [[agents]].\n');
 	const runtime = scriptedRuntime(root);
-	const personal = await createGueyServer({ port: 0, host: '127.0.0.1', stateDir: join(root, 'p'), runtime, product: 'locusrifle', knowledgeRoot: home });
+	const personal = await createGueyServer({ port: 0, host: '127.0.0.1', stateDir: join(root, 'p'), runtime, product: 'imperfect', knowledgeRoot: home });
 	const stock = await createGueyServer({ port: 0, host: '127.0.0.1', stateDir: join(root, 's'), runtime, product: 'stock', knowledgeRoot: home });
 	const pAddr = await personal.listen();
 	const sAddr = await stock.listen();
@@ -1335,9 +1335,9 @@ test('/graph opens personal map on grid; read/back/close; phone; failed load; st
 		assert.equal(runtime.sent.some(c => c.type === 'prompt' && String(c.text || '').includes('/graph')), false);
 		const geometry = await page.evaluate(() => {
 			const cs = getComputedStyle(document.documentElement);
-			const unit = Number.parseFloat(cs.getPropertyValue('--locus-grid-major')) || 24;
-			const ox = Number.parseFloat(cs.getPropertyValue('--locus-grid-origin-x')) || 0;
-			const oy = Number.parseFloat(cs.getPropertyValue('--locus-grid-origin-y')) || 0;
+			const unit = Number.parseFloat(cs.getPropertyValue('--ic-grid-major')) || 24;
+			const ox = Number.parseFloat(cs.getPropertyValue('--ic-grid-origin-x')) || 0;
+			const oy = Number.parseFloat(cs.getPropertyValue('--ic-grid-origin-y')) || 0;
 			const on = (n, o) => Math.abs((n - o) / unit - Math.round((n - o) / unit)) * unit < 1;
 			const nodes = [...document.querySelectorAll('#knowledge-cards .node')];
 			const boxes = nodes.map(n => {
@@ -1406,12 +1406,12 @@ test('/graph opens personal map on grid; read/back/close; phone; failed load; st
 		assert.equal(opened.inCard, true, 'markdown must expand inside the card');
 		assert.equal(opened.overlayHidden, true);
 		const wikiTarget = await page.locator('.knowledge-wiki').first().getAttribute('data-target');
-		assert.equal(wikiTarget, 'locus.garden');
+		assert.equal(wikiTarget, 'imperfect.computer');
 		const garden = await page.evaluate(async () => {
-			await document.getElementById('knowledge-graph-host').openKnowledgePage('locus.garden');
+			await document.getElementById('knowledge-graph-host').openKnowledgePage('imperfect.computer');
 			return document.getElementById('knowledge-document')?.textContent || '';
 		});
-		assert.match(garden, /locus\.garden/);
+		assert.match(garden, /imperfect\.computer/);
 		const afterBack = await page.evaluate(async () => {
 			await document.getElementById('knowledge-back').click();
 			for (let i = 0; i < 40; i++) {
@@ -1443,9 +1443,9 @@ test('/graph opens personal map on grid; read/back/close; phone; failed load; st
 		}
 		const phoneBoxes = await page.evaluate(() => {
 			const cs = getComputedStyle(document.documentElement);
-			const unit = Number.parseFloat(cs.getPropertyValue('--locus-grid-major')) || 24;
-			const ox = Number.parseFloat(cs.getPropertyValue('--locus-grid-origin-x')) || 0;
-			const oy = Number.parseFloat(cs.getPropertyValue('--locus-grid-origin-y')) || 0;
+			const unit = Number.parseFloat(cs.getPropertyValue('--ic-grid-major')) || 24;
+			const ox = Number.parseFloat(cs.getPropertyValue('--ic-grid-origin-x')) || 0;
+			const oy = Number.parseFloat(cs.getPropertyValue('--ic-grid-origin-y')) || 0;
 			const on = (n, o) => Math.abs((n - o) / unit - Math.round((n - o) / unit)) * unit < 1;
 			const nodes = [...document.querySelectorAll('#knowledge-cards .node')];
 			const boxes = nodes.map(n => n.getBoundingClientRect());
@@ -1469,11 +1469,11 @@ test('/graph opens personal map on grid; read/back/close; phone; failed load; st
 		assert.equal(phoneBoxes.overflow, false);
 		assert.equal(phoneBoxes.branch, true);
 		assert.equal(phoneBoxes.overlap, false, JSON.stringify(phoneBoxes));
-		await page.screenshot({ path: '/tmp/locusrifle-graph-phone.png', fullPage: true });
+		await page.screenshot({ path: '/tmp/imperfect-graph-phone.png', fullPage: true });
 		await page.setViewportSize({ width: 1280, height: 800 });
 		await page.evaluate(() => dispatchEvent(new Event('resize')));
 		await page.waitForTimeout(50);
-		await page.screenshot({ path: '/tmp/locusrifle-graph-desktop.png', fullPage: true });
+		await page.screenshot({ path: '/tmp/imperfect-graph-desktop.png', fullPage: true });
 		await page.evaluate(() => document.getElementById('knowledge-graph-close').click());
 
 		await page.route('**/graph/page**', route => route.fulfill({ status: 500, body: 'nope' }));
@@ -1508,31 +1508,31 @@ test('knowledge tree grows upwards symmetrically through seven pages, including 
 	const pages = {
 		agents: '# agents.md\n[[emails]] [[projects]] [[practice]]',
 		emails: '# emails\nParent: [[agents]].\nAcceptance is not delivery.',
-		projects: '# projects\nParent: [[agents]].\n[[locus.garden]] [[locusrifle]] [[locus.site]]',
+		projects: '# projects\nParent: [[agents]].\n[[imperfect.computer]] [[imperfect]] [[locus.site]]',
 		practice: '# practice\nParent: [[agents]].',
-		'locus.garden': '# locus.garden\nParent: [[projects]].\nMail: [[emails]].',
-		locusrifle: '# locusrifle\nParent: [[projects]].',
-		'locus.site': '# locus.site\nParent: [[projects]].\nSee [[locus.garden]].',
+		'imperfect.computer': '# imperfect.computer\nParent: [[projects]].\nMail: [[emails]].',
+		imperfect: '# imperfect\nParent: [[projects]].',
+		'locus.site': '# locus.site\nParent: [[projects]].\nSee [[imperfect.computer]].',
 	};
 	for (const [id, text] of Object.entries(pages)) await writeFile(join(home, `${id}.md`), text);
 	const runtime = scriptedRuntime(root);
-	const server = await createGueyServer({ port: 0, host: '127.0.0.1', stateDir: join(root, 'state'), runtime, product: 'locusrifle', knowledgeRoot: home });
+	const server = await createGueyServer({ port: 0, host: '127.0.0.1', stateDir: join(root, 'state'), runtime, product: 'imperfect', knowledgeRoot: home });
 	const addr = await server.listen();
 	const browser = await chromium.launch({ executablePath, args: ['--no-sandbox'] });
 	const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
 	async function geometry() {
 		return page.evaluate(() => {
 			const cs = getComputedStyle(document.documentElement);
-			const u = parseFloat(cs.getPropertyValue('--locus-grid-major'));
-			const ox = parseFloat(cs.getPropertyValue('--locus-grid-origin-x')) || 0;
-			const oy = parseFloat(cs.getPropertyValue('--locus-grid-origin-y')) || 0;
+			const u = parseFloat(cs.getPropertyValue('--ic-grid-major'));
+			const ox = parseFloat(cs.getPropertyValue('--ic-grid-origin-x')) || 0;
+			const oy = parseFloat(cs.getPropertyValue('--ic-grid-origin-y')) || 0;
 			const on = (v, origin) => Math.abs((v - origin) / u - Math.round((v - origin) / u)) < 0.01;
 			const nodes = [...document.querySelectorAll('#knowledge-cards .node')];
 			const boxes = Object.fromEntries(nodes.map(n => {
 				const r = n.getBoundingClientRect();
 				return [n.dataset.node, { left: r.left, right: r.right, top: r.top, bottom: r.bottom, cx: r.left + r.width / 2 }];
 			}));
-			const groups = [['agents', 'emails', 'projects', 'practice'], ['projects', 'locus.garden', 'locusrifle', 'locus.site']];
+			const groups = [['agents', 'emails', 'projects', 'practice'], ['projects', 'imperfect.computer', 'imperfect', 'locus.site']];
 			const symmetric = groups.every(([p, a, b, c]) => boxes[p].cx === boxes[b].cx && boxes[p].cx - boxes[a].cx === boxes[c].cx - boxes[p].cx);
 			const upwards = groups.every(([p, ...kids]) => kids.every(k => boxes[k].bottom <= boxes[p].top - 2 * u));
 			const onGrid = Object.values(boxes).every(b => on(b.left, ox) && on(b.right, ox) && on(b.top, oy) && on(b.bottom, oy));
@@ -1605,7 +1605,7 @@ test('the phone shell is Omarchy wallpaper, a pager of viewports, and its own ba
 	const root = await mkdtemp(join(tmpdir(), 'guey-browser-scene-'));
 	const runtime = scriptedRuntime(root);
 	const personal = await createGueyServer({
-		port: 0, host: '127.0.0.1', stateDir: root, runtime, product: 'locusrifle',
+		port: 0, host: '127.0.0.1', stateDir: root, runtime, product: 'imperfect',
 	});
 	const browser = await chromium.launch({ executablePath, args: ['--no-sandbox'] });
 	try {
@@ -1613,7 +1613,7 @@ test('the phone shell is Omarchy wallpaper, a pager of viewports, and its own ba
 		const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
 		await openPersonalComposer(page, addr);
 
-		assert.equal(await page.locator('#locus-scene').count(), 0);
+		assert.equal(await page.locator('#imperfect-scene').count(), 0);
 		// Omarchy's own wallpaper, on its own fixed layer so `cover` re-fits on
 		// rotation with no script.
 		const wall = await page.evaluate(() => {
@@ -1632,7 +1632,7 @@ test('the phone shell is Omarchy wallpaper, a pager of viewports, and its own ba
 
 		// The pager fills the viewport above the bar, and scrolls one axis only.
 		const world = await page.evaluate(() => {
-			const node = document.getElementById('locus-world');
+			const node = document.getElementById('imperfect-world');
 			const box = node.getBoundingClientRect();
 			const style = getComputedStyle(node);
 			return {
@@ -1699,7 +1699,7 @@ test('the phone shell is Omarchy wallpaper, a pager of viewports, and its own ba
 		assert.equal(slot.dots, 1);
 		assert.equal(await page.locator('.om-sheet').count(), 0, 'the sheet closes on choice');
 
-		await page.screenshot({ path: '/tmp/locusrifle-canvas.png' });
+		await page.screenshot({ path: '/tmp/imperfect-canvas.png' });
 
 	} finally {
 		await browser.close(); await personal.close(); await rm(root, { recursive: true, force: true });

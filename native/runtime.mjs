@@ -156,7 +156,7 @@ export async function createRuntime({ cwd = process.cwd(), agentDir = getAgentDi
   // Resume the newest session for this cwd if nothing else holds it. If the
   // newest is a live TUI, start fresh — do not fall back to an older fork.
   // ownArchive (stock Guey): only this process's sessionDir. Never auto-open
-  // ~/.pi/agent/sessions, including an unadvertised locusrifle writer.
+  // ~/.pi/agent/sessions, including an unadvertised imperfect writer.
   let sm = SessionManager.create(cwd, sessionDir);
   if (sessionPath) sm = SessionManager.open(sessionPath, sessionDir);
   else if (!fresh) try {

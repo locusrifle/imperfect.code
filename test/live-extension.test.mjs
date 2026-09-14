@@ -215,7 +215,7 @@ describe("guey-live mocked API", () => {
 			const ctx = mockCtx({ entries, leafId: "a2" });
 			await pi.emit("session_start", { reason: "startup" }, ctx);
 			const client = await collectSocket(join(dir, `${process.pid}.sock`));
-			const ready = await waitFor(() => client.messages.find((m) => m.type === "locus.ready"));
+			const ready = await waitFor(() => client.messages.find((m) => m.type === "imperfect.ready"));
 			assert.equal(ready.pi, true);
 			assert.equal(ready.source, "tui");
 			assert.equal(ready.cwd, ctx.cwd);
@@ -289,7 +289,7 @@ describe("guey-live mocked API", () => {
 			const ctx = mockCtx({ idle: false });
 			await pi.emit("session_start", { reason: "startup" }, ctx);
 			const client = await collectSocket(join(dir, `${process.pid}.sock`));
-			await waitFor(() => client.messages.find((m) => m.type === "locus.ready"));
+			await waitFor(() => client.messages.find((m) => m.type === "imperfect.ready"));
 			client.messages.length = 0;
 
 			await pi.emit("agent_start", { type: "agent_start" }, ctx);
@@ -334,29 +334,29 @@ describe("guey-live mocked API", () => {
 			const ctx = mockCtx();
 			await pi.emit("session_start", { reason: "startup" }, ctx);
 			const client = await collectSocket(join(dir, `${process.pid}.sock`));
-			await waitFor(() => client.messages.find((m) => m.type === "locus.ready"));
+			await waitFor(() => client.messages.find((m) => m.type === "imperfect.ready"));
 			client.messages.length = 0;
 			await pi.emit("ui_prompt_start", { reason: "ui_prompt", kind: "confirm", title: "Allow?" }, ctx);
-			const waiting = await waitFor(() => client.messages.find((m) => m.type === "locus.tui_waiting"));
+			const waiting = await waitFor(() => client.messages.find((m) => m.type === "imperfect.tui_waiting"));
 			assert.equal(waiting.waiting, true);
 			assert.equal(waiting.kind, "confirm");
 			assert.equal(waiting.title, "Allow?");
 			await pi.emit("model_select", { model: ctx.model, source: "set" }, ctx);
-			const changed = await waitFor(() => client.messages.find((m) => m.type === "locus.session_changed"));
+			const changed = await waitFor(() => client.messages.find((m) => m.type === "imperfect.session_changed"));
 			assert.equal(changed.reason, "model");
 			client.socket.end();
 			await pi.emit("session_shutdown", { reason: "quit" }, ctx);
 		});
 	});
 
-	it("stamps locusSeq on broadcasts and get_entries so overlap can be dropped", async () => {
+	it("stamps imperfectSeq on broadcasts and get_entries so overlap can be dropped", async () => {
 		await withRuntime(async (dir) => {
 			const pi = mockPi();
 			gueyLive(pi);
 			const ctx = mockCtx({ idle: false });
 			await pi.emit("session_start", { reason: "startup" }, ctx);
 			const first = await collectSocket(join(dir, `${process.pid}.sock`));
-			await waitFor(() => first.messages.find((m) => m.type === "locus.ready"));
+			await waitFor(() => first.messages.find((m) => m.type === "imperfect.ready"));
 			first.messages.length = 0;
 
 			await pi.emit("agent_start", { type: "agent_start" }, ctx);
@@ -371,12 +371,12 @@ describe("guey-live mocked API", () => {
 			assert.equal(typeof snap1.data.eventSeq, "number");
 			assert.ok(snap1.data.liveEvents.length >= 2);
 			for (const event of snap1.data.liveEvents) {
-				assert.equal(typeof event.locusSeq, "number");
-				assert.ok(event.locusSeq <= snap1.data.eventSeq);
+				assert.equal(typeof event.imperfectSeq, "number");
+				assert.ok(event.imperfectSeq <= snap1.data.eventSeq);
 			}
 			const streamed = first.messages.filter((m) => m.type === "message_update" || m.type === "agent_start" || m.type === "message_start");
-			assert.ok(streamed.every((m) => typeof m.locusSeq === "number"));
-			const overlap = streamed.filter((m) => m.locusSeq <= snap1.data.eventSeq);
+			assert.ok(streamed.every((m) => typeof m.imperfectSeq === "number"));
+			const overlap = streamed.filter((m) => m.imperfectSeq <= snap1.data.eventSeq);
 			assert.ok(overlap.length >= 1);
 
 			await pi.emit("message_update", {
@@ -385,10 +385,10 @@ describe("guey-live mocked API", () => {
 				assistantMessageEvent: { type: "text_delta", contentIndex: 0, delta: "lo" },
 			}, ctx);
 			const after = await waitFor(() => first.messages.find((m) => m.type === "message_update" && m.assistantMessageEvent?.delta === "lo"));
-			assert.ok(after.locusSeq > snap1.data.eventSeq);
+			assert.ok(after.imperfectSeq > snap1.data.eventSeq);
 
 			const second = await collectSocket(join(dir, `${process.pid}.sock`));
-			await waitFor(() => second.messages.find((m) => m.type === "locus.ready"));
+			await waitFor(() => second.messages.find((m) => m.type === "imperfect.ready"));
 			const snap2 = await rpc(second, { type: "get_entries" });
 			assert.ok(snap2.data.eventSeq >= snap1.data.eventSeq);
 			assert.ok(snap2.data.liveEvents.some((m) => m.assistantMessageEvent?.delta === "Hel"));
@@ -415,7 +415,7 @@ describe("guey-live mocked API", () => {
 			const ctx = mockCtx({ idle: false, entries, leafId: "u1" });
 			await pi.emit("session_start", { reason: "startup" }, ctx);
 			const client = await collectSocket(join(dir, `${process.pid}.sock`));
-			await waitFor(() => client.messages.find((m) => m.type === "locus.ready"));
+			await waitFor(() => client.messages.find((m) => m.type === "imperfect.ready"));
 
 			await pi.emit("agent_start", { type: "agent_start" }, ctx);
 			await pi.emit("message_start", { type: "message_start", message: user.message }, ctx);
@@ -453,7 +453,7 @@ describe("guey-live mocked API", () => {
 			const oldCtx = mockCtx({ idle: false, keepBusy: true, cwd: "/tmp/old" });
 			await pi.emit("session_start", { reason: "startup" }, oldCtx);
 			const client = await collectSocket(join(dir, `${process.pid}.sock`));
-			await waitFor(() => client.messages.find((m) => m.type === "locus.ready"));
+			await waitFor(() => client.messages.find((m) => m.type === "imperfect.ready"));
 			client.socket.end();
 			await pi.emit("session_shutdown", { reason: "quit" }, oldCtx);
 			await pi.emit("agent_start", { type: "agent_start" }, oldCtx);
@@ -462,18 +462,18 @@ describe("guey-live mocked API", () => {
 			const fresh = mockCtx({ idle: true, cwd: "/tmp/fresh" });
 			await pi.emit("session_start", { reason: "startup" }, fresh);
 			const next = await collectSocket(join(dir, `${process.pid}.sock`));
-			await waitFor(() => next.messages.find((m) => m.type === "locus.ready"));
+			await waitFor(() => next.messages.find((m) => m.type === "imperfect.ready"));
 			const prompt = await rpc(next, { type: "prompt", message: "from-new" });
 			assert.equal(prompt.success, true);
 			assert.equal(pi.sent.at(-1).content, "from-new");
-			assert.equal(next.messages.find((m) => m.type === "locus.ready").cwd, "/tmp/fresh");
+			assert.equal(next.messages.find((m) => m.type === "imperfect.ready").cwd, "/tmp/fresh");
 			next.socket.end();
 			await pi.emit("session_shutdown", { reason: "quit" }, fresh);
 
 			const busy = mockCtx({ idle: false, keepBusy: true });
 			await pi.emit("session_start", { reason: "startup" }, busy);
 			const third = await collectSocket(join(dir, `${process.pid}.sock`));
-			await waitFor(() => third.messages.find((m) => m.type === "locus.ready"));
+			await waitFor(() => third.messages.find((m) => m.type === "imperfect.ready"));
 			const still = await rpc(third, { type: "abort" }, 12000);
 			assert.equal(still.success, false);
 			assert.match(still.error, /still running/);
@@ -489,7 +489,7 @@ describe("guey-live mocked API", () => {
 			gueyLive(pi);
 			await pi.emit("session_start", { reason: "startup" }, mockCtx());
 			const client = await collectSocket(join(dir, `${process.pid}.sock`));
-			await waitFor(() => client.messages.find((m) => m.type === "locus.ready"));
+			await waitFor(() => client.messages.find((m) => m.type === "imperfect.ready"));
 			const text = "line\u2028sep\u2029end";
 			const res = await rpc(client, { type: "prompt", message: text });
 			assert.equal(res.success, true);

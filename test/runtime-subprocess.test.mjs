@@ -62,8 +62,8 @@ test('real start.mjs subprocess: healthy loopback, wrong origin and host refused
     host: '127.0.0.1',
     port,
     origins: ['https://proxy.example.test'],
-    product: 'locusrifle',
-    brand: 'Locus',
+    product: 'imperfect',
+    brand: 'imperfect computers',
   });
   const p = await ensureDataDirs(prefix);
   await writeFile(join(p.workspace, 'AGENTS.md'), '# fixture\n');
@@ -79,7 +79,7 @@ test('real start.mjs subprocess: healthy loopback, wrong origin and host refused
     const health = await waitHealth(port);
     assert.equal(health.ui, 'native-gui');
     assert.equal(health.ok, true);
-    assert.equal(health.product, 'locusrifle');
+    assert.equal(health.product, 'imperfect');
     assert.equal(health.cwd, p.workspace);
 
     const evil = await request(port, { Origin: 'https://evil.example' });

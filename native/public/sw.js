@@ -1,5 +1,5 @@
 // A one-shot stash for Android shares. Do not cache the console —
-// a stale service worker is a second copy of locusrifle, and this origin is
+// a stale service worker is a second copy of imperfect, and this origin is
 // a live agent.
 const SHARE_CACHE = 'guey-share-target';
 const SHARE_PATH = '/share-target';

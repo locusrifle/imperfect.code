@@ -20,7 +20,7 @@ function stubRuntime(cwd) {
 }
 
 test('listApps only takes safe html names under apps/', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'locus-apps-'));
+  const root = await mkdtemp(join(tmpdir(), 'imperfect-apps-'));
   await mkdir(join(root, 'apps'));
   await writeFile(join(root, 'apps', 'notes.html'), '<h1>notes</h1>');
   await writeFile(join(root, 'apps', 'NOPE.html'), '<h1>no</h1>');
@@ -34,12 +34,12 @@ test('listApps only takes safe html names under apps/', async () => {
 });
 
 test('personal shell serves workspace apps; stock does not', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'locus-apps-http-'));
+  const root = await mkdtemp(join(tmpdir(), 'imperfect-apps-http-'));
   await mkdir(join(root, 'workspace', 'apps'), { recursive: true });
   await writeFile(join(root, 'workspace', 'apps', 'notes.html'), '<h1>notes</h1>');
   const personal = await createGueyServer({
     port: 0, host: '127.0.0.1', stateDir: join(root, 'p'), runtime: stubRuntime(root),
-    product: 'locusrifle', cwd: join(root, 'workspace'), filesRoot: join(root, 'workspace'),
+    product: 'imperfect', cwd: join(root, 'workspace'), filesRoot: join(root, 'workspace'),
   });
   const stock = await createGueyServer({
     port: 0, host: '127.0.0.1', stateDir: join(root, 's'), runtime: stubRuntime(root),

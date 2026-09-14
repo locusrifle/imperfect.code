@@ -28,7 +28,7 @@ function authorized(req, user, password) {
 
 function deny(res) {
   res.writeHead(401, {
-    'www-authenticate': 'Basic realm="Locus"',
+    'www-authenticate': 'Basic realm="imperfect computers"',
     'content-type': 'text/plain; charset=utf-8',
     'cache-control': 'no-store',
     'referrer-policy': 'no-referrer',
@@ -41,7 +41,7 @@ export function createIngressServer({
   listenPort = 8080,
   backendHost = '127.0.0.1',
   backendPort = 5067,
-  user = 'locus',
+  user = 'imperfect',
   password,
 } = {}) {
   if (!password) throw new Error('ingress password is required');
@@ -70,7 +70,7 @@ export function createIngressServer({
     outgoing.on('error', () => {
       if (!res.headersSent) {
         res.writeHead(502, { 'content-type': 'text/plain; charset=utf-8' });
-        res.end('Locus is not reachable');
+        res.end('imperfect computers is not reachable');
       } else res.end();
     });
     req.pipe(outgoing);
@@ -78,7 +78,7 @@ export function createIngressServer({
 
   server.on('upgrade', (req, socket, head) => {
     if (!authorized(req, user, password)) {
-      socket.write('HTTP/1.1 401 Unauthorized\r\nWWW-Authenticate: Basic realm="Locus"\r\nConnection: close\r\n\r\n');
+      socket.write('HTTP/1.1 401 Unauthorized\r\nWWW-Authenticate: Basic realm="imperfect computers"\r\nConnection: close\r\n\r\n');
       socket.destroy();
       return;
     }
@@ -131,7 +131,7 @@ async function main() {
     listenPort: Number(process.env.IMPERFECT_INGRESS_PORT || 8080),
     backendHost: process.env.IMPERFECT_HOST || '127.0.0.1',
     backendPort: Number(process.env.IMPERFECT_PORT || 5067),
-    user: process.env.IMPERFECT_INGRESS_USER || 'locus',
+    user: process.env.IMPERFECT_INGRESS_USER || 'imperfect',
     password,
   });
   const address = await app.listen();

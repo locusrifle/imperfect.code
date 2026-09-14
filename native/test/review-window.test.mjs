@@ -95,8 +95,8 @@ function installDom({ phone = false, world = true } = {}) {
   let host = body;
   if (world) {
     host = new Elem('div');
-    host.id = 'locus-world';
-    host.setAttribute('id', 'locus-world');
+    host.id = 'imperfect-world';
+    host.setAttribute('id', 'imperfect-world');
     body.append(host);
   }
   globalThis.document = {
@@ -156,7 +156,7 @@ test('show mounts a desk-shaped window with a parent body host', async () => {
   assert.equal(review.isOpen(), true);
   const panel = host.querySelector('#review-panel');
   assert.ok(panel);
-  assert.equal(panel.parentElement.id, 'locus-world');
+  assert.equal(panel.parentElement.id, 'imperfect-world');
   assert.equal(panel.attrs.role, 'dialog');
   assert.equal(panel.attrs['aria-modal'], 'false');
   assert.equal(panel.attrs['aria-label'], 'Clip title');

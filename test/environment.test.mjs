@@ -9,7 +9,7 @@ const root = dirname(fileURLToPath(new URL('../package.json', import.meta.url)))
 
 test('environment replaces Pi opening, not the whole prompt', () => {
   const start = readFileSync(join(root, 'start.mjs'), 'utf8');
-  assert.match(start, /locus-environment/);
+  assert.match(start, /imperfect-environment/);
   assert.doesNotMatch(start, /appendSystemPrompt/);
   assert.doesNotMatch(start, /systemPrompt:\s/);
 });

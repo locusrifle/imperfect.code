@@ -31,7 +31,7 @@ test('closing a canvas window on one browser closes it on the other', async (t) 
   const executablePath = browserPath();
   if (executablePath === null) return t.skip('No chromium available');
   const root = await mkdtemp(join(tmpdir(), 'guey-window-share-browser-'));
-  const app = await createGueyServer({ port: 0, host: '127.0.0.1', stateDir: root, runtime: stubRuntime(root), product: 'locusrifle' });
+  const app = await createGueyServer({ port: 0, host: '127.0.0.1', stateDir: root, runtime: stubRuntime(root), product: 'imperfect' });
   const address = await app.listen();
   const browser = await chromium.launch({ executablePath, args: ['--no-sandbox'] });
   const pending = new Map();

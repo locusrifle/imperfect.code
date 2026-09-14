@@ -16,7 +16,7 @@
 //     }
 //   socket  <pid>.sock  0600  unix socket, not a symlink, contained in dir
 //   transport: strict LF JSONL. On each accepted connection the TUI sends
-//     locus.ready {pi:true, cwd, capabilities:[supported types], source:'tui',
+//     imperfect.ready {pi:true, cwd, capabilities:[supported types], source:'tui',
 //                  sessionId, sessionFile}
 //     then events; command responses are unicast on that socket.
 //

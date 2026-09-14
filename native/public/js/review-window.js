@@ -103,7 +103,7 @@ export function mountReviewWindow(options = {}) {
 	let current = null;
 
 	function worldHost() {
-		return options.host?.() ?? options.world ?? document.getElementById('locus-world') ?? document.body;
+		return options.host?.() ?? options.world ?? document.getElementById('imperfect-world') ?? document.body;
 	}
 
 	function setTitle(text) {

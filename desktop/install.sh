@@ -6,7 +6,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PREFIX="${IMPERFECT_PREFIX:-$HOME/.imperfect}"
 PORT="${IMPERFECT_PORT:-5067}"
-REPO="${IMPERFECT_REPO:-https://github.com/locusrifle/imperfect.computer.git}"
+REPO="${IMPERFECT_REPO:-https://github.com/imperfect/imperfect.computer.git}"
 
 usage() {
   cat <<EOF
@@ -70,8 +70,8 @@ if [[ ! -f "$PREFIX/machine.json" ]]; then
   "host": "127.0.0.1",
   "port": $PORT,
   "origins": [],
-  "product": "locusrifle",
-  "brand": "Locus",
+  "product": "imperfect",
+  "brand": "imperfect computers",
   "authentication": true,
   "ownArchive": true,
   "liveSessions": false,
