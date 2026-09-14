@@ -258,6 +258,39 @@ export async function writeUnit({ prefix, user = DEFAULT_USER, unitPath }) {
   return dest;
 }
 
+export function renderIngressUnit({ prefix }) {
+  const p = paths(prefix);
+  return readFileSync(join(HERE, 'imperfect-ingress.service.in'), 'utf8')
+    .replaceAll('{{PREFIX}}', p.prefix)
+    .replaceAll('{{NODE}}', p.node);
+}
+
+function quoteEnv(value) {
+  return `'${String(value).replaceAll("'", "'\\''")}'`;
+}
+
+export async function writeIngress({ prefix, password, user = 'locus', port = 8080, backendPort }) {
+  if (!password) throw new Error('ingress password is required');
+  if (/[\r\n]/.test(password)) throw new Error('ingress password must be one line');
+  const p = paths(prefix);
+  await copyFile(join(HERE, 'ingress.mjs'), p.ingress);
+  const env = [
+    `IMPERFECT_INGRESS_USER=${quoteEnv(user)}`,
+    `IMPERFECT_INGRESS_PASSWORD=${quoteEnv(password)}`,
+    `IMPERFECT_INGRESS_HOST='0.0.0.0'`,
+    `IMPERFECT_INGRESS_PORT=${Number(port)}`,
+    `IMPERFECT_HOST='127.0.0.1'`,
+    `IMPERFECT_PORT=${Number(backendPort)}`,
+    '',
+  ].join('\n');
+  await mkdir(dirname(p.ingressEnv), { recursive: true });
+  await writeFile(p.ingressEnv, env, { mode: 0o600 });
+  const unitPath = p.ingressUnit;
+  await mkdir(dirname(unitPath), { recursive: true });
+  await writeFile(unitPath, renderIngressUnit({ prefix }), { mode: 0o644 });
+  return { unitPath, envPath: p.ingressEnv, script: p.ingress };
+}
+
 function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
 export async function checkHealth({ host = '127.0.0.1', port, timeoutMs = 15000 } = {}) {
@@ -447,6 +480,16 @@ export async function installMachine(opts = {}) {
     run(['chown', 'root:root', p.config]);
     await writeUnit({ prefix, user, unitPath: opts.unitPath || p.unit });
     for (const argv of systemdActivation()) run(argv);
+    if (opts.ingressPassword) {
+      await writeIngress({
+        prefix,
+        password: opts.ingressPassword,
+        user: opts.ingressUser || 'locus',
+        port: opts.ingressPort || 8080,
+        backendPort: config.port,
+      });
+      for (const argv of systemdActivation('imperfect-ingress.service')) run(argv);
+    }
   } else if (opts.runner) {
     await opts.runner.restart(prefix);
   }
@@ -500,7 +543,7 @@ async function main(argv) {
     print(`imperfect.computer installer
   pack [--out file]
   check
-  install --artifact file [--runtime-tarball file | --fetch-runtime] [--prefix dir] [--port N] [--origins url,url] [--user name] [--unprivileged]
+  install --artifact file [--runtime-tarball file | --fetch-runtime] [--prefix dir] [--port N] [--origins url,url] [--user name] [--ingress-password secret] [--unprivileged]
   update --artifact file [--prefix dir]
   rollback [--prefix dir]
   status [--prefix dir]
@@ -545,6 +588,9 @@ Pi ${PI_VERSION}. Default prefix ${DEFAULT_PREFIX}, user ${DEFAULT_USER}, loopba
       unprivileged: flag(args, 'unprivileged'),
       product: arg(args, 'product'),
       brand: arg(args, 'brand'),
+      ingressPassword: arg(args, 'ingress-password'),
+      ingressUser: arg(args, 'ingress-user'),
+      ingressPort: arg(args, 'ingress-port'),
     }));
     return;
   }

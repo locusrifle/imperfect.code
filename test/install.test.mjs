@@ -11,7 +11,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   REQUIRED_PAGES, createMockRunner, installMachine, listArtifact,
-  packRelease, packTree, renderUnit, rollbackRelease, systemdActivation,
+  packRelease, packTree, renderIngressUnit, renderUnit, rollbackRelease, systemdActivation,
   verifyRuntimeTarball,
 } from '../install/imperfect.mjs';
 import { NODE_RUNTIME, paths, readConfig } from '../machine.mjs';
@@ -184,6 +184,13 @@ test('clean fixture install, wrong origin/host, sentinel survives update, failed
     await rm(good.root, { recursive: true, force: true });
     await rm(good.outDir, { recursive: true, force: true });
   }
+});
+
+test('ingress unit uses the /opt runtime and does not store the password in the unit file', () => {
+  const text = renderIngressUnit({ prefix: '/opt/imperfect' });
+  assert.match(text, /ExecStart=\/opt\/imperfect\/runtime\/bin\/node \/opt\/imperfect\/ingress.mjs/);
+  assert.doesNotMatch(text, /PASSWORD/);
+  assert.match(text, /EnvironmentFile=-\/etc\/imperfect-ingress.env/);
 });
 
 test('root activation restarts the unit, so an update cannot silently keep the old release', () => {

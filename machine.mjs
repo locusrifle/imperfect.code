@@ -41,6 +41,9 @@ export function paths(prefix = DEFAULT_PREFIX) {
     agent: join(data, 'agent'),
     sessions: join(data, 'state', 'sessions'),
     unit: '/etc/systemd/system/imperfect.service',
+    ingress: join(root, 'ingress.mjs'),
+    ingressEnv: '/etc/imperfect-ingress.env',
+    ingressUnit: '/etc/systemd/system/imperfect-ingress.service',
   };
 }
 

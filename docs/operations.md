@@ -39,6 +39,8 @@ sudo node install/imperfect.mjs install \
 
 The unit listens on `127.0.0.1:5067`. Health: `curl -sS --header 'Host: 127.0.0.1:5067' http://127.0.0.1:5067/health`.
 
+Box also publishes the raw machine port. Pass `--ingress-password` so the installer puts a Basic-auth gate on `:8080` (Caddy is not required; it is a small Node proxy under `/opt`, same resume rule as the app). The password lives in `/etc/imperfect-ingress.env` (mode 600), never in `machine.json`. The door already holds that password and strips it before the person sees the shell.
+
 ## Update
 
 ```sh
