@@ -1,13 +1,11 @@
 // Shared Locus machine launcher for vaita and Box.
 // Loopback app; ingress stays on the existing authenticated proxy.
-import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createGueyServer } from './server.mjs';
 import { ensureDataDirs, readConfig, resolvePrefix } from './machine.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const environment = await readFile(join(here, 'environment.md'), 'utf8');
 
 const prefix = resolvePrefix();
 const p = await ensureDataDirs(prefix);
@@ -30,7 +28,7 @@ const app = await createGueyServer({
   origins: config.origins,
   serviceOptions: {
     resourceLoaderOptions: {
-      appendSystemPrompt: [environment],
+      additionalExtensionPaths: [join(here, 'extensions/locus-environment')],
     },
   },
 });

@@ -25,7 +25,8 @@
   },
   "pi": {
     "extensions": [
-      "./extensions/guey-live"
+      "./extensions/guey-live",
+      "./extensions/locus-environment"
     ],
     "themes": [
       "./themes"

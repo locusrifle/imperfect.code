@@ -81,7 +81,7 @@ export function collectReleaseFiles(root = SOURCE_ROOT) {
     if (SKIP_PUBLIC.has(basename(full))) continue;
     files.push(relative(root, full));
   }
-  const ext = join(root, 'extensions/guey-live');
+  const ext = join(root, 'extensions');
   if (existsSync(ext)) for (const full of listFiles(ext)) files.push(relative(root, full));
   const themes = join(root, 'themes');
   if (existsSync(themes)) for (const full of listFiles(themes)) files.push(relative(root, full));
