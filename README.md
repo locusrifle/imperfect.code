@@ -13,6 +13,18 @@ IMPERFECT_PREFIX=/tmp/locus-dev node start.mjs
 
 Write `machine.json` in that prefix first, or copy the defaults from `machine.mjs`. The process binds loopback only.
 
+## Window (self-host)
+
+Same machine, no browser chrome. Needs Node 22+ and Rust.
+
+```sh
+git clone https://github.com/locusrifle/imperfect.computer.git
+cd imperfect.computer
+./desktop/install.sh
+```
+
+That writes `~/.imperfect/machine.json` if missing and opens a Tauri window around loopback. Hosted Box install is still `install/imperfect.mjs` — do not mix the two.
+
 ## Install on a host
 
 Exact commands, Node pin, update, and rollback: [docs/operations.md](docs/operations.md).

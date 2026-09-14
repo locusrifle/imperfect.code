@@ -9,3 +9,4 @@ imperfect-*.tar.gz
 *.tar.xz
 var/
 local-prefix/
+desktop/src-tauri/target/
