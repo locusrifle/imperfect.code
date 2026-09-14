@@ -19,7 +19,7 @@ test('environment names the person, the two trees, and the wikilinks', () => {
   assert.match(environment, /\{\{NAME\}\}/);
   assert.match(environment, /\/opt\/imperfect\/data/);
   assert.match(environment, /To put a page in the interface, read \[\[apps\]\]/);
-  assert.match(environment, /What lasts when this computer sleeps or moves: \[\[snapshot\]\]/);
+  assert.match(environment, /how data is kept and moved between sandboxes, read \[\[snapshot\]\]/);
 });
 
 test('signup handle becomes the name in the opening', () => {
