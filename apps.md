@@ -1,4 +1,4 @@
-# Apps on this computer
+# Apps
 
 An app is one HTML file the person can open in the interface.
 

@@ -7,7 +7,7 @@ import { createGueyServer } from './server.mjs';
 import { ensureDataDirs, readConfig, resolvePrefix } from './machine.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const place = await readFile(join(here, 'place.md'), 'utf8');
+const environment = await readFile(join(here, 'environment.md'), 'utf8');
 
 const prefix = resolvePrefix();
 const p = await ensureDataDirs(prefix);
@@ -30,7 +30,7 @@ const app = await createGueyServer({
   origins: config.origins,
   serviceOptions: {
     resourceLoaderOptions: {
-      appendSystemPrompt: [place],
+      appendSystemPrompt: [environment],
     },
   },
 });

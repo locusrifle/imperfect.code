@@ -73,7 +73,7 @@ export function collectReleaseFiles(root = SOURCE_ROOT) {
     if (!existsSync(full) || !lstatSync(full).isFile()) throw new Error(`missing ${rel}`);
     files.push(rel);
   };
-  for (const name of ['server.mjs', 'start.mjs', 'machine.mjs', 'place.md', 'docs/apps.md', 'package.json', 'package-lock.json']) add(name);
+  for (const name of ['server.mjs', 'start.mjs', 'machine.mjs', 'environment.md', 'apps.md', 'package.json', 'package-lock.json']) add(name);
   for (const name of readdirSync(join(root, 'native'))) {
     if (name.endsWith('.mjs')) add(join('native', name));
   }
