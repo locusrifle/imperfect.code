@@ -17,7 +17,7 @@ test('environment replaces Pi opening, not the whole prompt', () => {
 test('environment names the two trees and wikilinks apps', () => {
   const environment = readFileSync(join(root, 'environment.md'), 'utf8');
   assert.match(environment, /\/opt\/imperfect\/data/);
-  assert.match(environment, /not only a coding assistant/);
+  assert.match(environment, /Not only a coding assistant/);
   assert.match(environment, /\[\[apps\]\]/);
 });
 
