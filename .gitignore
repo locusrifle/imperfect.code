@@ -1,0 +1,11 @@
+node_modules/
+.env
+.env.*
+*.bak*
+native/public/antiburn-report.json
+native/antiburn-bridge/target/
+.release-pack-*
+imperfect-*.tar.gz
+*.tar.xz
+var/
+local-prefix/

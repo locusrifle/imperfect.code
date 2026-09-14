@@ -1,0 +1,153 @@
+/* One window type in the phone shell. It fills the slot the shell gives it —
+   no pixel sizing, no fullscreen state, no portrait rotate hack. The selectors
+   are on the class, not an id, because every application gets its own window
+   and its own element id. */
+.review-panel {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  margin: 0;
+  padding: 0;
+  background: var(--om-bg, #000);
+  color: var(--om-fg, #eee);
+  border: 0;
+  box-shadow: none;
+  overflow: hidden;
+}
+.review-panel .review-viewport {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--om-bg, #000);
+  border: 0;
+}
+.review-panel .review-stage {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  width: 100%;
+  overflow: auto;
+  touch-action: pan-x pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+.review-panel .review-body {
+  box-sizing: border-box;
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: 45%;
+  width: 100%;
+  overflow: auto;
+  padding: 8px 10px;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  border-top: 1px solid color-mix(in srgb, var(--om-accent, var(--pi-accent, #f27722)) 45%, transparent);
+}
+.review-panel .review-body:empty {
+  display: none;
+  padding: 0;
+  border-top: 0;
+}
+.review-panel .review-stage img,
+.review-panel .review-stage video {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  margin: auto;
+  object-fit: contain;
+  background: transparent;
+}
+.review-panel .review-stage pre {
+  box-sizing: border-box;
+  align-self: stretch;
+  width: 100%;
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, monospace;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.review-panel .review-message {
+  margin: 0;
+  padding: 12px;
+  color: var(--om-fg-dim, #9fa4ab);
+  text-align: center;
+}
+.review-panel .review-blocked { color: var(--om-red, var(--pi-accent, #f27722)); }
+
+/* `page` is the empty container: a mounted in-page application, or any other
+   in-app page framed whole. Either way it gets the entire window. */
+.review-panel[data-kind="page"] .review-stage {
+  display: block;
+  align-items: stretch;
+  justify-content: stretch;
+  padding: 0;
+  overflow: hidden;
+}
+.review-panel[data-kind="page"] .review-page,
+.review-panel[data-kind="page"] .review-page-frame {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  overflow: auto;
+  background: var(--om-bg, #000);
+}
+
+/* Close sits in the window, always reachable: closing is the way out now that
+   there is no fullscreen to escape from. */
+.review-panel .review-controls {
+  display: flex;
+  position: absolute;
+  z-index: 4;
+  right: 6px;
+  top: 6px;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  max-width: calc(100% - 12px);
+  background: transparent;
+  touch-action: manipulation;
+}
+.review-panel .review-status {
+  max-width: 10rem;
+  overflow: hidden;
+  color: var(--om-fg-dim, #9fa4ab);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.review-panel .review-controls button {
+  margin: 0;
+  padding: 2px 8px;
+  min-height: 28px;
+  border: 1px solid var(--om-accent, var(--pi-accent, #f27722));
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--om-bg-darker, #000) 72%, transparent);
+  color: inherit;
+  font: inherit;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+@media (pointer: coarse), (max-width: 700px) {
+  .review-panel .review-controls button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px 12px;
+  }
+}

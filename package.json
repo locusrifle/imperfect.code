@@ -1,0 +1,38 @@
+{
+  "name": "imperfect-computer",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "scripts": {
+    "start": "node start.mjs",
+    "test": "node --test native/test/native.test.mjs native/test/live.test.mjs native/test/product.test.mjs native/test/tabs.test.mjs native/test/session-logic.test.mjs native/test/graph.test.mjs native/test/graph-layout.test.mjs test/*.test.mjs",
+    "test:auth": "node --test native/test/auth.test.mjs",
+    "test:browser": "node --test native/test/browser.test.mjs",
+    "test:install": "node --test test/install.test.mjs test/runtime-subprocess.test.mjs",
+    "test:all": "node --test native/test/*.test.mjs test/*.test.mjs",
+    "pack": "node install/imperfect.mjs pack",
+    "check": "node install/imperfect.mjs check"
+  },
+  "dependencies": {
+    "@earendil-works/pi-coding-agent": "0.85.1",
+    "@earendil-works/pi-server": "0.85.1",
+    "html2canvas": "^1.4.1",
+    "html2canvas-pro": "^2.4.1",
+    "ws": "8.21.3"
+  },
+  "pi": {
+    "extensions": [
+      "./extensions/guey-live"
+    ],
+    "themes": [
+      "./themes"
+    ]
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
+  },
+  "description": "Private Locus machine app (imperfect.computer). Pi GUI on the supported SDK."
+}

@@ -1,0 +1,247 @@
+/* The phone shell: Omarchy's wallpaper, one viewport per application, and the
+   bar its own shell.json describes. Every size here is relative or a theme
+   variable, so a rotation is a reflow and never a repaint from JavaScript. */
+
+:root {
+	/* Hyprland's own language: a gap around every window, a border, a corner. */
+	--om-gap: 8px;
+	--om-border-width: 2px;
+	--om-bar-h: 44px;
+}
+
+body.locusrifle {
+	margin: 0;
+	background: var(--om-bg-darker, #000);
+	overscroll-behavior: none;
+}
+
+/* The wallpaper is a fixed layer, not a body background: background-attachment
+   stutters on mobile, and `cover` on a fixed element re-fits on rotation with
+   no script. */
+.om-wall {
+	position: fixed;
+	inset: 0;
+	z-index: 0;
+	background-color: var(--om-bg-darker, #16191b);
+	background-position: center center;
+	background-size: cover;
+	background-repeat: no-repeat;
+	pointer-events: none;
+}
+/* A machine with no wallpaper is not a machine with a black screen. The image is
+   the top layer, so when there is none -- no Omarchy, or nobody has chosen one --
+   what shows through is the ruled ground the rest of Locus stands on. It is drawn
+   here rather than on the image layer so that choosing a picture covers it. */
+.om-wall::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background-image:
+		linear-gradient(rgba(235, 231, 220, .05) 1px, transparent 1px),
+		linear-gradient(90deg, rgba(235, 231, 220, .05) 1px, transparent 1px);
+	background-size: 12px 24px;
+	z-index: -1;
+}
+
+/* ---- the pager: one slot per open application ---- */
+
+#locus-world.om-pager {
+	position: fixed;
+	inset: 0;
+	z-index: 1;
+	display: flex;
+	flex-direction: row;
+	align-items: stretch;
+	overflow-x: auto;
+	overflow-y: hidden;
+	scroll-snap-type: x mandatory;
+	overscroll-behavior-x: contain;
+	scrollbar-width: none;
+	pointer-events: auto;
+	/* body sets touch-action: none so the drop owns vertical drags. The pager
+	   takes panning back for its own scroller; a window's own content narrows it
+	   again on the way down. */
+	touch-action: pan-x pan-y;
+	padding-bottom: calc(var(--om-bar-h) + env(safe-area-inset-bottom, 0px));
+	box-sizing: border-box;
+}
+body[data-bar="top"] #locus-world.om-pager {
+	padding-top: calc(var(--om-bar-h) + env(safe-area-inset-top, 0px));
+	padding-bottom: 0;
+}
+#locus-world.om-pager::-webkit-scrollbar { display: none; }
+/* Nothing open is not a broken state: it is the wallpaper, and the menu is the
+   way in. The pager must not swallow taps meant for the bar. */
+body.shell-empty #locus-world.om-pager { pointer-events: none; }
+
+.om-slot {
+	flex: 0 0 100%;
+	width: 100%;
+	height: 100%;
+	min-width: 0;
+	box-sizing: border-box;
+	display: grid;
+	padding: var(--om-gap);
+	scroll-snap-align: center;
+	scroll-snap-stop: always;
+}
+
+.om-frame {
+	position: relative;
+	min-width: 0;
+	min-height: 0;
+	overflow: hidden;
+	border: var(--om-border-width) solid var(--om-border-idle, #1e1e1e);
+	border-radius: var(--om-round, 8px);
+	background: var(--om-bg, #000);
+	/* Only the compositor animates this. */
+	transition: border-color 160ms linear;
+}
+/* The showing application is the active window, in the theme's own border. */
+.om-slot.active > .om-frame { border-color: var(--om-border, #888); }
+
+.om-frame > * {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	margin: 0;
+}
+
+/* ---- the bar, arranged by shell.json ---- */
+
+.om-bar {
+	position: fixed;
+	left: 0;
+	right: 0;
+	z-index: 40;
+	display: grid;
+	grid-template-columns: 1fr auto 1fr;
+	align-items: center;
+	gap: 8px;
+	height: calc(var(--om-bar-h) + env(safe-area-inset-bottom, 0px));
+	padding: 0 max(10px, env(safe-area-inset-left, 0px)) env(safe-area-inset-bottom, 0px) max(10px, env(safe-area-inset-right, 0px));
+	box-sizing: border-box;
+	background: color-mix(in srgb, var(--om-bg-darker, #000) 88%, transparent);
+	border-top: 1px solid var(--om-selection, #222);
+	color: var(--om-fg, #ddd);
+	font: 500 13px/1 var(--pi-font, ui-monospace, monospace);
+	backdrop-filter: blur(12px);
+}
+.om-bar[data-position="top"] {
+	top: 0;
+	bottom: auto;
+	height: calc(var(--om-bar-h) + env(safe-area-inset-top, 0px));
+	padding: env(safe-area-inset-top, 0px) 10px 0;
+	border-top: 0;
+	border-bottom: 1px solid var(--om-selection, #222);
+}
+.om-bar[data-position="bottom"] { bottom: 0; }
+.om-bar-left { display: flex; align-items: center; gap: 10px; justify-self: start; }
+.om-bar-center { display: flex; align-items: center; gap: 10px; justify-self: center; }
+.om-bar-right { display: flex; align-items: center; gap: 10px; justify-self: end; }
+
+.om-bar button {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	cursor: pointer;
+	touch-action: manipulation;
+}
+
+/* A 2x2 grid of dots: a menu, without imitating an Android launcher icon. */
+.om-menu {
+	display: grid;
+	place-items: center;
+	width: 44px;
+	height: 44px;
+	color: var(--om-fg-bright, #eee);
+}
+.om-menu-glyph {
+	width: 12px;
+	height: 12px;
+	background-image: radial-gradient(circle at 3px 3px, currentColor 2.5px, transparent 2.6px);
+	background-size: 6px 6px;
+	background-repeat: repeat;
+}
+
+.om-workspaces { display: flex; align-items: center; gap: 7px; min-height: 44px; }
+.om-ws {
+	width: 22px;
+	height: 44px;
+	display: grid;
+	place-items: center;
+}
+.om-ws::before {
+	content: "";
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: var(--om-muted, #555);
+	transition: background-color 140ms linear, transform 140ms ease-out;
+}
+.om-ws[aria-current="true"]::before {
+	background: var(--om-accent, #999);
+	transform: scale(1.45);
+}
+
+.om-clock {
+	min-height: 44px;
+	padding: 0 6px;
+	color: var(--om-fg, #ddd);
+	white-space: pre;
+	text-align: center;
+	letter-spacing: 0.02em;
+}
+
+/* ---- the application sheet ---- */
+
+.om-sheet { position: fixed; inset: 0; z-index: 60; display: grid; align-items: end; }
+.om-sheet-back { position: absolute; inset: 0; background: color-mix(in srgb, #000 55%, transparent); }
+.om-sheet-list {
+	position: relative;
+	margin: 0 var(--om-gap) calc(var(--om-bar-h) + var(--om-gap) + env(safe-area-inset-bottom, 0px));
+	padding: 6px;
+	display: grid;
+	gap: 2px;
+	background: var(--om-bg-dark, #111);
+	border: var(--om-border-width) solid var(--om-border, #555);
+	border-radius: var(--om-round, 8px);
+	color: var(--om-fg, #ddd);
+	font: 500 15px/1.2 var(--pi-font, ui-monospace, monospace);
+	max-height: 70dvh;
+	overflow-y: auto;
+}
+.om-app {
+	display: grid;
+	grid-template-columns: 1fr auto;
+	align-items: baseline;
+	gap: 10px;
+	width: 100%;
+	min-height: 52px;
+	padding: 0 12px;
+	border: 0;
+	border-radius: calc(var(--om-round, 8px) - 2px);
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+	touch-action: manipulation;
+}
+.om-app[data-open="true"] { background: var(--om-selection, #2a2a2a); }
+.om-app-name { color: var(--om-fg-bright, #eee); }
+.om-app-note { color: var(--om-fg-dim, #888); font-size: 12px; }
+
+/* ---- rotation ----
+   Landscape is for looking and driving: the harness drop is a portrait posture,
+   because the OS keyboard and a usable drop do not both fit a short viewport.
+   Rotating is how an application gets the larger view. */
+@media (orientation: landscape) and (max-height: 560px) {
+	body.locusrifle #terminal-entry,
+	body.locusrifle #harness-reach { display: none !important; }
+	:root { --om-gap: 5px; --om-bar-h: 36px; }
+}

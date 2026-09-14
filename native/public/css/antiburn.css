@@ -1,0 +1,159 @@
+/* antiburn dark theme (native product tokens), not locusrifle. */
+:root {
+  --ab-surface: hsl(0 0% 12.5%);
+  --ab-card: hsl(0 0% 100% / 0.08);
+  --ab-label: hsl(0 0% 100% / 0.92);
+  --ab-secondary: hsl(240 33% 94% / 0.72);
+  --ab-tertiary: hsl(240 33% 94% / 0.62);
+  --ab-separator: hsl(0 0% 100% / 0.18);
+  --ab-brand: hsl(17.6 100% 58.6%);
+  --ab-brand-unlit: hsl(17.7 45% 28%);
+  --ab-yellow: hsl(48 100% 57.4%);
+  --ab-red: hsl(357 100% 65%);
+  --ab-green: hsl(135 70% 52.3%);
+}
+
+/* Scoped to antiburn's own surface. A bare `html, body` here reached the whole
+   application, because the shell loads this stylesheet to mount antiburn in a
+   window: it replaced the page's font and background with antiburn's. */
+body.antiburn-page,
+#antiburn-app,
+.review-page {
+  margin: 0;
+  min-height: 100%;
+  background: var(--ab-surface);
+  color: var(--ab-label);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.35;
+}
+body.antiburn-page { height: 100%; }
+
+#antiburn-app,
+.review-page {
+  box-sizing: border-box;
+  height: auto;
+  min-height: min-content;
+  overflow: visible;
+  padding: 20px 18px 72px;
+  background: var(--ab-surface);
+}
+
+.ab-wordmark {
+  margin: 0 0 4px;
+  color: var(--ab-brand);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+}
+
+.ab-fetched {
+  margin: 0 0 18px;
+  color: var(--ab-tertiary);
+  font-size: 12px;
+}
+
+.ab-provider {
+  margin: 0 0 14px;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--ab-card);
+}
+
+.ab-name {
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.ab-plan {
+  color: var(--ab-secondary);
+  font-weight: 500;
+}
+
+.ab-stale { color: var(--ab-yellow); }
+
+.ab-window { margin: 0 0 12px; }
+.ab-label {
+  margin: 0 0 6px;
+  color: var(--ab-secondary);
+  font-size: 12px;
+}
+
+.ab-meter-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ab-track {
+  flex: 1;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--ab-brand-unlit);
+}
+
+.ab-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: var(--ab-brand);
+}
+
+.ab-fill.warn { background: var(--ab-yellow); }
+.ab-fill.crit { background: var(--ab-red); }
+
+.ab-pct {
+  flex: none;
+  min-width: 4.5em;
+  color: var(--ab-label);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  text-align: right;
+}
+
+.ab-reset {
+  margin: 4px 0 0;
+  color: var(--ab-tertiary);
+  font-size: 12px;
+}
+
+.ab-empty, .ab-note {
+  margin: 8px 0 0;
+  color: var(--ab-tertiary);
+  font-size: 12px;
+}
+
+.ab-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  margin: 12px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--ab-separator);
+}
+
+.ab-stat { min-width: 4.5rem; }
+.ab-stat-value {
+  color: var(--ab-label);
+  font-variant-numeric: tabular-nums;
+  font-size: 16px;
+  font-weight: 600;
+}
+.ab-stat-label {
+  color: var(--ab-tertiary);
+  font-size: 11px;
+}
+
+.ab-models { margin: 10px 0 0; }
+.ab-model {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 4px;
+  color: var(--ab-secondary);
+  font-size: 12px;
+}
+.ab-model-id { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ab-model-n { flex: none; font-variant-numeric: tabular-nums; }

@@ -1,0 +1,491 @@
+/* Omarchy's wallpaper is the canvas. The drop is Pi's TUI: half the viewport on
+   a pointer, 70% on a phone so the custom keys can stand on the remaining 30%.
+   Every colour below comes from the Omarchy theme the server reads; the literal
+   values are the shell's own now; Omarchy no longer supplies a theme here. */
+html:has(body.locusrifle),
+body.locusrifle {
+  touch-action: none;
+  overscroll-behavior: none;
+  --scene-void: var(--om-bg, #101315);
+  --accent: var(--om-accent, var(--orange, #f27722));
+  --strand-a: var(--om-muted, #434b4f);
+  --strand-b: var(--om-accent, #f27722);
+  --major: var(--locus-grid-major, 24px);
+  --tui-pageBg: var(--scene-void);
+  --tui-cardBg: var(--om-bg-dark, color-mix(in srgb, var(--scene-void) 88%, #fff));
+  --tui-userMessageBg: var(--om-selection, color-mix(in srgb, var(--scene-void) 72%, #000));
+  --tui-text: var(--om-fg, #cacccc);
+  --tui-userMessageText: var(--om-fg-bright, #f7f1fb);
+  --tui-muted: var(--om-muted, #b39cbe);
+  --tui-dim: var(--om-fg-dim, #8a6d98);
+  --pi-bg: var(--scene-void);
+  --pi-bg-raised: var(--tui-cardBg);
+  --pi-text: var(--om-fg, #cacccc);
+  --pi-text-bright: var(--om-fg-bright, #f7f1fb);
+  --pi-muted: var(--om-muted, #b39cbe);
+  --pi-dim: var(--om-fg-dim, #6e4d7c);
+  --pi-cursor: var(--om-fg-bright, #f7f1fb);
+  --pi-user: var(--tui-userMessageBg);
+  /* shell.css paints the ground behind the wallpaper layer. */
+  background-image: none;
+}
+body.locusrifle::before { content: none; }
+body {
+  font-size: 13px;
+  line-height: 1.5;
+  --entry-terminal-height: 50dvh;
+}
+
+/* A laptop keeps the half-height drop. A touch screen gets more of it, because the 30% that used
+   to belong to the custom key sheet went back to the viewport when that sheet was deleted on
+   2026-09-14 -- and the OS keyboard now resizes the layout viewport rather than covering it, so
+   dvh shrinks with the keys and the composer stays above them. */
+@media (pointer: coarse) {
+	body.locusrifle { --entry-terminal-height: 70dvh; }
+}
+
+#terminal-entry { touch-action: none; }
+#entry-terminal, #entry-output, .entry-screen {
+  touch-action: pan-y;
+}
+#entry-input { touch-action: manipulation; }
+#session-rail { touch-action: pan-y; }
+body.locusrifle .session-rail-close {
+  width: 2.75em;
+  min-height: 2.75em;
+}
+
+body.locusrifle .drop-handle { cursor: grab; }
+body.locusrifle #entry-spend { display: none; }
+body.locusrifle .entry-status { display: none; }
+body.locusrifle #entry-input-zone {
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+}
+body.locusrifle #entry-input-zone::before { display: none; }
+body.locusrifle #entry-input-zone::after {
+  left: 0;
+  right: 0;
+}
+body.locusrifle #entry-work {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0;
+  width: 100%;
+  min-height: 1.35em;
+  margin: 0;
+  padding: 0 var(--entry-gutter, var(--locus-grid-major, 24px));
+  color: var(--tui-muted, var(--pi-muted));
+  font-style: normal;
+}
+body.locusrifle #entry-work[hidden] { display: flex; }
+body.locusrifle #entry-work::before { content: none; }
+body.locusrifle #entry-work::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(50% - 1px);
+  bottom: auto;
+  flex: none;
+  border-top: 1px solid var(--stock-think-border, var(--tui-accent));
+  height: 0;
+}
+body.locusrifle #entry-work .entry-spinner,
+body.locusrifle #entry-work .entry-work-status,
+body.locusrifle #entry-work #entry-pi-label,
+body.locusrifle #entry-work #entry-thinking,
+body.locusrifle #entry-work #entry-context {
+  position: relative;
+  z-index: 1;
+  background: var(--tui-pageBg, var(--pi-bg));
+  line-height: 1;
+}
+body.locusrifle #entry-work .entry-spinner {
+  width: auto;
+  margin: 0;
+  padding: 0 0.35em 0 0;
+  font-family: var(--font-pi);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 400;
+}
+body.locusrifle #entry-work #entry-pi-label,
+body.locusrifle #entry-work #entry-thinking,
+body.locusrifle #entry-work #entry-context {
+  display: block;
+  appearance: none;
+  border: 0;
+  margin: 0;
+  font-family: "Departure Mono", "Commit Mono", ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+body.locusrifle #entry-work #entry-pi-label { margin-left: -1ch; padding: 0 0.4em 0 1ch; }
+body.locusrifle #entry-work #entry-thinking { padding: 0 0.4em; }
+body.locusrifle #entry-work #entry-context { margin-left: auto; margin-right: -1ch; padding: 0 1ch 0 0.4em; }
+body.locusrifle #entry-work .entry-work-gap {
+  flex: 1 1 auto;
+  min-width: calc(var(--entry-gutter, var(--locus-grid-major, 24px)) - 1ch);
+  height: 1px;
+  align-self: center;
+}
+body.locusrifle #entry-thinking:empty,
+body.locusrifle #entry-context:empty { display: none; }
+body.locusrifle #entry-input-zone.working #entry-work,
+body.locusrifle #entry-input-zone.working #entry-pi-label,
+body.locusrifle #entry-input-zone.working #entry-thinking,
+body.locusrifle #entry-input-zone.working #entry-context,
+body.locusrifle #entry-input-zone.working .entry-work-status {
+  color: var(--tui-accent, var(--pi-accent));
+}
+body.locusrifle #entry-work .entry-work-status {
+  padding: 0 0.6em;
+  font-family: var(--font-pi);
+  font-size: 11px;
+  font-style: italic;
+  letter-spacing: 0;
+  text-transform: none;
+}
+body.locusrifle .entry-model-line { display: none; }
+body.locusrifle .entry-input-stack {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.45em;
+  width: 100%;
+  min-height: 2.7em;
+  height: auto;
+  padding: 0.55em calc(var(--locus-grid-major, 24px) + env(safe-area-inset-right, 0px)) 0.85em calc(var(--locus-grid-major, 24px) + env(safe-area-inset-left, 0px));
+}
+body.locusrifle .entry-prompt { display: none; }
+body.locusrifle .entry-input-mirror {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 1.35em;
+  line-height: 1.35;
+}
+body.locusrifle #entry-input {
+  flex: none;
+  align-self: stretch;
+  min-width: 0;
+  min-height: 1.35em;
+  height: 1.35em;
+  max-height: 30dvh;
+  line-height: 1.35;
+  padding: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+body.locusrifle .mobile-input-display {
+  color: var(--pi-text-bright, #f7f1fb);
+  -webkit-text-fill-color: var(--pi-text-bright, #f7f1fb);
+  line-height: 1.35;
+  overflow: hidden;
+}
+body.locusrifle #entry-input::-webkit-scrollbar { display: none; }
+body.locusrifle #entry-output .entry-queue {
+  padding-left: 0;
+  padding-right: 0;
+}
+body.locusrifle .entry-attach {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.2em;
+  min-height: 1.2em;
+  width: 1.2em;
+  height: 1.2em;
+  align-self: center !important;
+  line-height: 1;
+}
+body.locusrifle .entry-attach span {
+  display: grid;
+  place-items: center;
+  line-height: 1;
+}
+body.locusrifle #entry-pi-label,
+body.locusrifle #entry-thinking,
+body.locusrifle #entry-context {
+  flex: 0 0 auto;
+  margin: 0;
+  color: inherit;
+  white-space: nowrap;
+}
+body.locusrifle #entry-terminal{
+  background: var(--scene-void, #000);
+  color: var(--pi-text, #eadff0);
+}
+#entry-terminal {
+  border-bottom: 1px solid var(--tui-accent, var(--pi-accent));
+  --pi-bg: var(--tui-pageBg, var(--pi-bg));
+  --pi-bg-raised: var(--tui-pageBg, var(--pi-bg-raised));
+  --pi-text: var(--tui-text, var(--pi-text));
+  --pi-text-bright: var(--tui-userMessageText, var(--pi-text-bright));
+  --pi-muted: var(--tui-muted, var(--pi-muted));
+  --pi-dim: var(--tui-dim, var(--pi-dim));
+  --pi-accent: var(--tui-accent, var(--pi-accent));
+  --pi-cursor: var(--tui-text, var(--pi-cursor));
+  --pi-user: var(--tui-userMessageBg, var(--pi-user));
+  --pi-tool: var(--tui-toolPendingBg, var(--pi-tool));
+  --pi-tool-ok: var(--tui-toolSuccessBg, var(--pi-tool-ok));
+  --pi-tool-error: var(--tui-toolErrorBg, var(--pi-tool-error));
+  --pi-error: var(--tui-error, var(--pi-error));
+  --pi-working: var(--tui-warning, var(--pi-working));
+  --pi-rule: var(--tui-border, var(--pi-rule));
+}
+.entry-attach {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  font: inherit;
+  position: relative;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  color: var(--pi-accent);
+  cursor: pointer;
+}
+#entry-files {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+.entry-attach.has-files span { color: var(--pi-text-bright); }
+.entry-plus {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+}
+.entry-pending {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px var(--locus-grid-major, 24px) 4px;
+}
+.entry-pending[hidden] { display: none; }
+.entry-pending-chip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  min-height: 44px;
+  border: 1px solid var(--pi-accent);
+  background: transparent;
+  color: var(--pi-text);
+  font: inherit;
+  cursor: pointer;
+}
+.entry-pending-chip .entry-image {
+  display: block;
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+}
+.entry-pending-chip span {
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 8px;
+}
+.entry-pending-chip.is-uploading { opacity: 0.9; }
+.entry-pending-progress {
+  font-variant-numeric: tabular-nums;
+  color: var(--pi-accent);
+}
+.entry-pending-remove {
+  padding: 0 10px 0 0;
+  color: var(--pi-accent);
+}
+.entry-line.user .entry-image,
+#entry-output > .entry-image {
+  display: block;
+  max-width: min(100%, 22rem);
+  max-height: 40vh;
+  width: auto;
+  height: auto;
+  margin: 0.6em 0 0;
+  border: 1px solid var(--pi-accent);
+}
+
+/* OS keyboard covers the bottom; slash grows up so it stays readable. */
+@media (pointer: coarse), (max-width: 700px) {
+  #slash-menu {
+    max-height: min(36dvh, calc(10 * 1.42em));
+    overflow-y: auto;
+  }
+}
+#entry-input[data-dictating]::placeholder { color: var(--pi-accent); }
+#entry-input[data-dictating] { caret-color: var(--pi-accent); }
+
+/* Watching a terminal is a different footing, and the screen should say so
+   without a banner: the panel is ruled in the accent while it is not ours. */
+body.watching #entry-terminal { box-shadow: inset 0 0 0 1px var(--pi-accent); }
+body.watching #entry-source { color: var(--pi-accent); }
+
+/* Jobs sit above the composer as a strip, not a debug dump in the transcript. */
+.entry-widgets {
+  flex: 0 0 auto;
+  padding: 0 var(--locus-grid-major, 24px) 6px;
+  color: var(--pi-muted);
+  letter-spacing: 0.02em;
+}
+.entry-widgets[hidden] { display: none; }
+.entry-widget { margin: 0; }
+.entry-widget-line {
+  font-variant-numeric: tabular-nums;
+  color: var(--pi-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The graph is another surface that owns the viewport, so it stops above the
+   bar exactly as the pager does — otherwise the bar covers its lowest nodes and
+   they cannot be tapped. */
+#knowledge-graph-host {
+  position: fixed;
+  inset: 0;
+  bottom: calc(var(--om-bar-h, 44px) + env(safe-area-inset-bottom, 0px));
+  z-index: 8;
+  pointer-events: none;
+}
+body[data-bar="top"] #knowledge-graph-host {
+  top: calc(var(--om-bar-h, 44px) + env(safe-area-inset-top, 0px));
+  bottom: 0;
+}
+#knowledge-graph {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  touch-action: none;
+}
+#knowledge-graph .edge {
+  fill: none;
+  stroke: var(--tui-border, #8a8);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+#knowledge-cards {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+#knowledge-cards .node {
+  position: absolute;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  margin: 0;
+  padding: calc(var(--locus-grid-major, 24px) * 0.15);
+  border: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--tui-pageBg, var(--garden, transparent));
+  color: #fff;
+  box-shadow: inset 0 0 0 1px var(--tui-border, rgba(255, 255, 255, 0.28));
+  cursor: pointer;
+  overflow: hidden;
+  text-align: center;
+  font: inherit;
+}
+#knowledge-cards .node.root,
+#knowledge-cards .node.opened,
+#knowledge-cards .node.expanded {
+  background: var(--tui-pageBg, var(--garden, transparent));
+  color: #fff;
+}
+#knowledge-cards .node.missing { opacity: 0.55; }
+#knowledge-cards .node.expanded {
+  z-index: 2;
+  text-align: left;
+  overflow: auto;
+  align-items: stretch;
+}
+#knowledge-cards .node:focus-visible {
+  outline: 2px solid var(--tui-accent, #c45c26);
+  outline-offset: 2px;
+}
+#knowledge-cards .node-label {
+  color: #fff;
+  font-family: ui-monospace, monospace;
+  font-size: calc(var(--locus-grid-major, 24px) * 0.5);
+  line-height: 1.15;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+#knowledge-cards .node.expanded .node-label { display: none; }
+#knowledge-cards .node-body {
+  display: none;
+  color: #fff;
+  overflow: auto;
+  flex: 1;
+  text-align: left;
+  font: 14px/1.5 ui-monospace, monospace;
+  padding: 8px;
+  overflow-wrap: anywhere;
+  cursor: text;
+}
+#knowledge-cards .node.expanded .node-body { display: block; }
+.knowledge-md { white-space: pre-wrap; }
+#knowledge-document h1 { font-size: 18px; margin: 0 0 12px; }
+#knowledge-graph-close,
+#knowledge-close, #knowledge-back {
+  position: absolute;
+  top: auto;
+  bottom: 0;
+  width: var(--locus-grid-major, 24px);
+  height: var(--locus-grid-major, 24px);
+  border: 0;
+  background: var(--tui-accent, #c45c26);
+  color: #fff;
+  cursor: pointer;
+  pointer-events: auto;
+}
+#knowledge-graph-close { right: 0; }
+#knowledge-close { right: var(--locus-grid-major, 24px); }
+#knowledge-back {
+  right: calc(var(--locus-grid-major, 24px) * 2);
+  width: calc(var(--locus-grid-major, 24px) * 3);
+}
+.knowledge-wiki {
+  background: none;
+  border: 0;
+  color: inherit;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  text-decoration: underline;
+}
+.knowledge-error { color: #fff; }
+
+/* The drop and the phone keys sit on a black canvas. */
+
