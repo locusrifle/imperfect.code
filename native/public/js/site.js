@@ -96,14 +96,36 @@ const APPS = [
 	{ id: "antiburn", title: "antiburn", note: "what you are spending", window: { kind: "page", src: "/antiburn.html" } },
 ];
 
-const shell = mountShell({
-	world: el("locus-world"),
-	apps: () => APPS.map(app => ({
+async function listedApps() {
+	const built = APPS.map(app => ({
 		id: app.id,
 		title: app.title,
 		note: app.note,
 		open: () => pi.openWindow({ ...app.window, id: app.id, title: app.title }),
-	})),
+	}));
+	try {
+		const response = await fetch("/apps/list");
+		if (!response.ok) return built;
+		const extra = await response.json();
+		if (!Array.isArray(extra)) return built;
+		const seen = new Set(built.map(app => app.id));
+		for (const app of extra) {
+			if (!app?.id || seen.has(app.id) || !String(app.src || "").startsWith("/apps/")) continue;
+			seen.add(app.id);
+			built.push({
+				id: app.id,
+				title: app.title || app.id,
+				note: app.note || "on this computer",
+				open: () => pi.openWindow({ kind: "page", src: app.src, id: app.id, title: app.title || app.id }),
+			});
+		}
+	} catch {}
+	return built;
+}
+
+const shell = mountShell({
+	world: el("locus-world"),
+	apps: listedApps,
 	onError: (error) => console.warn("application did not open", error),
 });
 

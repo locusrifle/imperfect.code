@@ -183,9 +183,13 @@ export function mountShell(options = {}) {
 		document.body.classList.remove('sheet-open');
 	}
 
-	function openSheet() {
+	async function openSheet() {
 		if (sheet) { closeSheet(); return; }
-		const apps = options.apps?.() ?? [];
+		let apps = [];
+		try { apps = await Promise.resolve(options.apps?.() ?? []); }
+		catch { apps = []; }
+		if (!Array.isArray(apps)) apps = [];
+		if (sheet) return;
 		const next = el('div', null, 'om-sheet');
 		next.setAttribute('role', 'dialog');
 		next.setAttribute('aria-label', 'applications');

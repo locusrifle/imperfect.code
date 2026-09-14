@@ -18,6 +18,7 @@ import { answerEvidence, staleCommandError, tabCloseBusyError } from './native/p
 import { receiveHttpUpload, filenameFromHeader, MAX_UPLOAD_BYTES, UPLOAD_TIMEOUT_MS, OTHER_POST_TIMEOUT_MS } from './native/uploads.mjs';
 import { applyWorldWindow, closeWorldWindow, sanitizeWorldWindow } from './native/world-windows.mjs';
 import { createFiles } from './native/files.mjs';
+import { listApps, resolveAppFile } from './native/apps.mjs';
 
 export function privateHost(host) {
   if (['127.0.0.1', '::1'].includes(host)) return true;
@@ -204,6 +205,24 @@ export async function createGueyServer(options = {}) {
       } catch (error) {
         res.writeHead(error.status ?? 500).end(error.message || 'files failed');
       }
+      return;
+    }
+    if (personal && path === '/apps/list') {
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-store');
+      res.end(JSON.stringify(await listApps(files.root)));
+      return;
+    }
+    if (personal && path.startsWith('/apps/')) {
+      const asset = resolveAppFile(files.root, path);
+      if (!asset) { res.writeHead(404).end('Not found'); return; }
+      try {
+        const body = await readFile(asset.full);
+        const text = asset.type.startsWith('text/') || asset.type.endsWith('javascript');
+        res.setHeader('Content-Type', text ? `${asset.type}; charset=utf-8` : asset.type);
+        res.setHeader('Cache-Control', 'no-store');
+        res.end(body);
+      } catch { res.writeHead(404).end('Not found'); }
       return;
     }
     if (path === '/theme.css') {

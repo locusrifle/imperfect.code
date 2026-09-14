@@ -233,6 +233,9 @@ export function mountReviewWindow(options = {}) {
 			frame.className = 'review-page-frame';
 			frame.title = title || 'page';
 			frame.setAttribute('loading', 'eager');
+			// Workspace apps are not the product. Without same-origin they cannot
+			// reach the shell. Built-in pages keep the existing frame.
+			if (src.split('?')[0].startsWith('/apps/')) frame.setAttribute('sandbox', 'allow-scripts allow-forms');
 			frame.src = src;
 			stage.append(frame);
 			return;

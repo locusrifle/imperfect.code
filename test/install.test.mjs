@@ -86,6 +86,8 @@ test('product pack includes every shell page and no workspace files', async () =
   for (const page of REQUIRED_PAGES) assert.ok(names.includes(page), `missing ${page}`);
   assert.ok(names.includes('start.mjs'));
   assert.ok(names.includes('machine.mjs'));
+  assert.ok(names.includes('place.md'));
+  assert.ok(names.includes('docs/apps.md'));
   assert.ok(names.includes('package-lock.json'));
   assert.equal(names.some(name => name.startsWith('data/') || name.includes('/workspace/') || name.includes('node_modules/') || name === '.env'), false);
   await rm(dirname(out), { recursive: true, force: true });
