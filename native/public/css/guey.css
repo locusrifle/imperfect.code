@@ -140,10 +140,10 @@ body.guey-tui .entry-tool {
   border: 0;
   box-shadow: none;
   outline: none;
-  background: color-mix(in srgb, #000 22%, var(--tui-toolPendingBg, var(--tui-pageBg)));
+  background: color-mix(in srgb, var(--ink, #2a1a10) 7%, var(--tui-toolPendingBg, var(--tui-pageBg)));
 }
 body.guey-tui .entry-tool.ok {
-  background: color-mix(in srgb, #000 22%, var(--tui-toolSuccessBg, var(--tui-pageBg)));
+  background: color-mix(in srgb, var(--ink, #2a1a10) 7%, var(--tui-toolSuccessBg, var(--tui-pageBg)));
 }
 body.guey-tui .entry-tool.error {
   background: var(--tui-toolErrorBg, var(--pi-tool-error));
@@ -477,7 +477,7 @@ body.guey-tui #entry-thinking {
   margin: 0;
   padding: 1em var(--entry-gutter, 24px);
   overflow: auto;
-  background: var(--tui-pageBg, var(--tui-cardBg, var(--pi-bg, #111)));
+  background: var(--tui-pageBg, var(--tui-cardBg, var(--pi-bg, #f7f0e2)));
   color: var(--tui-text, var(--pi-text, #eee));
   transform: none;
 }
@@ -514,7 +514,7 @@ body.guey-tui #entry-thinking {
 }
 .session-rail-new.cursor,
 .session-rail-item.cursor {
-  background: var(--tui-selectedBg, rgba(255, 255, 255, 0.06));
+  background: var(--tui-selectedBg, color-mix(in srgb, var(--ink, #2a1a10) 6%, transparent));
 }
 .session-rail-open {
   flex: 1;

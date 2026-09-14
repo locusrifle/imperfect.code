@@ -1,14 +1,29 @@
 @font-face { font-family: "Commit Mono"; src: url("../fonts/CommitMono-400-Regular.otf"); font-display: swap; }
 :root {
-  --garden: #e8e6df; --panel: #f4f1e9; --panel-raised: #24292c; --panel-band: #32383c; --panel-text: #d9dfe2; --panel-bright: #eef1f3; --panel-rule: #454a4d; --paper: #e8e6df; --ink: #24292c; --muted: #737b80; --orange: #f27722;
-  --strand-a: #434b4f; --strand-b: #f27722; --rule-fine: rgba(36,41,44,.07); --rule-minor: rgba(36,41,44,.12); --rule-major: rgba(36,41,44,.2);
+  --garden: #f2e4cd; --panel: #f7f0e2; --panel-raised: #f2e7d3; --panel-band: #ebdfc7;
+  --panel-text: #3a2618; --panel-bright: #1e120a; --panel-rule: #c6b299;
+  --paper: #f2e4cd; --ink: #2a1a10; --muted: #8a7259; --orange: #d9451a;
+  --strand-a: #8a7259; --strand-b: #d9451a;
+  --rule-fine: rgba(66,40,24,.05); --rule-minor: rgba(66,40,24,.09); --rule-major: rgba(66,40,24,.16);
   --locus-grid-major: 24px; --locus-grid-origin-x: 0px; --locus-grid-origin-y: 0px;
-  color-scheme: light dark; font-family: "Commit Mono", ui-monospace, monospace;
+  color-scheme: light; font-family: "Commit Mono", ui-monospace, monospace;
 }
-@media (prefers-color-scheme: dark) { :root { --garden: #24292c; --paper: #24292c; --panel: #303639; --panel-raised: #292f33; --panel-band: #343b40; --panel-text: #ebe7dc; --panel-rule: #4d585e; --ink: #ebe7dc; --muted: #99a1a5; --rule-fine: rgba(235,231,220,.05); --rule-minor: rgba(235,231,220,.1); --rule-major: rgba(235,231,220,.18); } }
+/* One palette, not two. The ground is a painting made in daylight and every panel is lit by it, so
+   a dark scheme underneath would be a second brand nobody chose, turning up for whoever happens to
+   have their phone set that way. The values are the theme's: themes/garden.json is the one place
+   they are decided, and these track it. */
 * { box-sizing: border-box; }
 html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: var(--garden); color: var(--ink); }
-body::before { content: ""; position: fixed; inset: 0; background-image: linear-gradient(var(--rule-minor) 1px, transparent 1px), linear-gradient(90deg,var(--rule-minor) 1px,transparent 1px); background-size: var(--locus-grid-major) var(--locus-grid-major); pointer-events: none; }
+/* The ground under the whole environment is the painting from the door, without the wordmark --
+   the name belongs on the way in, not on the desk you work at. Fixed and cropped to cover, so it
+   is the surface the application stands on rather than content that moves with it. Tall screens
+   get the portrait crop; the landscape one would put the machine off the edge.
+   z-index -1 keeps it above the page's own background colour and behind everything in the flow:
+   an opaque ground painted in the positioned layer, as the ruling used to be, would cover the
+   application instead of sitting under it. */
+body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background: var(--paper) center / cover no-repeat url("../media/ground/temple-wide.webp"); }
+@media (max-aspect-ratio: 1/1) { body::before { background-image: url("../media/ground/temple-tall.webp"); } }
 #intro { position: fixed; inset: 0; z-index: 9; display: grid; place-items: center; transition: opacity .35s; }
 #intro.gone { opacity: 0; pointer-events: none; }
 [hidden] { display: none !important; }

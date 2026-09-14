@@ -11,36 +11,31 @@
 
 body.locusrifle {
 	margin: 0;
-	background: var(--om-bg-darker, #000);
+	background: var(--om-bg-darker, #f2e4cd);
 	overscroll-behavior: none;
 }
 
 /* The wallpaper is a fixed layer, not a body background: background-attachment
    stutters on mobile, and `cover` on a fixed element re-fits on rotation with
    no script. */
+/* A machine with no wallpaper is not a machine with a black screen. Until somebody chooses a
+   picture -- which is set on this element and covers what is here -- the ground is the painting
+   the door is set in, without the wordmark: the name belongs on the way in, not on the desk you
+   work at. It used to be a faint ruling, which was the old brand and read as an empty grid. */
 .om-wall {
 	position: fixed;
 	inset: 0;
 	z-index: 0;
-	background-color: var(--om-bg-darker, #16191b);
+	background-color: var(--om-bg-darker, #f2e4cd);
+	background-image: url("../media/ground/temple-wide.webp");
 	background-position: center center;
 	background-size: cover;
 	background-repeat: no-repeat;
 	pointer-events: none;
 }
-/* A machine with no wallpaper is not a machine with a black screen. The image is
-   the top layer, so when there is none -- no Omarchy, or nobody has chosen one --
-   what shows through is the ruled ground the rest of Locus stands on. It is drawn
-   here rather than on the image layer so that choosing a picture covers it. */
-.om-wall::after {
-	content: "";
-	position: absolute;
-	inset: 0;
-	background-image:
-		linear-gradient(rgba(235, 231, 220, .05) 1px, transparent 1px),
-		linear-gradient(90deg, rgba(235, 231, 220, .05) 1px, transparent 1px);
-	background-size: 12px 24px;
-	z-index: -1;
+/* A phone is taller than it is wide, and the landscape crop would put the machine off the edge. */
+@media (max-aspect-ratio: 1/1) {
+	.om-wall { background-image: url("../media/ground/temple-tall.webp"); }
 }
 
 /* ---- the pager: one slot per open application ---- */
@@ -200,7 +195,7 @@ body.shell-empty #locus-world.om-pager { pointer-events: none; }
 /* ---- the application sheet ---- */
 
 .om-sheet { position: fixed; inset: 0; z-index: 60; display: grid; align-items: end; }
-.om-sheet-back { position: absolute; inset: 0; background: color-mix(in srgb, #000 55%, transparent); }
+.om-sheet-back { position: absolute; inset: 0; background: color-mix(in srgb, var(--ink, #2a1a10) 45%, transparent); }
 .om-sheet-list {
 	position: relative;
 	margin: 0 var(--om-gap) calc(var(--om-bar-h) + var(--om-gap) + env(safe-area-inset-bottom, 0px));

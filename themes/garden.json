@@ -2,18 +2,18 @@
 	"$schema": "https://raw.githubusercontent.com/earendil-works/pi/main/packages/coding-agent/src/modes/interactive/theme/theme-schema.json",
 	"name": "garden",
 	"vars": {
-		"orange": "#f27722",
-		"working": "#e58a52",
-		"bg": "#24292c",
-		"band": "#32383c",
-		"text": "#d9dfe2",
-		"bright": "#eef1f3",
-		"muted": "#808080",
-		"dim": "#454a4d",
-		"selected": "#49372a",
-		"error": "#cc6666",
-		"errorBg": "#3c2828",
-		"green": "#a9b665"
+		"orange": "#d9451a",
+		"working": "#a8532a",
+		"bg": "#f7f0e2",
+		"band": "#ebdfc7",
+		"text": "#3a2618",
+		"bright": "#1e120a",
+		"muted": "#8a7259",
+		"dim": "#c6b299",
+		"selected": "#f2d9c4",
+		"error": "#a8320f",
+		"errorBg": "#f4ded4",
+		"green": "#5d6b33"
 	},
 	"colors": {
 		"accent": "orange",
@@ -74,8 +74,8 @@
 		"bashMode": "working"
 	},
 	"export": {
-		"pageBg": "#24292c",
-		"cardBg": "#32383c",
-		"infoBg": "#49372a"
+		"pageBg": "#f7f0e2",
+		"cardBg": "#ebdfc7",
+		"infoBg": "#f2d9c4"
 	}
 }

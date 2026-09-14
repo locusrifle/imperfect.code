@@ -6,10 +6,26 @@ html:has(body.locusrifle),
 body.locusrifle {
   touch-action: none;
   overscroll-behavior: none;
-  --scene-void: var(--om-bg, #101315);
-  --accent: var(--om-accent, var(--orange, #f27722));
-  --strand-a: var(--om-muted, #434b4f);
-  --strand-b: var(--om-accent, #f27722);
+  /* Omarchy supplied these until it was removed on 2026-09-14, and every use of them across the
+     shell fell back to a dark literal invented on the spot -- which is why the machine still
+     looked like a different product from the door. They are the brand's now, and they are set
+     here once, so no fallback below is ever reached and there is one place to change them. */
+  --om-bg: var(--panel);
+  --om-bg-dark: var(--panel-raised);
+  --om-bg-darker: var(--paper);
+  --om-fg: var(--panel-text);
+  --om-fg-bright: var(--panel-bright);
+  --om-fg-dim: var(--panel-rule);
+  --om-muted: var(--muted);
+  --om-accent: var(--orange);
+  --om-selection: var(--panel-band);
+  --om-border: var(--orange);
+  --om-border-idle: var(--panel-rule);
+
+  --scene-void: var(--om-bg);
+  --accent: var(--om-accent);
+  --strand-a: var(--om-muted);
+  --strand-b: var(--om-accent);
   --major: var(--locus-grid-major, 24px);
   --tui-pageBg: var(--scene-void);
   --tui-cardBg: var(--om-bg-dark, color-mix(in srgb, var(--scene-void) 88%, #fff));
@@ -403,8 +419,8 @@ body[data-bar="top"] #knowledge-graph-host {
   appearance: none;
   -webkit-appearance: none;
   background: var(--tui-pageBg, var(--garden, transparent));
-  color: #fff;
-  box-shadow: inset 0 0 0 1px var(--tui-border, rgba(255, 255, 255, 0.28));
+  color: var(--tui-text, var(--ink));
+  box-shadow: inset 0 0 0 1px var(--tui-border, var(--panel-rule));
   cursor: pointer;
   overflow: hidden;
   text-align: center;
@@ -414,7 +430,7 @@ body[data-bar="top"] #knowledge-graph-host {
 #knowledge-cards .node.opened,
 #knowledge-cards .node.expanded {
   background: var(--tui-pageBg, var(--garden, transparent));
-  color: #fff;
+  color: var(--tui-text, var(--ink));
 }
 #knowledge-cards .node.missing { opacity: 0.55; }
 #knowledge-cards .node.expanded {
@@ -428,7 +444,7 @@ body[data-bar="top"] #knowledge-graph-host {
   outline-offset: 2px;
 }
 #knowledge-cards .node-label {
-  color: #fff;
+  color: var(--tui-text, var(--ink));
   font-family: ui-monospace, monospace;
   font-size: calc(var(--locus-grid-major, 24px) * 0.5);
   line-height: 1.15;
@@ -445,7 +461,7 @@ body[data-bar="top"] #knowledge-graph-host {
 #knowledge-cards .node.expanded .node-label { display: none; }
 #knowledge-cards .node-body {
   display: none;
-  color: #fff;
+  color: var(--tui-text, var(--ink));
   overflow: auto;
   flex: 1;
   text-align: left;
@@ -465,8 +481,8 @@ body[data-bar="top"] #knowledge-graph-host {
   width: var(--locus-grid-major, 24px);
   height: var(--locus-grid-major, 24px);
   border: 0;
-  background: var(--tui-accent, #c45c26);
-  color: #fff;
+  background: var(--tui-accent, var(--orange));
+  color: var(--paper);
   cursor: pointer;
   pointer-events: auto;
 }
@@ -485,7 +501,7 @@ body[data-bar="top"] #knowledge-graph-host {
   font: inherit;
   text-decoration: underline;
 }
-.knowledge-error { color: #fff; }
+.knowledge-error { color: var(--tui-error, var(--pi-error)); }
 
-/* The drop and the phone keys sit on a black canvas. */
+/* The drop and the phone keys sit on the painting. */
 

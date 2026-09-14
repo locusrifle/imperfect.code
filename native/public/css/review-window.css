@@ -9,7 +9,7 @@
   grid-template-rows: minmax(0, 1fr);
   margin: 0;
   padding: 0;
-  background: var(--om-bg, #000);
+  background: var(--om-bg, #f7f0e2);
   color: var(--om-fg, #eee);
   border: 0;
   box-shadow: none;
@@ -23,7 +23,7 @@
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: var(--om-bg, #000);
+  background: var(--om-bg, #f7f0e2);
   border: 0;
 }
 .review-panel .review-stage {
@@ -103,7 +103,7 @@
   height: 100%;
   border: 0;
   overflow: auto;
-  background: var(--om-bg, #000);
+  background: var(--om-bg, #f7f0e2);
 }
 
 /* Close sits in the window, always reachable: closing is the way out now that
@@ -137,7 +137,7 @@
   min-height: 28px;
   border: 1px solid var(--om-accent, var(--pi-accent, #f27722));
   border-radius: 3px;
-  background: color-mix(in srgb, var(--om-bg-darker, #000) 72%, transparent);
+  background: color-mix(in srgb, var(--om-bg-darker, #f2e4cd) 78%, transparent);
   color: inherit;
   font: inherit;
   letter-spacing: 0.04em;

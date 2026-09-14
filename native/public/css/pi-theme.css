@@ -1,31 +1,33 @@
-/* Edit this file to retune the drop. Orange on the lighter brand grey.
-   The terminal's own names are held here, but the ones that belong to the
-   garden's palette -- the panel it sits on, the ink it writes in, the ground it
-   drops over -- are aliases of the tokens in garden.css, so the dark scheme
-   is defined in exactly one place and reaches here whatever order the
-   stylesheets happen to load in. What stays literal below is panel-internal and
-   the same in both schemes: it is always light type on a dark surface. */
+/* Edit this file to retune the drop. Ember on marble: the console is lit by the painting it
+   drops over rather than by a dark editor, so the whole environment reads as one room.
+   The terminal's own names are held here, but the ones that belong to the garden's palette --
+   the panel it sits on, the ink it writes in, the ground it drops over -- are aliases of the
+   tokens in garden.css, which in turn track themes/garden.json, so a colour is decided once and
+   reaches here whatever order the stylesheets happen to load in. What stays literal below is
+   panel-internal: the few roles the TUI theme has no name for. */
 :root {
-  --pi-bg: var(--tui-pageBg, #24292c);
-  --pi-bg-raised: var(--tui-cardBg, var(--tui-pageBg, #24292c));
+  --pi-bg: var(--tui-pageBg, #f7f0e2);
+  --pi-bg-raised: var(--tui-cardBg, var(--tui-pageBg, #f2e7d3));
   --pi-text: var(--panel-text);
   --pi-text-bright: var(--panel-bright);
-  --pi-muted: #808080;
+  --pi-muted: #8a7259;
   --pi-dim: var(--panel-rule);
   --pi-accent: var(--orange);
-  --pi-cursor: #ffffff;
+  /* The caret is the darkest ink on the page rather than the lightest: on marble, white is the
+     one colour that disappears. */
+  --pi-cursor: #1e120a;
   --pi-user: var(--panel-band);
   --pi-tool: var(--panel-raised);
   --pi-tool-ok: var(--panel-raised);
-  --pi-tool-error: #3c2828;
-  --pi-error: #cc6666;
-  --pi-working: #e58a52;
+  --pi-tool-error: #f4ded4;
+  --pi-error: #a8320f;
+  --pi-working: #a8532a;
   --pi-rule: var(--pi-accent);
   --garden: var(--paper);
   --garden-ink: var(--panel);
-  --garden-line: #252f3d;
+  --garden-line: rgba(66, 40, 24, .16);
   --note-bg: var(--panel-raised);
-  --note-border: #3a4144;
+  --note-border: #d9cbb2;
   --font-pi: "Commit Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --font-pi-ui: "Departure Mono", var(--font-pi);
 }
