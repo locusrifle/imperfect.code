@@ -33,13 +33,15 @@ The unit runs as `imperfect` without sudo. ExecStart uses `/opt/imperfect/runtim
 
 - Allowlisted release pack that cannot omit `index.html` / `files.html` / `antiburn.html` / `stock.html`
 - Official Node tarball digest pin; laptop Node is not copied
-- Atomic `current` symlink, health check, rollback that does not touch `data/`
-- Unprivileged tests with a fake service runner
+- Atomic `current` symlink; activation always **restarts** the unit (not `enable --now`); health check; rollback that does not touch `data/`
+- Unprivileged tests with a fake service runner, plus a unit test that refuses `enable --now`
 - Real `start.mjs` subprocess health and origin refusals
+- Live Box root install on `bx_mu5ts46y`: isolation, phone and desktop browser, restart, upgrade, failed-upgrade rollback, snapshot stop/resume. Details and limits: [verification.md](verification.md)
 
 ## Not ready here
 
-- Root install on vaita (no sudo). Parent can stage, not activate a dedicated user.
-- Live Box install (parent owns `bx_mu5ts46y` after review)
-- Desktop capability, billing, key rotation, customer template proof
+- Dedicated-user isolation on vaita (no root). Artifact staged, workshop left running. See [operations.md](operations.md).
+- Ingress password gate and a durable fronting proxy (loopback is not reachable from the Box edge)
+- Product backup command (data is restorable by ordinary tar; that is not a feature)
+- Desktop capability, billing, fleet-key rotation, a real model-authenticated customer journey
 - Browser-test failures inherited from the imported shell (not fixed in this pass)

@@ -46,7 +46,7 @@ node install/imperfect.mjs pack --out /tmp/imperfect-release.tar.gz
 sudo node install/imperfect.mjs update --artifact /tmp/imperfect-release.tar.gz --prefix /opt/imperfect
 ```
 
-Workspace, sessions, and the Pi profile are left in `/opt/imperfect/data`. A failed health check restores `current` to the previous release and restarts it. There is no destructive data restore.
+Workspace, sessions, and the Pi profile are left in `/opt/imperfect/data`. Activation **restarts** the unit; `enable --now` is not used, because it would leave a running process serving the old release. A failed health check restores `current` to the previous release and restarts it. There is no destructive data restore.
 
 ## Rollback
 
@@ -69,6 +69,19 @@ This does not create the `imperfect` user or a system unit. It is not OS isolati
 
 ## Preserve on vaita
 
-The live Pi profile is `~/.pi/locus` with real provider auth. Do not reset it. When root is available, copy that profile into `/opt/imperfect/data/agent` as user `imperfect`, then point the unit at it. Parent cannot do that activation yet.
+The live Pi profile is `~/.pi/locus` with real provider auth. Do not reset it. Do not copy it into a customer template.
+
+A reviewed migration bundle is staged, not activated:
+
+```text
+vaita:/home/dacre/imperfect-staging/20260914T025517Z/
+  imperfect-migration.tar.gz     sha256 39972f0c73aab531151d0310737db3b4d1ffa6627e5ee27f4144e5893062467f
+  ADMIN-RUN-AS-ROOT.sh           written, not run
+  before.txt                     workshop health at staging time
+```
+
+An administrator with real root runs `sudo bash ADMIN-RUN-AS-ROOT.sh`. That installs on **port 5068** so the existing `locus-machine` user unit on 5067 is left running. There is no cutover in that script. Root's `PATH` must include a Node binary new enough to run the installer (vaita's dacre Node is v22.22.0). The installer then fetches and pins official Node 22.23.2 under `/opt/imperfect/runtime`.
+
+When root is available and a cutover is intended, copy `~/.pi/locus` into `/opt/imperfect/data/agent` as user `imperfect` as a deliberate step, then point the unit at it. A same-uid user service is not isolation and is not a substitute.
 
 Desktop streaming is pending; leave it off.

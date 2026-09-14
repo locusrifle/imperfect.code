@@ -113,7 +113,9 @@ socket is denied. The existing workshop runs as a **user** service (`locus-machi
 `dacre`), which does not meet the isolation boundary above. Faking it with a same-uid service
 would not be isolation, so it is not offered.
 
-The reviewed artifact and an exact root command are **staged** on vaita; an administrator runs
-them. The existing unit is left running and untouched until then. Noah's authenticated Pi
-profile at `~/.pi/locus` must be preserved and must **never** be copied into a customer
-template.
+The reviewed artifact and an exact root command are **staged** at
+`vaita:/home/dacre/imperfect-staging/20260914T025517Z` (digest `39972f0c…`, `ADMIN-RUN-AS-ROOT.sh`
+written but not run). It would install on port **5068** so `locus-machine` on 5067 stays up.
+The existing unit is left running and untouched until an administrator with real root runs that
+script. Noah's authenticated Pi profile at `~/.pi/locus` must be preserved and must **never**
+be copied into a customer template.
