@@ -11,7 +11,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   REQUIRED_PAGES, createMockRunner, installMachine, listArtifact,
-  packRelease, packTree, renderUnit, rollbackRelease, verifyRuntimeTarball,
+  packRelease, packTree, renderUnit, rollbackRelease, systemdActivation,
+  verifyRuntimeTarball,
 } from '../install/imperfect.mjs';
 import { NODE_RUNTIME, paths, readConfig } from '../machine.mjs';
 
@@ -183,4 +184,19 @@ test('clean fixture install, wrong origin/host, sentinel survives update, failed
     await rm(good.root, { recursive: true, force: true });
     await rm(good.outDir, { recursive: true, force: true });
   }
+});
+
+test('root activation restarts the unit, so an update cannot silently keep the old release', () => {
+  const argvs = systemdActivation('imperfect.service');
+  const words = argvs.map(argv => argv.join(' '));
+  assert.deepEqual(words, [
+    'systemctl daemon-reload',
+    'systemctl enable imperfect.service',
+    'systemctl restart imperfect.service',
+  ]);
+  // `enable --now` is the trap: it only starts a *stopped* unit, so on an update the old
+  // process keeps serving while `current` already points at the new release — and the health
+  // check passes against the stale process, so the rollback never fires.
+  assert.ok(!words.some(w => w.includes('--now')), 'enable --now must not be used');
+  assert.ok(words.some(w => w.startsWith('systemctl restart')), 'activation must restart');
 });

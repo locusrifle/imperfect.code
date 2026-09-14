@@ -322,6 +322,22 @@ export async function rollbackRelease({ prefix, runner, config, healthTimeoutMs 
   return { current: previous, previous: current, health };
 }
 
+// The activation sequence, exported so it can be asserted without a real service manager.
+//
+// `systemctl enable --now` only *starts* a unit that is stopped. On an update the unit is
+// already active, so systemd would do nothing: `current` advances to the new release while the
+// running process keeps serving the old code from memory, and the health check then passes
+// against that old process. The upgrade reports success, never actually upgrades, and never
+// trips its own rollback. So the restart is unconditional — it also starts the unit on a
+// first install, which is why `--now` is not needed at all.
+export function systemdActivation(unit = 'imperfect.service') {
+  return [
+    ['systemctl', 'daemon-reload'],
+    ['systemctl', 'enable', unit],
+    ['systemctl', 'restart', unit],
+  ];
+}
+
 function ensureUser(name, home) {
   const probe = spawnSync('id', ['-u', name], { encoding: 'utf8' });
   if (probe.status === 0) return;
@@ -430,8 +446,7 @@ export async function installMachine(opts = {}) {
     if (existsSync(p.runtime)) run(['chown', '-R', 'root:root', p.runtime]);
     run(['chown', 'root:root', p.config]);
     await writeUnit({ prefix, user, unitPath: opts.unitPath || p.unit });
-    run(['systemctl', 'daemon-reload']);
-    run(['systemctl', 'enable', '--now', 'imperfect.service']);
+    for (const argv of systemdActivation()) run(argv);
   } else if (opts.runner) {
     await opts.runner.restart(prefix);
   }
