@@ -19,6 +19,7 @@ test('environment names the two trees and wikilinks apps', () => {
   assert.match(environment, /\/opt\/imperfect\/data/);
   assert.match(environment, /Not only a coding assistant/);
   assert.match(environment, /\[\[apps\]\]/);
+  assert.match(environment, /\[\[snapshot\]\]/);
 });
 
 test('Pi tools stay after the environment opening', () => {

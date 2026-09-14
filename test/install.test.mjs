@@ -88,6 +88,7 @@ test('product pack includes every shell page and no workspace files', async () =
   assert.ok(names.includes('machine.mjs'));
   assert.ok(names.includes('environment.md'));
   assert.ok(names.includes('apps.md'));
+  assert.ok(names.includes('snapshot.md'));
   assert.ok(names.includes('extensions/locus-environment/index.ts'));
   assert.ok(names.includes('native/environment-prompt.mjs'));
   assert.ok(names.includes('package-lock.json'));
