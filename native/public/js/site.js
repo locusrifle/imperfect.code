@@ -178,6 +178,7 @@ const pi = mountGueyPi({
 	hooks: {
 		onDraftChange: grow,
 		onIncomingShare: openHarness,
+		onReveal: openHarness,
 		canFocus: () => isHarnessOpen() && !isPhone(),
 		onEscapeIdle: closeHarness,
 		onGraph: () => { knowledge.open(); },

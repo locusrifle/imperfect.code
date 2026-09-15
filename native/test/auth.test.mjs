@@ -138,15 +138,33 @@ test('browser first-run, subscription prompts, safe links, secret handling, relo
   try {
     await page.goto(`http://127.0.0.1:${address.port}`);
     await page.waitForSelector('#guey-auth[open]');
+    // These two lines used to assert stock Pi's light and dark TUI grounds, on a server that
+    // has served the imperfect composition since it became the default. That composition is
+    // one painting made in daylight for everybody: a dark scheme underneath would be a second
+    // brand nobody chose, turning up for whoever has their phone set that way.
+    const ground = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     await page.emulateMedia({ colorScheme: 'light' });
-    assert.equal(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), 'rgb(235, 231, 228)');
+    assert.equal(await ground(), 'rgb(242, 228, 205)');
     await page.emulateMedia({ colorScheme: 'dark' });
-    assert.equal(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), 'rgb(22, 29, 39)');
+    assert.equal(await ground(), 'rgb(242, 228, 205)');
+    // The first thing a new machine shows wears the brand, not the browser's own paper.
+    const panel = await page.evaluate(() => {
+      const s = getComputedStyle(document.querySelector('#guey-auth'));
+      return { bg: s.backgroundColor, rule: s.borderTopColor, radius: s.borderTopLeftRadius, font: s.fontFamily };
+    });
+    assert.equal(panel.bg, 'rgb(247, 240, 226)');
+    assert.equal(panel.rule, 'rgb(217, 69, 26)');
+    assert.equal(panel.radius, '0px');
+    assert.match(panel.font, /Commit Mono/);
+    // And it greets the owner by the name of the thing they bought.
+    assert.match(await page.locator('#guey-auth .auth-eyebrow').textContent(), /IMPERFECT COMPUTERS/);
+    assert.doesNotMatch(await page.locator('#guey-auth').textContent(), /Guey/);
     assert.equal(f.control.calls, 0);
     await page.getByRole('button', { name: 'Use a subscription / sign in', exact: true }).click();
+    assert.equal(f.control.calls, 0, 'listing providers must not begin authorization');
+    // Naming the provider is the consent boundary and also the last step: pressing it goes
+    // forward into that provider's flow rather than to a second page repeating its name.
     await page.getByRole('button', { name: /Guey test subscription/ }).click();
-    assert.equal(f.control.calls, 0, 'confirmation before starting provider authorization');
-    await page.getByRole('button', { name: /Use a subscription/ }).click();
     await page.waitForSelector('#auth-answer');
     const links = await page.locator('#guey-auth a').evaluateAll(nodes => nodes.map(n => ({ href: n.href, rel: n.rel })));
     assert.ok(links.every(l => l.href.startsWith('https://example.invalid/') && l.rel.includes('noopener')));
@@ -158,12 +176,12 @@ test('browser first-run, subscription prompts, safe links, secret handling, relo
     await page.reload();
     await page.waitForSelector('#guey-auth label:has-text("Paste test authorization code")');
     await page.fill('#auth-answer', 'browser-code-INPUT'); await page.locator('#guey-auth button[type=submit]').click();
-    await page.getByRole('button', { name: 'Choose a model', exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Choose a default model', exact: true }).waitFor();
     const storage = await page.evaluate(() => JSON.stringify(localStorage));
     assert.ok(!storage.includes('browser-secret-INPUT')); assert.ok(!storage.includes('browser-code-INPUT'));
     assert.ok(!(await page.content()).includes('fixture-access-SECRET'));
     assert.ok(requests.every(url => url.startsWith(`http://127.0.0.1:${address.port}/`)), 'no provider URLs opened automatically');
-    await page.getByRole('button', { name: 'Choose a model', exact: true }).click();
+    await page.getByRole('button', { name: 'Choose a default model', exact: true }).click();
     await page.locator('.entry-dialog-option', { hasText: 'guey-test/fixture-model' }).click();
     await page.waitForSelector('#entry-pi-label:has-text("fixture-model")');
     await page.fill('#entry-input', '/login guey-test'); await page.press('#entry-input', 'Enter');

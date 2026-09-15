@@ -545,3 +545,141 @@ body.guey-tui #entry-thinking {
   font-size: 0.9em;
 }
 .session-rail-item.active .session-rail-title { color: var(--tui-accent, var(--pi-accent, #f27722)); }
+
+/* ---- signing in ----------------------------------------------------------
+   The first thing a new machine shows was the only surface still wearing the
+   browser's own paper: a white box with a border-radius, system-font headings
+   and chrome buttons, in the middle of a product built on cream, vermilion and
+   one character cell. It is the harness's own dialog idiom now -- flat rows, a
+   ">" on the row under the hand, one accent, nothing rounded -- and it reads
+   its colours from the tokens above, so stock Pi keeps its TUI theme and the
+   imperfect machine keeps the painting's palette without a second sheet. */
+.guey-auth {
+  --auth-paper: var(--panel, var(--paper, var(--tui-pageBg, #f7f0e2)));
+  --auth-ink: var(--panel-text, var(--ink, var(--tui-text, #3a2618)));
+  --auth-bright: var(--panel-bright, var(--pi-text-bright, var(--auth-ink)));
+  --auth-accent: var(--orange, var(--pi-accent, var(--tui-accent, #d9451a)));
+  --auth-muted: var(--pi-muted, var(--muted, var(--tui-muted, #8a7259)));
+  --auth-cell: var(--ic-grid-major, 24px);
+  box-sizing: border-box;
+  width: min(52ch, calc(100vw - 2 * var(--auth-cell)));
+  max-height: calc(100dvh - 2 * var(--auth-cell));
+  margin: auto;
+  padding: var(--auth-cell);
+  overflow-y: auto;
+  background: var(--auth-paper);
+  color: var(--auth-ink);
+  border: 1px solid var(--auth-accent);
+  border-radius: 0;
+  box-shadow: none;
+  font-family: "Commit Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: clamp(0.72rem, 1.6vw, 0.85rem);
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+/* showModal() focuses the dialog itself, and the UA draws its focus ring around the whole
+   panel -- a black frame outside the vermilion rule, which is what made the box read as
+   browser chrome. The ring belongs on the row or field under the hand, not on the paper. */
+.guey-auth:focus, .guey-auth:focus-visible { outline: none; }
+/* No wash over the painting: the panel carries its own paper, so the ground only darkens. */
+.guey-auth::backdrop { background: color-mix(in srgb, #2a1a10 46%, transparent); }
+.guey-auth .auth-eyebrow {
+  display: block;
+  margin-bottom: calc(var(--auth-cell) / 2);
+  color: var(--auth-muted);
+  font-size: 0.8em;
+  text-transform: uppercase;
+}
+.guey-auth h1 {
+  margin: 0 0 calc(var(--auth-cell) / 3);
+  color: var(--auth-bright);
+  font: inherit;
+  font-size: 1.3em;
+  font-weight: 400;
+}
+.guey-auth .auth-subtitle { margin: 0 0 var(--auth-cell); color: var(--auth-muted); }
+.guey-auth p { margin: 0 0 calc(var(--auth-cell) / 2); }
+.guey-auth .auth-feedback:empty { display: none; }
+.guey-auth .auth-feedback { margin: calc(var(--auth-cell) / 2) 0 0; color: var(--auth-muted); }
+
+/* A row is a line of the list, not a raised key. The marker is the cursor. */
+.guey-auth .auth-body button,
+.guey-auth .auth-provider {
+  display: block;
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 3px 0 3px 2ch;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  color: var(--auth-bright);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.guey-auth .auth-body button:hover,
+.guey-auth .auth-body button:focus-visible { color: var(--auth-accent); outline: none; }
+.guey-auth .auth-body button:not([type="submit"]):hover::before,
+.guey-auth .auth-body button:not([type="submit"]):focus-visible::before { content: ">"; position: absolute; left: 0; color: var(--auth-accent); }
+.guey-auth .auth-provider small { display: block; color: var(--auth-muted); font: inherit; }
+.guey-auth .auth-provider-list { margin-top: calc(var(--auth-cell) / 3); }
+
+.guey-auth input, .guey-auth select {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0 0 calc(var(--auth-cell) / 2);
+  padding: 2px 0;
+  background: none;
+  color: inherit;
+  border: 0;
+  border-bottom: 1px solid var(--auth-muted);
+  border-radius: 0;
+  font: inherit;
+}
+.guey-auth input:focus, .guey-auth select:focus { outline: none; border-bottom-color: var(--auth-accent); }
+.guey-auth label { display: block; margin-bottom: calc(var(--auth-cell) / 4); color: var(--auth-muted); }
+.guey-auth a { color: var(--auth-accent); text-underline-offset: 2px; }
+.guey-auth .auth-device-code {
+  display: inline-block;
+  margin: calc(var(--auth-cell) / 4) 0;
+  padding: 2px 1ch;
+  background: color-mix(in srgb, var(--auth-accent) 12%, transparent);
+  color: var(--auth-bright);
+  font: inherit;
+  font-size: 1.2em;
+}
+.guey-auth .auth-event { margin-bottom: calc(var(--auth-cell) / 3); }
+
+/* The ways out sit on a rule at the foot, as words rather than keys. */
+.guey-auth .auth-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 2ch;
+  margin-top: var(--auth-cell);
+  padding-top: calc(var(--auth-cell) / 2);
+  border-top: 1px solid color-mix(in srgb, var(--auth-ink) 18%, transparent);
+}
+.guey-auth .auth-actions:empty { display: none; }
+.guey-auth .auth-actions button,
+.guey-auth .auth-prompt button[type="submit"] {
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  color: var(--auth-accent);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.guey-auth .auth-actions button:disabled,
+.guey-auth .auth-prompt button[type="submit"]:disabled { color: var(--auth-muted); cursor: default; }
+/* A finger needs a target even where a word is the button. */
+@media (pointer: coarse) {
+  .guey-auth .auth-body button, .guey-auth .auth-provider { padding-top: 8px; padding-bottom: 8px; }
+  .guey-auth .auth-actions { gap: 0 3ch; }
+  .guey-auth .auth-actions button { padding: 8px 0; }
+}

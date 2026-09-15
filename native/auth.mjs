@@ -52,7 +52,7 @@ export function createAuth({ models, changed, assertIdle, timeoutMs = 10 * 60 * 
     assertIdle();
     const provider = providers().find(p => p.id === providerId) ?? (logout ? { id: providerId, name: providerId } : null);
     if (!provider) throw new Error('Unknown login provider');
-    if (!logout && !provider.methods.some(m => m.type === method && !m.ambient)) throw new Error('Unsupported login method; ambient credentials are configured outside Guey');
+    if (!logout && !provider.methods.some(m => m.type === method && !m.ambient)) throw new Error('Unsupported login method; ambient credentials are configured outside this console');
     const current = { controller: new AbortController(), pending: null, done: null };
     flow = current;
     state = { id: randomUUID(), status: 'working', providerId, providerName: provider.name, method, prompt: null, events: [], message: logout ? 'Removing stored credentials…' : 'Starting Pi sign-in…' };
@@ -64,7 +64,7 @@ export function createAuth({ models, changed, assertIdle, timeoutMs = 10 * 60 * 
         if (logout) await runtime.logout(providerId, { signal: current.controller.signal });
         else await runtime.login(providerId, method, { signal: current.controller.signal, prompt: p => prompt(p, current), notify: e => notify(e, current) });
         state.status = 'success';
-        state.message = logout ? 'Stored credentials removed. Environment and cloud credentials are unchanged.' : 'Signed in. Credentials saved in Guey’s profile. Choose a model to begin.';
+        state.message = logout ? 'Stored credentials removed. Environment and cloud credentials are unchanged.' : 'Signed in. Credentials saved in this console’s own profile.';
         // The same supported catalog refresh used after terminal Pi login. This
         // fetches metadata only, not a model turn; failure cannot undo login.
         if (!logout) {
@@ -73,16 +73,16 @@ export function createAuth({ models, changed, assertIdle, timeoutMs = 10 * 60 * 
           try {
             const result = await runtime.refresh({ providers: [providerId], allowNetwork: true, signal: refreshSignal });
             state.message = result.aborted || result.errors.size
-              ? 'Signed in, but the model list could not be refreshed. Choose a cached model or retry later.'
-              : 'Signed in. Choose a model to begin.';
-          } catch { state.message = 'Signed in, but the model list could not be refreshed. Choose a cached model or retry later.'; }
+              ? 'Signed in, but the model list could not be refreshed. A cached model is used until it can be.'
+              : 'Signed in.';
+          } catch { state.message = 'Signed in, but the model list could not be refreshed. A cached model is used until it can be.'; }
         }
       } catch (error) {
         // A cancellation racing the commit can leave saved credentials. Pi tells
         // us explicitly; don't misreport that as an unsaved/cancelled login.
         if (error instanceof CredentialSynchronizationError) {
           state.status = 'warning';
-          state.message = logout ? 'Credentials removed, but local model state could not be updated. Restart Guey.' : 'Credentials saved, but local model state could not be updated. Restart Guey; do not repeat sign-in blindly.';
+          state.message = logout ? 'Credentials removed, but local model state could not be updated. Restart this console.' : 'Credentials saved, but local model state could not be updated. Restart this console; do not repeat sign-in blindly.';
         } else {
           state.status = current.controller.signal.aborted ? 'cancelled' : 'error';
           // Provider exceptions may contain submitted keys/codes. Never log or

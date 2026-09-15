@@ -64,7 +64,7 @@ export async function createGueyServer(options = {}) {
   const cwd = resolve(options.cwd ?? process.env.GUEY_CWD ?? process.cwd());
   const product = resolveProduct(options);
   const personal = product === 'imperfect';
-  const brand = resolveBrand(options);
+  const brand = resolveBrand({ ...options, product });
   const knowledgeRoot = resolve(options.knowledgeRoot ?? process.env.GUEY_KNOWLEDGE_ROOT ?? (personal ? homedir() : cwd));
   // What the files app is allowed to see. On a laptop this is home and always has been. On a
   // machine imperfect computers hosts, home is where the control plane keeps its secrets, so that deployment
@@ -135,17 +135,20 @@ export async function createGueyServer(options = {}) {
     // own pages, which is how another web project is manifested without a new
     // window kind. A foreign site still cannot frame this console, and
     // default-src 'self' still refuses a foreign page inside one.
-    // A deployment may need to frame exactly one foreign thing: the machine's own desktop stream,
-    // which the supplier serves from its own host. It is named in full rather than wildcarded --
-    // other customers' machines live on that domain too, and `*.on.ascii.dev` would say this page
-    // may frame any of them. Unset, nothing foreign can be framed at all.
-    const frameSrc = String(process.env.GUEY_FRAME_SRC || '').trim();
+    // A deployment may need to frame a foreign desktop stream. Hosted imperfect machines receive
+    // a short-lived supplier URL whose per-Box hostname is not known to this process, so the shell
+    // admits that supplier's desktop origins. This only permits framing: the unguessable URL still
+    // grants access, is fetched from the authenticated door per open, and is never stored here.
+    // Stock deployments remain closed unless they name one exact origin themselves.
+    const frameSrc = personal
+      ? "'self' https://*.on.ascii.dev"
+      : String(process.env.GUEY_FRAME_SRC || '').trim();
     let path;
     try { path = decodeURIComponent(new URL(req.url, 'http://local').pathname); } catch { res.writeHead(400).end('Bad path'); return; }
     // three-doom writes element styles. Scope the extra keyword to that tree, not the shell.
     const doomStyles = path === '/doom/index.html' || path.startsWith('/doom/');
     res.setHeader('Content-Security-Policy', personal
-      ? `default-src 'self'; connect-src 'self'; media-src 'self' blob:; img-src 'self' data: blob:; style-src 'self'${doomStyles ? " 'unsafe-inline'" : ''}; script-src 'self'; frame-ancestors 'self'`
+      ? `default-src 'self'; connect-src 'self'; media-src 'self' blob:; img-src 'self' data: blob:; style-src 'self'${doomStyles ? " 'unsafe-inline'" : ''}; script-src 'self'; frame-src ${frameSrc}; frame-ancestors 'self'`
       : `default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-src ${frameSrc || "'none'"}; frame-ancestors 'none'`);
     if (!validRequest(req)) { res.writeHead(403).end(`Private origin required. This console answers to its own bind, plus GUEY_ORIGINS. Rejected Host: ${req.headers.host ?? '(none)'}${req.headers.origin ? `, Origin: ${req.headers.origin}` : ''}`); return; }
     if (req.method === 'POST' && path !== '/upload') {

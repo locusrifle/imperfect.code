@@ -54,6 +54,10 @@
 </section>
 
 
+<!-- A classic script runs before any module, so the deployment's name is on the window
+     before auth.js reads it. Without this the sign-in dialog fell back to "Guey" -- the
+     foundation's name -- on a machine whose own tab already said imperfect computers. -->
+<script src="/brand.js"></script>
 <script type="module" src="/js/site.js"></script>
 </body>
 </html>

@@ -18,13 +18,20 @@ function loginMethods(options) {
   return device?.length ? device : options;
 }
 
+// Anthropic's terms do not allow a Claude subscription to drive another harness, so offering
+// one here would be selling a door that is not ours to open -- and the warning that used to
+// stand in its place still put Claude on the page as a thing you might subscribe with. The
+// provider keeps its API key method, which is permitted; only the subscription is withheld.
+const UNLICENSED_SUBSCRIPTION = new Set(['anthropic']);
+const offeredMethods = provider => provider.methods.filter(m => !(m.type === 'oauth' && UNLICENSED_SUBSCRIPTION.has(provider.id)));
+
 const BRAND = (typeof window !== 'undefined' && window.GUEY_BRAND) || 'Guey';
 
 export function mountAuth({ command, chooseModel }) {
   const panel = node('dialog', null, 'guey-auth'); panel.id = 'guey-auth';
   panel.setAttribute('aria-labelledby', 'guey-auth-title');
   const title = node('h1', `Welcome to ${BRAND}`); title.id = 'guey-auth-title';
-  const subtitle = node('p', `Your Pi agent. Your account. Credentials stay in ${BRAND}’s own profile.`, 'auth-subtitle');
+  const subtitle = node('p', 'Your Pi agent. Your account. Credentials stay in this machine’s own profile.', 'auth-subtitle');
   const body = node('div', null, 'auth-body');
   const feedback = node('p', '', 'auth-feedback'); feedback.setAttribute('role', 'status');
   const actions = node('div', null, 'auth-actions');
@@ -48,7 +55,7 @@ export function mountAuth({ command, chooseModel }) {
       const pick = models?.find(m => m.provider === providerId) ?? models?.[0];
       if (!pick) return;
       await command('model', { provider: pick.provider, modelId: pick.id });
-      feedback.textContent = `Using ${pick.id}. You can change it any time.`;
+      feedback.textContent = `Default model: ${pick.id}. You can change it any time.`;
     } catch { /* the person can still choose one; this was only a courtesy */ }
     finally { settling = false; }
   }
@@ -91,21 +98,23 @@ export function mountAuth({ command, chooseModel }) {
       send('auth_login', { provider: p.id, method: method.type });
     };
     function showMethods(p) {
-      picker(p.methods.map(m => ({ label: m.label, note: m.name, action: () => begin(p, m) })), p.name,
-        p.id === 'anthropic' ? 'Claude Pro/Max in third-party harnesses uses paid extra usage, not plan limits.' : `Pi handles sign-in; ${BRAND} does not receive your account password.`);
+      const methods = offeredMethods(p);
+      if (!methods.length) { feedback.textContent = `${p.name} cannot be connected from here.`; return; }
+      picker(methods.map(m => ({ label: m.label, note: m.name, action: () => begin(p, m) })), p.name,
+        `Pi handles sign-in; ${BRAND} does not receive your account password.`);
       actions.replaceChildren(button('Back', () => showType()), button('Not now', close));
     }
     function showProviders(type) {
-      picker(providers.filter(p => p.methods.some(m => m.type === type)).map(p => ({
-        label: p.name, note: p.methods.find(m => m.type === type).name + (p.configured ? ' · configured' : ''),
-        action: () => {
-          const method = p.methods.find(m => m.type === type);
-          // Always show method confirmation / billing context before starting.
-          picker([{ label: method.label, note: method.name, action: () => begin(p, method) }], p.name,
-            p.id === 'anthropic' && type === 'oauth' ? 'Claude Pro/Max in third-party harnesses uses paid extra usage, not plan limits.' : 'Continue to the provider’s own Pi sign-in flow.');
-          actions.replaceChildren(button('Back', () => showProviders(type)), button('Not now', close));
-        },
-      })), type === 'oauth' ? 'Use a subscription / sign in' : 'Use an API key');
+      // Picking the provider IS the choice, so it starts that provider's flow. There used to be a
+      // confirmation step here showing the same name over again, whose Back went to the list you
+      // had just come from -- pressing the thing you wanted appeared to return you to where you
+      // already were. Naming a provider is still the consent boundary: nothing is started until
+      // one of these rows is pressed.
+      const rows = providers.flatMap(p => {
+        const method = offeredMethods(p).find(m => m.type === type);
+        return method ? [{ label: p.name, note: method.name + (p.configured ? ' · configured' : ''), action: () => begin(p, method) }] : [];
+      });
+      picker(rows, type === 'oauth' ? 'Use a subscription / sign in' : 'Use an API key');
       actions.replaceChildren(button('Back', showType), button('Not now', close));
     }
     function showType() {
@@ -123,8 +132,8 @@ export function mountAuth({ command, chooseModel }) {
     view = 'picker'; open(); await send('auth_dismiss');
     const providers = await command('auth_accounts');
     picker(providers.map(p => ({ label: p.name, action: () => {
-      picker([{ label: `Remove ${p.name} credentials`, action: () => send('auth_logout', { provider: p.id }) }], 'Sign out?', `Only ${BRAND}’s stored credentials are removed. Environment/cloud credentials remain.`);
-    } })), 'Sign out of a provider', `Only credentials stored in ${BRAND}’s profile can be removed.`);
+      picker([{ label: `Remove ${p.name} credentials`, action: () => send('auth_logout', { provider: p.id }) }], 'Sign out?', 'Only credentials stored on this machine are removed. Environment/cloud credentials remain.');
+    } })), 'Sign out of a provider', 'Only credentials stored in this machine’s own profile can be removed.');
     actions.replaceChildren(button('Close', close));
   }
   function renderFlow() {
@@ -180,7 +189,10 @@ export function mountAuth({ command, chooseModel }) {
         // the status bar still changes it, and this only ever fills an empty choice -- a model
         // already chosen is never overridden underneath somebody.
         settle(state.providerId);
-        actions.append(button('Choose a different model', async () => { close(); await send('auth_dismiss'); chooseModel(); }));
+        // "a different model" asked somebody to differ from a choice they had never made:
+        // the model under it was picked for them a moment earlier by settle(). This names
+        // what the button actually sets.
+        actions.append(button('Choose a default model', async () => { close(); await send('auth_dismiss'); chooseModel(); }));
       }
       if (['error', 'cancelled'].includes(state.status)) actions.append(button('Try again', () => login(state.providerId).catch(fail)));
       actions.append(button('Close', async () => { close(); await send('auth_dismiss'); }));

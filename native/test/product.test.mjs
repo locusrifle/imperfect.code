@@ -29,6 +29,8 @@ test('product resolution: explicit stock vs live imperfect default', () => {
 
 test('a deployment may wear its own name, and only a plain one', async () => {
   assert.equal(resolveBrand({}), 'Guey');
+  // A composition that is sold under its own name must never greet its owner as the foundation.
+  assert.equal(resolveBrand({ product: 'imperfect' }), 'imperfect computers');
   assert.equal(resolveBrand({ brand: 'imperfect computers' }), 'imperfect computers');
   assert.equal(resolveBrand({ brand: '  imperfect computers  ' }), 'imperfect computers');
   // The name reaches a script and a document title, so markup must not survive.
@@ -79,6 +81,10 @@ test('stock shell has no upload control; imperfect index keeps it', async () => 
     assert.doesNotMatch(sHtml, /grid-keys/);
     assert.doesNotMatch(pHtml, /grid-keys/);
     assert.match(pHtml, /entry-files/);
+    // The dialog reads the name off the window before its module runs, so the personal page
+    // must carry brand.js and that script must name this composition, not the foundation.
+    assert.match(pHtml, /src="\/brand\.js"/);
+    assert.match(await (await fetch(pBase + '/brand.js')).text(), /window\.GUEY_BRAND="imperfect computers"/);
     assert.match(pHtml, /accept="audio\/\*,image\/\*,\.m4a/);
     const manifest = await (await fetch(pBase + '/manifest.webmanifest')).json();
     assert.equal(manifest.share_target.action, '/share-target');
@@ -143,8 +149,16 @@ test('stock shell has no upload control; imperfect index keeps it', async () => 
     // the browser no longer talks to a provider directly.
     assert.equal((await fetch(sBase + '/push/vapid')).status, 404);
     assert.equal((await fetch(pBase + '/push/vapid')).status, 404);
-    assert.doesNotMatch((await fetch(pBase + '/')).headers.get('content-security-policy') ?? '', /openai/);
-    assert.match((await fetch(pBase + '/')).headers.get('content-security-policy') ?? '', /img-src[^;]*blob:/);
+    const personalCsp = (await fetch(pBase + '/')).headers.get('content-security-policy') ?? '';
+    assert.doesNotMatch(personalCsp, /openai/);
+    assert.match(personalCsp, /img-src[^;]*blob:/);
+    // The drawer already asks the authenticated door for a fresh desktop URL. The shell must
+    // permit that short-lived per-Box supplier origin to be framed or the tile opens a blank page.
+    assert.match(personalCsp, /frame-src 'self' https:\/\/\*\.on\.ascii\.dev/);
+    const homeJs = await (await fetch(pBase + '/js/imperfect-home.js')).text();
+    assert.match(homeJs, /id: "desktop"/);
+    assert.match(homeJs, /remote: "\/__desktop"/);
+    assert.match(homeJs, /!can\.desktop/);
     assert.doesNotMatch((await fetch(sBase + '/')).headers.get('content-security-policy') ?? '', /openai/);
     assert.doesNotMatch((await fetch(sBase + '/')).headers.get('content-security-policy') ?? '', /blob:/);
     assert.doesNotMatch((await fetch(sBase + '/')).headers.get('content-security-policy') ?? '', /\*/);

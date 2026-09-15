@@ -512,7 +512,9 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 		};
 		next.onerror = () => {};
 	}
-	const auth = mountAuth({ command, chooseModel: () => run('/model') });
+	// The model picker lives inside the drop, and the drop is up when the sign-in dialog closes:
+	// pressing "Choose a default model" opened a list nobody could see. Summon the console first.
+	const auth = mountAuth({ command, chooseModel: () => { hooks.onReveal?.(); run('/model'); } });
 	const fail = error => {
 		const text = error.message ?? String(error);
 		showFlash(text);
