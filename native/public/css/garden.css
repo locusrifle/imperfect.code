@@ -24,6 +24,18 @@ html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background:
 body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
   background: var(--paper) center / cover no-repeat url("../media/ground/temple-wide.webp"); }
 @media (max-aspect-ratio: 1/1) { body::before { background-image: url("../media/ground/temple-tall.webp"); } }
+#startup-intro {
+  position: fixed; z-index: 40; left: 16px; right: 16px; top: 16px;
+  max-width: 28rem; margin: 0 auto; padding: 16px 18px;
+  background: color-mix(in srgb, var(--panel, #f7f0e2) 92%, transparent);
+  color: var(--panel-text, #3a2618); border: 1px solid var(--orange, #d9451a);
+  font-family: ui-sans-serif, system-ui, sans-serif; font-size: 15px; line-height: 1.4;
+}
+#startup-intro .intro-title { margin: 0 0 8px; font-weight: 600; }
+#startup-intro p { margin: 0 0 8px; }
+#startup-intro button { font: inherit; color: var(--orange, #d9451a); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
+html[data-ic-theme="night"] { color-scheme: dark; }
+html[data-ic-theme="night"] #startup-intro { background: color-mix(in srgb, #1a1410 92%, transparent); color: #f2e4cd; }
 #intro { position: fixed; inset: 0; z-index: 9; display: grid; place-items: center; transition: opacity .35s; }
 #intro.gone { opacity: 0; pointer-events: none; }
 [hidden] { display: none !important; }

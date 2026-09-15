@@ -265,7 +265,7 @@ test('port 0 stays on loopback even when the live bind env is set', async () => 
   }
 });
 
-test('package garden theme and auto light/dark follow the OS scheme', async () => {
+test('package garden and night are explicit; a light/dark pair does not follow the OS', async () => {
   const garden = await tuiThemeCss('garden', join(tmpdir(), 'no-such-agent'));
   // The packaged theme is the brand's, and the brand is a painting in daylight: ember on marble.
   // A page this light must also declare itself light, or the browser paints form controls and
@@ -273,9 +273,12 @@ test('package garden theme and auto light/dark follow the OS scheme', async () =
   assert.match(garden, /--tui-accent: #d9451a/);
   assert.match(garden, /--tui-pageBg: #f7f0e2/);
   assert.match(garden, /color-scheme: light/);
+  const night = await tuiThemeCss('night', join(tmpdir(), 'no-such-agent'));
+  assert.match(night, /--tui-pageBg: #1a1410/);
+  assert.match(night, /color-scheme: dark/);
   const auto = await tuiThemeCss('light/dark', join(tmpdir(), 'no-such-agent'));
-  assert.match(auto, /prefers-color-scheme: light/);
-  assert.match(auto, /prefers-color-scheme: dark/);
+  assert.doesNotMatch(auto, /prefers-color-scheme/);
+  assert.match(auto, /--tui-pageBg: #f7f0e2/);
 });
 
 test('theme command previews without writing, persist saves', async () => {

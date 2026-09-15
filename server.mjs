@@ -18,14 +18,30 @@ import { answerEvidence, staleCommandError, tabCloseBusyError } from './native/p
 import { receiveHttpUpload, filenameFromHeader, MAX_UPLOAD_BYTES, UPLOAD_TIMEOUT_MS, OTHER_POST_TIMEOUT_MS } from './native/uploads.mjs';
 import { applyWorldWindow, closeWorldWindow, sanitizeWorldWindow } from './native/world-windows.mjs';
 import { createFiles } from './native/files.mjs';
-import { listApps, resolveAppFile } from './native/apps.mjs';
+import { resolveAppFile } from './native/apps.mjs';
+import { listRegisteredApps, loadOverlayCss } from './native/customization.mjs';
+import { buildIdentity } from './machine.mjs';
 
 export function privateHost(host) {
   if (['127.0.0.1', '::1'].includes(host)) return true;
   const parts = host.split('.').map(Number);
   return parts.length === 4 && parts.every(n => Number.isInteger(n) && n >= 0 && n <= 255) && parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127;
 }
-const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.otf': 'font/otf', '.woff2': 'font/woff2', '.mp3': 'audio/mpeg', '.json': 'application/json', '.webmanifest': 'application/manifest+json' };
+const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.otf': 'font/otf', '.woff2': 'font/woff2', '.mp3': 'audio/mpeg', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.wad': 'application/octet-stream' };
+// Read once at start: the answer cannot change without a new process, and a verification that
+// re-derived it per request would be reporting the filesystem rather than the running code.
+const BUILD = buildIdentity();
+export const LAUNCH_THEMES = Object.freeze(['garden', 'night']);
+
+export function launchThemeFromCookie(header) {
+  const raw = String(header || '');
+  const part = raw.split(';').map(s => s.trim()).find(s => s.startsWith('ic-theme='));
+  if (!part) return '';
+  try {
+    const name = decodeURIComponent(part.slice('ic-theme='.length));
+    return LAUNCH_THEMES.includes(name) ? name : '';
+  } catch { return ''; }
+}
 // Served from a directory, so the stylesheets and fonts of the design system
 // come across whole. Only what resolves inside native/public is readable, and
 // only these types: a traversal or an unknown extension is a 404, not a file.
@@ -87,7 +103,8 @@ export async function createGueyServer(options = {}) {
   catch (e) { await unlink(lockPath); throw e; }
   const clients = new Set();
   const agentDir = resolve(options.agentDir ?? getAgentDir());
-  let themeName = 'light/dark';
+  const uiDir = resolve(options.uiDir ?? process.env.GUEY_UI_DIR ?? join(resolve(agentDir, '..'), 'ui'));
+  let themeName = personal ? 'garden' : 'light/dark';
   let themeRev = 0;
   const uploadMaxBytes = options.uploadMaxBytes ?? MAX_UPLOAD_BYTES;
   const uploadTimeoutMs = options.uploadTimeoutMs ?? UPLOAD_TIMEOUT_MS;
@@ -123,12 +140,14 @@ export async function createGueyServer(options = {}) {
     // other customers' machines live on that domain too, and `*.on.ascii.dev` would say this page
     // may frame any of them. Unset, nothing foreign can be framed at all.
     const frameSrc = String(process.env.GUEY_FRAME_SRC || '').trim();
-    res.setHeader('Content-Security-Policy', personal
-      ? "default-src 'self'; connect-src 'self'; media-src 'self' blob:; img-src 'self' data: blob:; style-src 'self'; script-src 'self'; frame-ancestors 'self'"
-      : `default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-src ${frameSrc || "'none'"}; frame-ancestors 'none'`);
-    if (!validRequest(req)) { res.writeHead(403).end(`Private origin required. This console answers to its own bind, plus GUEY_ORIGINS. Rejected Host: ${req.headers.host ?? '(none)'}${req.headers.origin ? `, Origin: ${req.headers.origin}` : ''}`); return; }
     let path;
     try { path = decodeURIComponent(new URL(req.url, 'http://local').pathname); } catch { res.writeHead(400).end('Bad path'); return; }
+    // three-doom writes element styles. Scope the extra keyword to that tree, not the shell.
+    const doomStyles = path === '/doom/index.html' || path.startsWith('/doom/');
+    res.setHeader('Content-Security-Policy', personal
+      ? `default-src 'self'; connect-src 'self'; media-src 'self' blob:; img-src 'self' data: blob:; style-src 'self'${doomStyles ? " 'unsafe-inline'" : ''}; script-src 'self'; frame-ancestors 'self'`
+      : `default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-src ${frameSrc || "'none'"}; frame-ancestors 'none'`);
+    if (!validRequest(req)) { res.writeHead(403).end(`Private origin required. This console answers to its own bind, plus GUEY_ORIGINS. Rejected Host: ${req.headers.host ?? '(none)'}${req.headers.origin ? `, Origin: ${req.headers.origin}` : ''}`); return; }
     if (req.method === 'POST' && path !== '/upload') {
       const timer = setTimeout(() => {
         if (!res.headersSent) res.writeHead(408).end('timeout');
@@ -210,7 +229,16 @@ export async function createGueyServer(options = {}) {
     if (personal && path === '/apps/list') {
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.setHeader('Cache-Control', 'no-store');
-      res.end(JSON.stringify(await listApps(files.root)));
+      res.end(JSON.stringify((await listRegisteredApps(files.root)).apps));
+      return;
+    }
+    if (personal && path === '/custom/ui.css') {
+      try {
+        const overlay = await loadOverlayCss(uiDir);
+        res.setHeader('Content-Type', 'text/css; charset=utf-8');
+        if (overlay.fallback) res.setHeader('X-Imperfect-UI', 'stock');
+        res.end(overlay.css);
+      } catch { res.writeHead(500).end('ui failed'); }
       return;
     }
     if (personal && path.startsWith('/apps/')) {
@@ -227,6 +255,11 @@ export async function createGueyServer(options = {}) {
     }
     if (path === '/theme.css') {
       try {
+        const fromDoor = launchThemeFromCookie(req.headers.cookie);
+        if (fromDoor) {
+          const settings = await readSettingsFile();
+          if (!settings.theme) await applyTheme(fromDoor, true);
+        }
         const css = await tuiThemeCss(themeName, agentDir);
         res.setHeader('Content-Type', 'text/css; charset=utf-8');
         res.end(css);
@@ -236,7 +269,8 @@ export async function createGueyServer(options = {}) {
         if (path === '/health') {
       const s = runtime.snapshot();
       res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify({ ok: !s.failed, ui: 'native-gui', product, runtime: 'pi-sdk', pid: process.pid, clients: clients.size, cwd: s.cwd, sessionId: s.sessionId, sessionFile: s.sessionFile, busy: s.busy })); return;
+      res.end(JSON.stringify({ ok: !s.failed, ui: 'native-gui', product, runtime: 'pi-sdk',
+        release: BUILD.release, version: BUILD.version, pid: process.pid, clients: clients.size, cwd: s.cwd, sessionId: s.sessionId, sessionFile: s.sessionFile, busy: s.busy })); return;
     }
     if (path === '/graph.json' || path === '/graph/page') {
       if (!personal) { res.writeHead(404).end('Not found'); return; }
@@ -442,7 +476,7 @@ export async function createGueyServer(options = {}) {
   tabs?.events.on('settled', info => emitTurn(info));
   let themeTimer;
   const refreshTheme = async () => {
-    themeName = 'light/dark';
+    themeName = await savedThemeName();
     themeRev++;
     changed();
   };
@@ -457,16 +491,21 @@ export async function createGueyServer(options = {}) {
     }
     try { for (const theme of runtime.session?.resourceLoader?.getThemes()?.themes ?? []) if (theme.name) names.add(theme.name); } catch {}
     const list = [...names].sort();
-    if (names.has('light') && names.has('dark')) list.push('light/dark');
+    // Automatic light/dark follows the device. This product does not: garden and night are chosen.
+    if (!personal && names.has('light') && names.has('dark')) list.push('light/dark');
     return list;
   }
   async function savedThemeName() {
     try { const from = runtime.session?.settingsManager?.getThemeSetting?.(); if (from) return String(from); } catch {}
     try {
       const settings = JSON.parse(await readFile(join(agentDir, 'settings.json'), 'utf8'));
-      if (settings.theme) return String(settings.theme);
+      if (settings.theme) {
+        const named = String(settings.theme);
+        if (personal && named.includes('/')) return 'garden';
+        return named;
+      }
     } catch {}
-    return 'dark';
+    return personal ? 'garden' : 'dark';
   }
   async function persistTheme(name) {
     const sm = runtime.session?.settingsManager;
@@ -493,6 +532,7 @@ export async function createGueyServer(options = {}) {
     return { ...settingsView(next), theme: next.theme ?? themeName };
   }
   async function applyTheme(name, persist) {
+    if (personal && String(name).includes('/')) throw new Error('Theme must be an explicit name');
     const names = await listThemeNames();
     if (!names.includes(name)) throw new Error(`Unknown theme: ${name}`);
     themeName = name;
@@ -501,6 +541,7 @@ export async function createGueyServer(options = {}) {
     changed();
     return { theme: themeName, themeRev, saved: persist ? themeName : await savedThemeName() };
   }
+  try { themeName = await savedThemeName(); } catch {}
   server.on('upgrade', (req, socket, head) => {
     let url;
     try { url = new URL(req.url, 'http://local'); } catch { socket.destroy(); return; }

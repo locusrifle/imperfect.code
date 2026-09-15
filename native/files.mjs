@@ -12,6 +12,7 @@
 // the one where somebody forgets.
 
 import { readdir, stat, readFile, realpath } from 'node:fs/promises';
+import { realpathSync } from 'node:fs';
 import { join, resolve, sep, basename, extname } from 'node:path';
 
 const MAX_ENTRIES = 2000;
@@ -44,8 +45,19 @@ export function contentType(name) {
   return TYPES.get(extname(name).toLowerCase()) ?? (fileKind(name) === 'text' ? 'text/plain' : 'application/octet-stream');
 }
 
+// A root that does not exist yet is kept as spelled rather than refused: the caller creates the
+// data directories, and a files surface that threw here would take the whole machine down with it.
+function realRoot(root) {
+  const resolved = resolve(root);
+  try { return realpathSync(resolved); } catch { return resolved; }
+}
+
 export function createFiles({ root }) {
-  const ROOT = resolve(root);
+  // The root is resolved through symlinks, because the check below compares real paths and a root
+  // spelled as a symlink would fail every one of them. A machine somebody already owns points its
+  // workspace at a directory that was already theirs, which is exactly that case: every path under
+  // it answered 403 "outside the root", including the root itself.
+  const ROOT = realRoot(root);
 
   // A request path is always relative to the root and never escapes it, symlinks
   // included: the real path is checked after resolution, not the spelling.

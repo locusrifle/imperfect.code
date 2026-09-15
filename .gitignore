@@ -10,3 +10,8 @@ imperfect-*.tar.gz
 var/
 local-prefix/
 desktop/src-tauri/target/
+
+# The shareware IWAD the Doom port loads. Kept on disk and packed into a release, but not in git:
+# this product does not claim a license to redistribute it, and a hosted repository is a
+# distribution. docs/doom.md says how to put it back in a fresh clone.
+native/public/doom/doom1.wad

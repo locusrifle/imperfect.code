@@ -4,7 +4,7 @@
 // iOS already ship a keyboard people know, and rebuilding one was the imitation
 // this shell otherwise refuses.
 
-import { grid, bindHarnessKeys } from "./pi-card.js";
+import { grid, bindHarnessKeys, ALT_LABEL } from "./pi-card.js";
 import { mountShell } from "./shell.js";
 import { mountGueyPi } from "./harness.js";
 import { mountKnowledgeGraph } from "./graph.js";
@@ -40,6 +40,7 @@ function closeHarness() {
 }
 function toggleHarness() { isHarnessOpen() ? closeHarness() : openHarness(); }
 
+let desk = null;
 const SWIPE_MIN = 56;
 
 function harnessEdge(node) {
@@ -49,8 +50,12 @@ function harnessEdge(node) {
 let swipe = null;
 
 addEventListener("pointerdown", event => {
-	if (event.button || !harnessEdge(event.target)) return;
-	swipe = { id: event.pointerId, x: event.clientX, y: event.clientY };
+	if (event.button) return;
+	const fromHandle = harnessEdge(event.target);
+	const fromTop = event.clientY < 28;
+	const fromBottom = event.clientY > innerHeight - 56;
+	if (!fromHandle && !fromTop && !fromBottom) return;
+	swipe = { id: event.pointerId, x: event.clientX, y: event.clientY, fromHandle, fromTop, fromBottom };
 	try { event.target.setPointerCapture?.(event.pointerId); } catch { /* not a capturing target */ }
 }, { capture: true });
 
@@ -59,8 +64,9 @@ addEventListener("pointermove", event => {
 	const dx = event.clientX - swipe.x;
 	const dy = event.clientY - swipe.y;
 	if (Math.abs(dy) < SWIPE_MIN || Math.abs(dy) < Math.abs(dx)) return;
-	if (!isHarnessOpen() && dy > 0) openHarness();
-	else if (isHarnessOpen() && dy < 0) closeHarness();
+	if (dy > 0 && (swipe.fromHandle || swipe.fromTop) && !isHarnessOpen()) openHarness();
+	else if (dy < 0 && isHarnessOpen() && (swipe.fromHandle || swipe.fromTop)) closeHarness();
+	else if (dy < 0 && swipe.fromBottom) { closeHarness(); desk?.openSheet(); }
 	swipe = null;
 }, { capture: true });
 
@@ -92,9 +98,28 @@ function grow() {
 // the empty container — which is how the next web project joins this list
 // without a new window kind.
 const APPS = [
-	{ id: "files", title: "files", note: "what is on this computer", window: { kind: "page", src: "/files.html" } },
 	{ id: "antiburn", title: "antiburn", note: "what you are spending", window: { kind: "page", src: "/antiburn.html" } },
+	{ id: "doom", title: "Doom", note: "three-doom", window: { kind: "page", src: "/doom/index.html" } },
+	{ id: "image-lab", title: "Image Lab", note: "placeholder", window: { kind: "page", src: "/image-lab.html" } },
 ];
+
+const LAUNCH_THEMES = new Set(["garden", "night"]);
+
+function readLaunchTheme() {
+	const query = new URLSearchParams(location.search).get("theme");
+	const cookie = document.cookie.split(";").map(p => p.trim()).find(p => p.startsWith("ic-theme="));
+	const fromCookie = cookie ? decodeURIComponent(cookie.slice("ic-theme=".length)) : "";
+	const want = query || fromCookie;
+	return LAUNCH_THEMES.has(want) ? want : "";
+}
+
+function applyDeskTheme(name) {
+	if (!LAUNCH_THEMES.has(name)) return;
+	document.documentElement.dataset.icTheme = name;
+	document.cookie = `ic-theme=${encodeURIComponent(name)}; path=/; max-age=31536000; samesite=lax`;
+}
+
+applyDeskTheme(readLaunchTheme() || "garden");
 
 async function listedApps() {
 	const built = APPS.map(app => ({
@@ -123,7 +148,7 @@ async function listedApps() {
 	return built;
 }
 
-const shell = mountShell({
+const shell = desk = mountShell({
 	world: el("imperfect-world"),
 	apps: listedApps,
 	onError: (error) => console.warn("application did not open", error),
@@ -192,6 +217,60 @@ visualViewport?.addEventListener("resize", () => {
 });
 
 bindHarnessKeys({ onHarness: toggleHarness });
+addEventListener("keydown", event => {
+	if (event.repeat || event.ctrlKey || event.metaKey) return;
+	if (event.altKey && event.code === "KeyW") {
+		// Closes the showing in-platform window: server list + iframe. Apps here are pages,
+		// not child processes, so there is no extra backend pid. Never the harness.
+		event.preventDefault();
+		const id = shell.active();
+		if (id) pi.closeWindow(id);
+		return;
+	}
+	if (event.altKey && event.code === "Space") {
+		event.preventDefault();
+		closeHarness();
+		shell.openSheet();
+	}
+}, true);
+
+function paintIntro() {
+	const box = document.getElementById("startup-intro");
+	if (!box) return;
+	if (localStorage.getItem("ic-shortcuts-seen")) { box.hidden = true; return; }
+	const alt = ALT_LABEL === "OPT" ? "Option" : "Alt";
+	box.hidden = false;
+	box.replaceChildren();
+	const title = document.createElement("p");
+	title.className = "intro-title";
+	title.textContent = "A few reaches";
+	const lines = [
+		`${alt}+Y drops the agent. On a phone, swipe down.`,
+		`${alt}+W closes the app that is showing, and stops it. It never closes the agent.`,
+		`${alt}+Space opens the app drawer. On a phone, swipe up.`,
+	];
+	box.append(title);
+	for (const text of lines) {
+		const p = document.createElement("p");
+		p.textContent = text;
+		box.append(p);
+	}
+	const done = document.createElement("button");
+	done.type = "button";
+	done.textContent = "got it";
+	done.onclick = () => {
+		localStorage.setItem("ic-shortcuts-seen", "1");
+		box.hidden = true;
+	};
+	box.append(done);
+}
+paintIntro();
+
+const launch = readLaunchTheme();
+if (launch) {
+	pi.setTheme(launch, true).catch(() => {});
+}
+
 if (reach) reach.hidden = isHarnessOpen();
 input.addEventListener("input", grow);
 grow();

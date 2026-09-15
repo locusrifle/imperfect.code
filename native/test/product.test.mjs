@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { EventEmitter } from 'node:events';
@@ -224,5 +224,43 @@ test('a snapshot larger than 8MB does not close the websocket', async () => {
   } finally {
     await app.close();
     await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('a workspace reached through a symlink is still the workspace', async () => {
+  // Noah's own machine points its workspace at a directory that was already his, so the prefix
+  // holds a symlink where a customer's Box holds a real directory. The confinement check compares
+  // real paths, so a root spelled as a symlink used to fail every one of them: the files
+  // application answered 403 for the root itself and for every file under it.
+  const dir = await mkdtemp(join(tmpdir(), 'guey-symlink-root-'));
+  const real = join(dir, 'real-workspace');
+  const link = join(dir, 'workspace');
+  await mkdir(join(real, 'notes'), { recursive: true });
+  await writeFile(join(real, 'hello.md'), '# hello\n');
+  await symlink(real, link);
+
+  const state = await mkdtemp(join(tmpdir(), 'guey-symlink-state-'));
+  const app = await createGueyServer({
+    port: 0, host: '127.0.0.1', stateDir: state, runtime: stubRuntime(link),
+    product: 'imperfect', filesRoot: link, knowledgeRoot: link,
+  });
+  try {
+    const { port } = await app.listen();
+    const base = `http://127.0.0.1:${port}`;
+    const home = await (await fetch(base + '/files/list?path=')).json();
+    assert.equal(home.name, '~');
+    assert.deepEqual(home.entries.map(entry => entry.name).sort(), ['hello.md', 'notes']);
+    const read = await fetch(base + '/files/text?path=hello.md');
+    assert.equal(read.status, 200);
+    assert.match((await read.json()).text, /hello/);
+
+    // And the escape it was protecting against is still refused.
+    assert.equal((await fetch(base + '/files/list?path=../..')).status, 403);
+    await symlink(dir, join(real, 'escape'));
+    assert.equal((await fetch(base + '/files/list?path=escape')).status, 403);
+  } finally {
+    await app.close();
+    await rm(dir, { recursive: true, force: true });
+    await rm(state, { recursive: true, force: true });
   }
 });

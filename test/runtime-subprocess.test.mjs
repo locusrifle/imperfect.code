@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { get } from 'node:http';
+import { readFileSync } from 'node:fs';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -81,6 +82,10 @@ test('real start.mjs subprocess: healthy loopback, wrong origin and host refused
     assert.equal(health.ok, true);
     assert.equal(health.product, 'imperfect');
     assert.equal(health.cwd, p.workspace);
+    // Started from the checkout, so there is no release to name. Saying so is the point: a
+    // verification that accepted a version string here could not tell a release from a tree.
+    assert.equal(health.release, null);
+    assert.equal(health.version, JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version);
 
     const evil = await request(port, { Origin: 'https://evil.example' });
     assert.equal(evil.status, 403);

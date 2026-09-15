@@ -37,6 +37,13 @@ body.imperfect {
 @media (max-aspect-ratio: 1/1) {
 	.om-wall { background-image: url("../media/ground/temple-tall.webp"); }
 }
+html[data-ic-theme="night"] .om-wall {
+	background-color: #1a1410;
+	filter: brightness(0.42) saturate(0.85);
+}
+html[data-ic-theme="night"] body.imperfect {
+	background: #1a1410;
+}
 
 /* ---- the pager: one slot per open application ---- */
 

@@ -1,7 +1,7 @@
 // Machine layout and config for an imperfect computer (vaita or Box).
 // Releases and runtime live under prefix; personal data is separate and captured.
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -39,6 +39,7 @@ export function paths(prefix = DEFAULT_PREFIX) {
     workspace: join(data, 'workspace'),
     state: join(data, 'state'),
     agent: join(data, 'agent'),
+    ui: join(data, 'ui'),
     sessions: join(data, 'state', 'sessions'),
     unit: '/etc/systemd/system/imperfect.service',
     ingress: join(root, 'ingress.mjs'),
@@ -119,10 +120,23 @@ export async function writeConfig(prefix, config, { mode = 0o644 } = {}) {
 
 export async function ensureDataDirs(prefix) {
   const p = paths(prefix);
-  for (const dir of [p.workspace, p.state, p.agent, p.sessions]) {
+  for (const dir of [p.workspace, p.state, p.agent, p.ui, p.sessions]) {
     await mkdir(dir, { recursive: true, mode: 0o700 });
   }
   return p;
+}
+
+// What is actually running, as opposed to what is on disk in some checkout. A release install
+// puts the code at <prefix>/releases/<id>, so that directory name *is* the identity the installer
+// chose, and reading it from the running module is the only honest source. A checkout reports no
+// release rather than inventing one: "no release id" is the true answer for a tree someone edits.
+export function buildIdentity({ startDir = dirname(fileURLToPath(import.meta.url)) } = {}) {
+  const root = resolve(startDir);
+  let version = null;
+  try { version = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version || null; }
+  catch { version = null; }
+  const release = basename(dirname(root)) === 'releases' ? basename(root) : null;
+  return { release, version };
 }
 
 export function resolvePrefix({ env = process.env, startDir = dirname(fileURLToPath(import.meta.url)) } = {}) {

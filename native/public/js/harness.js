@@ -1188,7 +1188,7 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 			if (view.kind === 'theme') {
 				const current = state?.theme ?? view.saved;
 				const rows = [
-					{ label: 'Automatic', value: '', description: 'Use separate themes for light and dark terminal appearance', activate: () => openThemeAuto() },
+					...(personal ? [] : [{ label: 'Automatic', value: '', description: 'Use separate themes for light and dark terminal appearance', activate: () => openThemeAuto() }]),
 					...(view.names ?? []).map(name => ({
 						label: `${name === current ? '✓ ' : '  '}${name}`,
 						value: '',
@@ -1202,7 +1202,7 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 				];
 				paintList(rows, {
 					heading: 'Theme',
-					description: 'Select a theme, or choose Automatic to follow terminal appearance.',
+					description: personal ? 'Select a theme. Garden and night are chosen; the device palette is ignored.' : 'Select a theme, or choose Automatic to follow terminal appearance.',
 					hint: 'Enter to select · Esc to go back',
 				});
 				return;
@@ -1431,7 +1431,7 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 			const info = await command('themes');
 			const saved = info.saved ?? state.theme;
 			showDialog({
-				kind: 'theme', title: 'Theme', hint: 'Select a theme, or choose Automatic to follow terminal appearance.',
+				kind: 'theme', title: 'Theme', hint: personal ? 'Select garden or night. The device palette is ignored.' : 'Select a theme, or choose Automatic to follow terminal appearance.',
 				selected: saved,
 				rows: info.names.map(name => ({ label: name, note: name === saved ? 'saved' : '', pick: () => command('theme', { name, persist: true }) })),
 				onMove: row => command('theme', { name: row.label }),
@@ -1958,6 +1958,7 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 		closeTab: (tabId, extra = {}) => command('tab-close', { tabId, ...extra }),
 		openWindow: (spec) => command('window-open', { window: spec }),
 		closeWindow: (id) => command('window-close', { windowId: id }),
+		setTheme: (name, persist = true) => command('theme', { name, persist }),
 		windows: () => state?.windows ?? [],
 		attachFiles,
 	};

@@ -38,7 +38,7 @@ export const SETTING_DEFS = [
 	{ key: 'fullscreenExitOutput', label: 'Fullscreen exit output', description: 'Print the transcript or only a session resume hint when exiting fullscreen mode', kind: 'enum', values: ['transcript', 'resume-hint'], path: ['fullscreenExitOutput'], def: 'transcript' },
 	{ key: 'fullscreenScrollbar', label: 'Fullscreen scrollbar', description: 'Scrollbar behavior in fullscreen mode; has no effect in regular mode', kind: 'enum', values: ['auto', 'always', 'hidden'], path: ['fullscreenScrollbar'], def: 'auto' },
 	{ key: 'fullscreenCopyOnSelect', label: 'Fullscreen copy on select', description: 'Automatically copy selected text in fullscreen mode; disable to copy selections with Ctrl+X', kind: 'bool', path: ['fullscreenCopyOnSelect'], def: false },
-	{ key: 'theme', label: 'Theme', description: 'Color theme for the interface', kind: 'theme', path: ['theme'], def: 'dark' },
+	{ key: 'theme', label: 'Theme', description: 'Color theme for the interface', kind: 'theme', path: ['theme'], def: 'garden' },
 ];
 
 function getPath(object, path, fallback) {
@@ -80,7 +80,7 @@ export function settingsView(file = {}) {
 	}
 	out.warnings = getPath(file, ['warnings'], { anthropicExtraUsage: true });
 	out.modelThinkingLevels = getPath(file, ['modelThinkingLevels'], {});
-	out.theme = getPath(file, ['theme'], 'dark');
+	out.theme = getPath(file, ['theme'], 'garden');
 	return out;
 }
 

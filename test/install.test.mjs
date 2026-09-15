@@ -5,16 +5,16 @@ import { createHash } from 'node:crypto';
 import { get } from 'node:http';
 import { createServer as createNetServer } from 'node:net';
 import { existsSync, mkdtempSync, readFileSync, readlinkSync } from 'node:fs';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  REQUIRED_PAGES, createMockRunner, installMachine, listArtifact,
-  packRelease, packTree, renderIngressUnit, renderUnit, rollbackRelease, systemdActivation,
-  verifyRuntimeTarball,
+  REQUIRED_PAGES, activateMachine, createMockRunner, installMachine, listArtifact,
+  packRelease, packTree, renderIngressUnit, renderUnit, rollbackRelease, stageMachine,
+  systemdActivation, systemdRunner, verifyRuntimeTarball,
 } from '../install/imperfect.mjs';
-import { NODE_RUNTIME, paths, readConfig } from '../machine.mjs';
+import { NODE_RUNTIME, buildIdentity, paths, readConfig } from '../machine.mjs';
 
 const SOURCE = dirname(fileURLToPath(new URL('../package.json', import.meta.url)));
 
@@ -35,6 +35,8 @@ function chmodWrite(dir) {
 const FIXTURE_START = `import { createServer } from 'node:http';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { buildIdentity } from './machine.mjs';
+const build = buildIdentity();
 const prefix = process.env.IMPERFECT_PREFIX;
 const config = JSON.parse(readFileSync(join(prefix, 'machine.json'), 'utf8'));
 const host = config.host || '127.0.0.1';
@@ -49,7 +51,7 @@ const server = createServer((req, res) => {
   }
   if ((req.url || '').split('?')[0] === '/health') {
     res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ ok: true, ui: 'native-gui', product: config.product, mark: release }));
+    res.end(JSON.stringify({ ok: true, ui: 'native-gui', product: config.product, mark: release, release: build.release, version: build.version }));
     return;
   }
   res.writeHead(404); res.end('Not found');
@@ -66,6 +68,9 @@ async function writeFixture(root, startSource = FIXTURE_START, mark = '') {
     await writeFile(join(root, page), `<!-- ${page} -->\n`);
   }
   await writeFile(join(root, 'package.json'), JSON.stringify({ name: 'imperfect-fixture', version: '0.0.1', private: true, type: 'module' }, null, 2));
+  // The real module, so the fixture reports its build identity the way the product does rather
+  // than restating the answer the assertion is looking for.
+  await copyFile(join(SOURCE, 'machine.mjs'), join(root, 'machine.mjs'));
   let start = startSource;
   if (mark) start = start.replace("process.env.IMPERFECT_MARK || 'ok'", JSON.stringify(mark));
   await writeFile(join(root, 'start.mjs'), start);
@@ -88,6 +93,8 @@ test('product pack includes every shell page and no workspace files', async () =
   assert.ok(names.includes('machine.mjs'));
   assert.ok(names.includes('environment.md'));
   assert.ok(names.includes('apps.md'));
+  assert.ok(names.includes('customization.md'));
+  assert.ok(names.includes('native/customization.mjs'));
   assert.ok(names.includes('snapshot.md'));
   assert.ok(names.includes('extensions/imperfect-environment/index.ts'));
   assert.ok(names.includes('native/environment-prompt.mjs'));
@@ -139,10 +146,20 @@ test('clean fixture install, wrong origin/host, sentinel survives update, failed
     });
     assert.equal(first.health.ui, 'native-gui');
     assert.equal(first.health.mark, 'one');
+    // Activation is only honest if the running process names the release it is serving. The
+    // symlink alone cannot say that: `current` can advance while an old process keeps answering.
+    assert.equal(first.health.release, first.id);
+    assert.equal(first.health.version, '0.0.1');
     const p = paths(prefix);
     assert.equal(readlinkSync(p.current), `releases/${first.id}`);
     const sentinel = join(p.workspace, 'SENTINEL');
     await writeFile(sentinel, 'keep-me\n', { mode: 0o600 });
+    await mkdir(join(p.agent, 'themes'), { recursive: true });
+    await mkdir(p.ui, { recursive: true });
+    await mkdir(join(p.workspace, 'apps'), { recursive: true });
+    await writeFile(join(p.agent, 'themes', 'mine.json'), '{"name":"mine","colors":{"text":"#111"}}\n');
+    await writeFile(join(p.ui, 'harness.css'), '#entry-terminal { opacity: 1 }\n');
+    await writeFile(join(p.workspace, 'apps', 'notes.html'), '<h1>notes</h1>\n');
 
     const evil = await fetch(`http://127.0.0.1:${port}/health`, { headers: { Origin: 'https://evil.example' } });
     assert.equal(evil.status, 403);
@@ -160,6 +177,8 @@ test('clean fixture install, wrong origin/host, sentinel survives update, failed
       prefix, artifact: next.packed.artifact, unprivileged: true, runner, protect: true, healthTimeoutMs: 8000,
     });
     assert.equal(updated.health.mark, 'two');
+    assert.equal(updated.health.release, updated.id);
+    assert.notEqual(updated.id, first.id);
     assert.equal(readFileSync(sentinel, 'utf8'), 'keep-me\n');
     assert.equal((await readConfig(prefix)).origins.includes('https://app.example.test'), true);
     await rm(next.root, { recursive: true, force: true });
@@ -181,7 +200,11 @@ test('clean fixture install, wrong origin/host, sentinel survives update, failed
       prefix, runner, config: await readConfig(prefix), healthTimeoutMs: 8000,
     });
     assert.equal(rolled.health.mark, 'one');
+    assert.equal(rolled.health.release, first.id);
     assert.equal(readFileSync(sentinel, 'utf8'), 'keep-me\n');
+    assert.match(readFileSync(join(p.agent, 'themes', 'mine.json'), 'utf8'), /mine/);
+    assert.match(readFileSync(join(p.ui, 'harness.css'), 'utf8'), /entry-terminal/);
+    assert.match(readFileSync(join(p.workspace, 'apps', 'notes.html'), 'utf8'), /notes/);
   } finally {
     await runner.stop(prefix);
     chmodWrite(prefix);
@@ -211,4 +234,128 @@ test('root activation restarts the unit, so an update cannot silently keep the o
   // check passes against the stale process, so the rollback never fires.
   assert.ok(!words.some(w => w.includes('--now')), 'enable --now must not be used');
   assert.ok(words.some(w => w.startsWith('systemctl restart')), 'activation must restart');
+});
+
+test('build identity names the release directory, and a checkout admits it has none', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'imperfect-identity-'));
+  try {
+    const release = join(dir, 'releases', '9.9.9-abcdef012345');
+    await mkdir(release, { recursive: true });
+    await writeFile(join(release, 'package.json'), JSON.stringify({ version: '9.9.9' }));
+    assert.deepEqual(buildIdentity({ startDir: release }), { release: '9.9.9-abcdef012345', version: '9.9.9' });
+
+    // Anywhere that is not <prefix>/releases/<id> is a checkout, whatever it is called.
+    const loose = join(dir, 'somewhere', '9.9.9-abcdef012345');
+    await mkdir(loose, { recursive: true });
+    await writeFile(join(loose, 'package.json'), JSON.stringify({ version: '9.9.9' }));
+    assert.deepEqual(buildIdentity({ startDir: loose }), { release: null, version: '9.9.9' });
+
+    // A missing or unreadable package.json is reported as unknown, not crashed over.
+    assert.deepEqual(buildIdentity({ startDir: join(dir, 'nothing') }), { release: null, version: null });
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('a user unit is restarted under the person\'s own systemd, not root\'s', () => {
+  assert.deepEqual(systemdActivation('imperfect-machine.service', { user: true }), [
+    ['systemctl', '--user', 'daemon-reload'],
+    ['systemctl', '--user', 'enable', 'imperfect-machine.service'],
+    ['systemctl', '--user', 'restart', 'imperfect-machine.service'],
+  ]);
+  assert.deepEqual(systemdActivation()[2], ['systemctl', 'restart', 'imperfect.service']);
+  assert.equal(typeof systemdRunner({ unit: 'x.service', user: true }).restart, 'function');
+});
+
+test('staging does not serve; activating does; a release that does not take hold rolls back', async () => {
+  const prefix = mkdtempSync(join(tmpdir(), 'imperfect-stage-'));
+  const runner = createMockRunner();
+  const port = await freePort();
+  const one = await packFixture(FIXTURE_START, 'one');
+  const two = await packFixture(FIXTURE_START, 'two');
+  const bad = await packFixture(FAIL_START);
+  const p = paths(prefix);
+  const health = async () => (await fetch(`http://127.0.0.1:${port}/health`, {
+    headers: { Host: `127.0.0.1:${port}` },
+  })).json();
+  try {
+    const first = await installMachine({
+      prefix, artifact: one.packed.artifact, port, unprivileged: true, runner,
+      protect: true, healthTimeoutMs: 8000,
+    });
+    const sentinel = join(p.workspace, 'SENTINEL');
+    await writeFile(sentinel, 'keep-me\n', { mode: 0o600 });
+
+    // The slow half, while the old release keeps serving. This is what makes it safe to stage
+    // during a turn: nothing the running process reads has changed.
+    const staged = await stageMachine({ prefix, artifact: two.packed.artifact });
+    assert.notEqual(staged.id, first.id);
+    assert.equal(existsSync(join(p.releases, staged.id)), true);
+    assert.equal(readlinkSync(p.current), `releases/${first.id}`);
+    assert.equal((await health()).release, first.id);
+
+    const live = await activateMachine({
+      prefix, id: staged.id, unprivileged: true, runner, healthTimeoutMs: 8000,
+    });
+    assert.equal(live.health.release, staged.id);
+    assert.equal(live.health.mark, 'two');
+    assert.equal(readlinkSync(p.previous), `releases/${first.id}`);
+
+    // Activating something nobody staged is refused rather than left half done.
+    await assert.rejects(activateMachine({
+      prefix, id: '0.0.0-neverstaged', unprivileged: true, runner, healthTimeoutMs: 2000,
+    }), /not staged/);
+    assert.equal(readlinkSync(p.current), `releases/${staged.id}`);
+
+    // The trap the release id exists to catch: the symlink advances but the process is never
+    // replaced, so the old code answers /health and a naive check calls that success.
+    const stagedBad = await stageMachine({ prefix, artifact: bad.packed.artifact });
+    const idle = { async restart() { /* deliberately does nothing */ } };
+    await assert.rejects(activateMachine({
+      prefix, id: stagedBad.id, unprivileged: true, runner: idle, healthTimeoutMs: 3000,
+    }), /reports/);
+    assert.equal(readlinkSync(p.current), `releases/${staged.id}`);
+
+    // And a release that does replace the process but cannot serve rolls back on its own.
+    await assert.rejects(activateMachine({
+      prefix, id: stagedBad.id, unprivileged: true, runner, healthTimeoutMs: 4000,
+    }), /health/);
+    assert.equal(readlinkSync(p.current), `releases/${staged.id}`);
+    assert.equal((await health()).release, staged.id);
+    assert.equal(readFileSync(sentinel, 'utf8'), 'keep-me\n');
+  } finally {
+    await runner.stop(prefix);
+    chmodWrite(prefix);
+    await rm(prefix, { recursive: true, force: true });
+    for (const made of [one, two, bad]) {
+      await rm(made.root, { recursive: true, force: true });
+      await rm(made.outDir, { recursive: true, force: true });
+    }
+  }
+});
+
+test('the same tree packs to the same release id, and a changed byte changes it', async () => {
+  // The id is what /health reports and what `fleet status` compares. If packing were not
+  // deterministic, the id would identify one artifact and nothing else -- two machines could run
+  // byte-identical code under different ids, and no commit could be tied to a running machine.
+  const root = await mkdtemp(join(tmpdir(), 'imperfect-repro-'));
+  const outDir = await mkdtemp(join(tmpdir(), 'imperfect-repro-out-'));
+  try {
+    await writeFixture(root, FIXTURE_START, 'one');
+    const first = await packTree({ root, out: join(outDir, 'a.tar.gz') });
+    const again = await packTree({ root, out: join(outDir, 'b.tar.gz') });
+    assert.equal(again.id, first.id);
+    assert.equal(again.sha256, first.sha256);
+
+    // Touching a file without changing it must not move the id either: an mtime is not content.
+    const page = join(root, REQUIRED_PAGES[0]);
+    await writeFile(page, readFileSync(page));
+    assert.equal((await packTree({ root, out: join(outDir, 'c.tar.gz') })).id, first.id);
+
+    await writeFile(page, `${readFileSync(page, 'utf8')}<!-- changed -->\n`);
+    assert.notEqual((await packTree({ root, out: join(outDir, 'd.tar.gz') })).id, first.id);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+    await rm(outDir, { recursive: true, force: true });
+  }
 });

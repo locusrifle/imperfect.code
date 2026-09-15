@@ -26,6 +26,7 @@ const app = await createGueyServer({
   liveSessions: config.liveSessions,
   filesRoot: p.workspace,
   knowledgeRoot: p.workspace,
+  uiDir: p.ui,
   origins: config.origins,
   serviceOptions: {
     resourceLoaderOptions: {

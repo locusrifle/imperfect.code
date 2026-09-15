@@ -47,17 +47,15 @@ export function isApplePlatform() {
 
 export const ALT_LABEL = isApplePlatform() ? "OPT" : "ALT";
 
-// Alt+H is this shell's own reach and stays. Alt+L is the same gesture under the name the product
-// uses everywhere else, so somebody who learned it on one surface is not wrong on the other.
-// Alt+K went with the custom keyboard on 2026-09-14.
+// Alt+Y drops the harness. Alt+L remains so a recording that still names it is not a lie.
 export function bindHarnessKeys({ onHarness, onFullscreen } = {}) {
   addEventListener("keydown", event => {
     if (event.repeat || event.ctrlKey || event.metaKey || !event.altKey) return;
     const code = event.code;
-    if (!["KeyH", "KeyL", "KeyF"].includes(code)) return;
+    if (!["KeyY", "KeyL", "KeyF"].includes(code)) return;
     event.preventDefault();
     event.stopPropagation();
-    if (code === "KeyH" || code === "KeyL") onHarness?.();
+    if (code === "KeyY" || code === "KeyL") onHarness?.();
     if (code === "KeyF") onFullscreen?.();
   }, true);
 }

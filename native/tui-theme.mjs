@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { STOCK_THEME, validateThemeDocument } from './customization.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const builtin = join(here, '../node_modules/@earendil-works/pi-coding-agent/dist/modes/interactive/theme');
@@ -32,15 +33,18 @@ function paint(value, vars, seen = new Set()) {
 }
 
 async function loadTheme(name, agentDir) {
+  const wanted = String(name || '').includes('/') ? STOCK_THEME : (name || STOCK_THEME);
   const paths = [
-    join(agentDir, 'themes', `${name}.json`),
-    join(packaged, `${name}.json`),
-    join(builtin, `${name}.json`),
+    join(agentDir, 'themes', `${wanted}.json`),
+    join(packaged, `${wanted}.json`),
+    join(packaged, `${STOCK_THEME}.json`),
+    join(builtin, `${wanted}.json`),
     join(builtin, 'dark.json'),
   ];
   for (const path of paths) {
     try {
       const theme = JSON.parse(await readFile(path, 'utf8'));
+      if (!validateThemeDocument(theme, wanted.endsWith('.json') ? wanted.slice(0, -5) : undefined).ok) continue;
       if (theme?.colors) return theme;
     } catch {}
   }
@@ -69,13 +73,9 @@ function rootBlock(theme) {
   return lines.join('\n');
 }
 
-export async function tuiThemeCss(themeName = 'dark', agentDir = join(homedir(), '.pi/agent')) {
-  const raw = String(themeName);
-  const pair = raw.includes('/') ? raw.split('/') : null;
-  if (pair?.length === 2 && pair[0] && pair[1]) {
-    const light = rootBlock(await loadTheme(pair[0], agentDir));
-    const dark = rootBlock(await loadTheme(pair[1], agentDir));
-    return `@media (prefers-color-scheme: light) {\n${light}\n}\n@media (prefers-color-scheme: dark) {\n${dark}\n}`;
-  }
-  return rootBlock(await loadTheme(raw || 'dark', agentDir));
+export async function tuiThemeCss(themeName = STOCK_THEME, agentDir = join(homedir(), '.pi/agent')) {
+  const raw = String(themeName || STOCK_THEME);
+  // Explicit names only. A light/dark pair would follow the OS; this product does not.
+  const name = raw.includes('/') ? STOCK_THEME : raw;
+  return rootBlock(await loadTheme(name, agentDir));
 }

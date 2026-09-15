@@ -24,6 +24,9 @@ export const REQUIRED_PAGES = [
   'native/public/stock.html',
   'native/public/files.html',
   'native/public/antiburn.html',
+  'native/public/doom.html',
+  'native/public/doom/index.html',
+  'native/public/image-lab.html',
   'native/public/manifest.webmanifest',
   'native/public/sw.js',
   'native/public/js/site.js',
@@ -73,7 +76,7 @@ export function collectReleaseFiles(root = SOURCE_ROOT) {
     if (!existsSync(full) || !lstatSync(full).isFile()) throw new Error(`missing ${rel}`);
     files.push(rel);
   };
-  for (const name of ['server.mjs', 'start.mjs', 'machine.mjs', 'environment.md', 'apps.md', 'snapshot.md', 'package.json', 'package-lock.json']) add(name);
+  for (const name of ['server.mjs', 'start.mjs', 'machine.mjs', 'environment.md', 'apps.md', 'customization.md', 'snapshot.md', 'package.json', 'package-lock.json']) add(name);
   for (const name of readdirSync(join(root, 'native'))) {
     if (name.endsWith('.mjs')) add(join('native', name));
   }
@@ -91,11 +94,25 @@ export function collectReleaseFiles(root = SOURCE_ROOT) {
   return files;
 }
 
+// Deterministic, because the release id is derived from this file's sha256 and the id is supposed
+// to answer "what is running". Packing the same tree twice used to give two different ids: the
+// staging copies carry fresh mtimes, tar recorded them, and gzip stamped its own. So a release id
+// identified an artifact and nothing else, and no commit could be tied to a running machine.
+//
+// Sorted names, epoch mtimes, no owner, and gzip without its timestamp make the artifact a
+// function of the tree. Two machines reporting one id already meant identical bytes; now that id
+// can also be reproduced from source.
 async function tarDirectory(staging, out) {
   const dest = resolve(out);
   await mkdir(dirname(dest), { recursive: true });
   if (existsSync(dest)) await rm(dest);
-  run(['tar', '-C', staging, '-czf', dest, '.']);
+  run([
+    'tar', '-C', staging,
+    '--sort=name', '--format=gnu', '--mtime=@0',
+    '--owner=0', '--group=0', '--numeric-owner',
+    '--use-compress-program', 'gzip -n',
+    '-cf', dest, '.',
+  ]);
   return dest;
 }
 
@@ -363,12 +380,21 @@ export async function rollbackRelease({ prefix, runner, config, healthTimeoutMs 
 // against that old process. The upgrade reports success, never actually upgrades, and never
 // trips its own rollback. So the restart is unconditional — it also starts the unit on a
 // first install, which is why `--now` is not needed at all.
-export function systemdActivation(unit = 'imperfect.service') {
+export function systemdActivation(unit = 'imperfect.service', { user = false } = {}) {
+  const scope = user ? ['systemctl', '--user'] : ['systemctl'];
   return [
-    ['systemctl', 'daemon-reload'],
-    ['systemctl', 'enable', unit],
-    ['systemctl', 'restart', unit],
+    [...scope, 'daemon-reload'],
+    [...scope, 'enable', unit],
+    [...scope, 'restart', unit],
   ];
+}
+
+// A runner is whatever can actually replace the process. Noah's own machine on vaita is a user
+// unit and the Box is a system one; the difference is two words, not two deployment stories.
+export function systemdRunner({ unit = 'imperfect.service', user = false } = {}) {
+  return {
+    async restart() { for (const argv of systemdActivation(unit, { user })) run(argv); },
+  };
 }
 
 function ensureUser(name, home) {
@@ -468,9 +494,38 @@ export async function installMachine(opts = {}) {
     npmBin: existsSync(p.npm) ? p.npm : opts.npmBin,
     protect: opts.protect !== false,
   });
+  return activateMachine({ ...opts, prefix, id: placed.id, config, asRoot, user });
+}
+
+// Staging is the slow half: unpack, npm ci, protect. It touches nothing that is serving, so it can
+// run while the agent is mid-turn. Activation is the half that ends a turn, and it is separate so
+// it can wait for idle instead of being bundled into the same gesture.
+export async function stageMachine(opts = {}) {
+  const prefix = resolve(opts.prefix || DEFAULT_PREFIX);
+  const p = paths(prefix);
+  await mkdir(p.releases, { recursive: true, mode: 0o755 });
+  const placed = await placeRelease({
+    prefix,
+    artifact: opts.artifact,
+    npmBin: existsSync(p.npm) ? p.npm : opts.npmBin,
+    protect: opts.protect !== false,
+  });
+  return { prefix, id: placed.id, sha256: placed.sha256, current: readLink(p.current), staged: true };
+}
+
+export async function activateMachine(opts = {}) {
+  const prefix = resolve(opts.prefix || DEFAULT_PREFIX);
+  const id = opts.id;
+  if (!id) throw new Error('activation needs a release id');
+  const p = paths(prefix);
+  if (!existsSync(join(p.releases, id))) throw new Error(`release is not staged: ${id}`);
+  const unprivileged = Boolean(opts.unprivileged);
+  const asRoot = opts.asRoot ?? (typeof process.getuid === 'function' && process.getuid() === 0 && !unprivileged);
+  const user = opts.user || DEFAULT_USER;
+  const config = opts.config || await readConfig(prefix);
   const previousCurrent = readLink(p.current);
   const previousPrevious = readLink(p.previous);
-  await activateRelease({ prefix, id: placed.id });
+  await activateRelease({ prefix, id });
 
   if (asRoot) {
     ensureUser(user, p.data);
@@ -497,7 +552,12 @@ export async function installMachine(opts = {}) {
 
   try {
     const health = await checkHealth({ host: config.host, port: config.port, timeoutMs: opts.healthTimeoutMs });
-    return { prefix, id: placed.id, current: readLink(p.current), previous: previousCurrent, config, health, asRoot };
+    // The symlink says what should be serving; health says what is. A release that activated
+    // without the process being replaced is the failure this check exists to catch.
+    if (health.release && health.release !== id) {
+      throw new Error(`activated ${id} but the running process reports ${health.release}`);
+    }
+    return { prefix, id, current: readLink(p.current), previous: previousCurrent, config, health, asRoot };
   } catch (error) {
     if (previousCurrent) {
       await atomicLink(p.current, previousCurrent);
@@ -546,8 +606,11 @@ async function main(argv) {
   check
   install --artifact file [--runtime-tarball file | --fetch-runtime] [--prefix dir] [--port N] [--origins url,url] [--user name] [--person handle] [--ingress-password secret] [--unprivileged]
   update --artifact file [--prefix dir]
+  stage --artifact file [--prefix dir]          place a release without serving it
+  activate --id release-id [--prefix dir]       serve a staged release, roll back if it fails
   rollback [--prefix dir]
   status [--prefix dir]
+User-unit machines (a machine somebody already owns) add: --user-unit [--unit name]
 Pinned runtime: Node ${NODE_RUNTIME.version} linux-x64 sha256 ${NODE_RUNTIME.sha256}
 Pi ${PI_VERSION}. Default prefix ${DEFAULT_PREFIX}, user ${DEFAULT_USER}, loopback port 5067.`);
     return;
@@ -563,16 +626,52 @@ Pi ${PI_VERSION}. Default prefix ${DEFAULT_PREFIX}, user ${DEFAULT_USER}, loopba
     return;
   }
   const prefix = arg(args, 'prefix', DEFAULT_PREFIX);
+  // A machine the person owns runs under their own systemd, not root's. Naming the unit is what
+  // makes one installer serve both, instead of a second copy of this file for vaita.
+  const userUnit = flag(args, 'user-unit');
+  const unit = arg(args, 'unit', 'imperfect-machine.service');
+  const runnerFor = () => {
+    if (userUnit) return systemdRunner({ unit, user: true });
+    if (flag(args, 'unprivileged')) return createMockRunner();
+    return systemdRunner();
+  };
   if (command === 'status') {
-    print(machineStatus(prefix));
+    const status = machineStatus(prefix);
+    // What is on disk and what is answering are different questions, and a status that only
+    // reported the symlink is how an upgrade gets called successful without having happened.
+    try {
+      const config = status.config || await readConfig(prefix);
+      status.health = await checkHealth({ host: config.host, port: config.port, timeoutMs: Number(arg(args, 'health-timeout', 4000)) });
+      status.serving = status.health.release || null;
+      status.matchesCurrent = status.current ? status.current === `releases/${status.health.release}` : null;
+    } catch (error) {
+      status.health = null;
+      status.healthError = error.message || String(error);
+    }
+    print(status);
+    return;
+  }
+  if (command === 'stage') {
+    const artifact = arg(args, 'artifact');
+    if (!artifact) throw new Error('--artifact is required');
+    print(await stageMachine({ prefix, artifact }));
+    return;
+  }
+  if (command === 'activate') {
+    const id = arg(args, 'id');
+    if (!id) throw new Error('--id is required');
+    print(await activateMachine({
+      prefix,
+      id,
+      unprivileged: flag(args, 'unprivileged') || userUnit,
+      runner: runnerFor(),
+      healthTimeoutMs: Number(arg(args, 'health-timeout', 60000)),
+    }));
     return;
   }
   if (command === 'rollback') {
     const config = await readConfig(prefix);
-    const runner = flag(args, 'unprivileged')
-      ? createMockRunner()
-      : { async restart() { run(['systemctl', 'restart', 'imperfect.service']); } };
-    print(await rollbackRelease({ prefix, config, runner }));
+    print(await rollbackRelease({ prefix, config, runner: runnerFor() }));
     return;
   }
   if (command === 'install' || command === 'update') {
@@ -581,12 +680,14 @@ Pi ${PI_VERSION}. Default prefix ${DEFAULT_PREFIX}, user ${DEFAULT_USER}, loopba
     print(await installMachine({
       prefix,
       artifact,
+      runner: userUnit ? systemdRunner({ unit, user: true }) : undefined,
+      healthTimeoutMs: Number(arg(args, 'health-timeout', 60000)),
       tarball: arg(args, 'runtime-tarball'),
       fetchRuntime: flag(args, 'fetch-runtime'),
       port: arg(args, 'port'),
       origins: arg(args, 'origins'),
       user: arg(args, 'user'),
-      unprivileged: flag(args, 'unprivileged'),
+      unprivileged: flag(args, 'unprivileged') || userUnit,
       product: arg(args, 'product'),
       brand: arg(args, 'brand'),
       person: arg(args, 'person'),
