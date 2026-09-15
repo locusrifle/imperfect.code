@@ -34,6 +34,27 @@ The same layout serves a machine somebody already owns. On vaita the prefix is `
 
 This is what makes activation verifiable. `systemctl enable --now` does nothing to an already-running unit, so `current` can advance while the old process keeps answering `/health` — an upgrade that reports success, never happened, and never trips its own rollback. `activate` now fails and rolls back if the process does not name the release just activated.
 
+### Which commit is running
+
+The id is reproducible from source as of 2026-09-15: `tar` is given sorted names, epoch mtimes and
+no owner, and gzip is told not to stamp its own timestamp. Before that, packing the same tree twice
+produced two different ids, because the staging copies carried fresh mtimes — so an id identified
+one artifact and could never be traced back to a commit.
+
+`packRelease` also returns a `manifest` of per-file sha256. Comparing it against an installed
+release answers "is this machine running that commit" without re-packing, and without waking a
+sleeping Box:
+
+```sh
+# on the machine, in its current release
+sha256sum -c manifest.sha256
+```
+
+Commit `6b29976` is what both machines were serving on 2026-09-15: all 237 manifest files matched
+the release installed on vaita byte for byte. Its live id, `0.3.0-06070b5db1bb`, predates
+determinism, so re-packing that tree now yields `0.3.0-342b67b8d3bc` for identical content. Ids from
+here on are stable.
+
 ## Stage, then activate
 
 `stage --artifact` unpacks, runs `npm ci` and protects the tree without touching what is serving; it is safe while the agent is mid-turn. `activate --id` moves the symlink, restarts, verifies identity and health, and rolls back on failure. `install` and `update` are still both halves in one gesture, for a machine nobody is using yet.
