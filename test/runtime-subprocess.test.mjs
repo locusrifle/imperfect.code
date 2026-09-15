@@ -87,6 +87,20 @@ test('real start.mjs subprocess: healthy loopback, wrong origin and host refused
     assert.equal(health.release, null);
     assert.equal(health.version, JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version);
 
+    // AGPL section 13: the running machine has to be able to say where its own source is.
+    const source = await new Promise(resolve => {
+      get({ host: '127.0.0.1', port, path: '/source', headers: { Host: `127.0.0.1:${port}` } }, res => {
+        const chunks = [];
+        res.on('data', c => chunks.push(c));
+        res.on('end', () => resolve({ status: res.statusCode, body: Buffer.concat(chunks).toString() }));
+      });
+    });
+    assert.equal(source.status, 200);
+    const offer = JSON.parse(source.body);
+    assert.equal(offer.license, 'AGPL-3.0-only');
+    assert.match(offer.repository, /^https:\/\/github\.com\//);
+    assert.equal(offer.version, JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version);
+
     const evil = await request(port, { Origin: 'https://evil.example' });
     assert.equal(evil.status, 403);
     const badHost = await request(port, { Host: 'evil.example' });

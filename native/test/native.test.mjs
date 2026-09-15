@@ -40,7 +40,7 @@ function client(url, options) {
 
 test('private bind and extension dialogs reject bad/expired responses; abort and timeout resolve safely', async () => {
   for(const host of ['0.0.0.0','::','192.168.1.2','8.8.8.8','100.128.0.1']) assert.equal(privateHost(host),false);
-  for(const host of ['127.0.0.1','::1','100.98.240.45']) assert.equal(privateHost(host),true);
+  for(const host of ['127.0.0.1','::1','100.64.0.1']) assert.equal(privateHost(host),true);
   const a=createExtensionUI(()=>{});
   const p=a.ui.select('Pick',['a','b']); const id=a.state.dialogs[0].id;
   assert.throws(()=>a.respond({id,value:'not an option'}),/Invalid/);
@@ -245,7 +245,7 @@ test('TUI theme css is served and a settings.json change bumps the snapshot', as
 
 test('port 0 stays on loopback even when the live bind env is set', async () => {
   const previous = { host: process.env.IMPERFECT_HOST, port: process.env.IMPERFECT_PORT };
-  process.env.IMPERFECT_HOST = '100.98.240.45';
+  process.env.IMPERFECT_HOST = '100.64.0.1';
   process.env.IMPERFECT_PORT = '5057';
   const root = await mkdtemp(join(tmpdir(), 'guey-bind-'));
   const events = new EventEmitter();

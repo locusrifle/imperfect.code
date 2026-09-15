@@ -1,6 +1,6 @@
 # imperfect.computer
 
-Private source for the imperfect computer machine app. People reach it as **imperfect computers** at **imperfect.computer**. This is not the account door (`vaita:/home/dacre/imperfect-door`) and not Noah's laptop console.
+Source for the imperfect computer machine app — the computer a person is given. People reach it as **imperfect computers** at **imperfect.computer**. This is not the account door (`vaita:/home/dacre/imperfect-door`, private) and not Noah's laptop console.
 
 Pi 0.85.1 under a graphical Guey shell. Users can later rearrange UI and add apps; this tree does not redesign that today.
 
@@ -74,3 +74,26 @@ restores the previous release automatically and is health-checked before it is b
 restart, upgrade, failed-upgrade rollback, and snapshot stop/resume. The limits of that proof —
 including the missing ingress password gate and the absent backup command — are stated plainly
 in [docs/verification.md](docs/verification.md).
+
+## Licence
+
+Copyright © 2026 Noah Fleming. **[GNU AGPL v3](LICENSE)** (`AGPL-3.0-only`).
+
+Open because the promise is that you can leave. Hosting at imperfect.computer is a convenience you
+pay for; the computer itself is not a thing you rent. Once you move your environment onto hardware
+you own, you owe nothing further — and that is only true if the source is here.
+
+The Affero clause is the part that matters for a hosted product: run a modified version as a
+service for other people, and you owe them your modifications. Run it for yourself, change
+anything, owe nobody.
+
+Every machine offers its own source at **`/source`**, naming the exact release it is serving — AGPL
+section 13 asks that network users be offered the corresponding source, not merely allowed to ask
+for it. A release carries `LICENSE`, `THIRD_PARTY_NOTICES.md` and `licenses/` on disk.
+
+Files by other authors travel under their own terms, listed in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). The Doom app is deliberately **not** in this
+repository: it is GPL v2, which the AGPL cannot absorb, and its WAD carries no redistribution grant
+at all. See [docs/doom.md](docs/doom.md).
+
+`"private": true` in `package.json` only means this is not published to npm.

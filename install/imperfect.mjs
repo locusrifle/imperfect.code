@@ -79,6 +79,14 @@ export function collectReleaseFiles(root = SOURCE_ROOT) {
     files.push(rel);
   };
   for (const name of ['server.mjs', 'start.mjs', 'machine.mjs', 'environment.md', 'apps.md', 'customization.md', 'snapshot.md', 'package.json', 'package-lock.json']) add(name);
+  // A release is a distribution, so it carries its own terms. The AGPL must travel with the work,
+  // and the MIT notices for the vendored fonts and three.js must be "included in all copies" --
+  // which a tarball installed on somebody's machine plainly is.
+  add('LICENSE');
+  add('THIRD_PARTY_NOTICES.md');
+  for (const name of readdirSync(join(root, 'licenses'))) {
+    if (name.endsWith('.txt')) add(join('licenses', name));
+  }
   for (const name of readdirSync(join(root, 'native'))) {
     if (name.endsWith('.mjs')) add(join('native', name));
   }

@@ -266,6 +266,22 @@ export async function createGueyServer(options = {}) {
       } catch (error) { res.writeHead(500).end('theme failed'); }
       return;
     }
+    // AGPL section 13: anyone who uses this over a network must be *offered* the corresponding
+    // source, not merely permitted to ask. The machine therefore says where its own source is and
+    // which release it is serving, so the offer names the actual running code rather than a branch.
+    if (path === '/source') {
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-store');
+      res.end(JSON.stringify({
+        license: 'AGPL-3.0-only',
+        repository: 'https://github.com/locusrifle/imperfect.computer',
+        release: BUILD.release,
+        version: BUILD.version,
+        notices: 'https://github.com/locusrifle/imperfect.computer/blob/master/THIRD_PARTY_NOTICES.md',
+        // Both files are also in this release on disk, beside start.mjs.
+      }, null, 2));
+      return;
+    }
         if (path === '/health') {
       const s = runtime.snapshot();
       res.setHeader('Content-Type', 'application/json');
