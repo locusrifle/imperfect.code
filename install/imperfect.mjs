@@ -19,13 +19,15 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const SOURCE_ROOT = resolve(HERE, '..');
 const SECRET_RE = /(?:box_[A-Za-z0-9_-]{45,}|sk-proj-[A-Za-z0-9_-]{30,}|-----BEGIN (?:OPENSSH |RSA )?PRIVATE KEY-----)/;
 
+// The pages the shell opens and a release must therefore carry. The vendored Doom port is not one
+// of them: it is GPL v2 code that lives outside this repository's own license, so it is kept on
+// disk and packed when present rather than required. A clone without it still builds a release.
 export const REQUIRED_PAGES = [
   'native/public/index.html',
   'native/public/stock.html',
   'native/public/files.html',
   'native/public/antiburn.html',
   'native/public/doom.html',
-  'native/public/doom/index.html',
   'native/public/image-lab.html',
   'native/public/manifest.webmanifest',
   'native/public/sw.js',

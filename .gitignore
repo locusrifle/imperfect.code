@@ -11,7 +11,9 @@ var/
 local-prefix/
 desktop/src-tauri/target/
 
-# The shareware IWAD the Doom port loads. Kept on disk and packed into a release, but not in git:
-# this product does not claim a license to redistribute it, and a hosted repository is a
-# distribution. docs/doom.md says how to put it back in a fresh clone.
-native/public/doom/doom1.wad
+# The vendored three-doom port, and the shareware IWAD it loads. Kept on disk, served on the
+# machines, and packed into a release -- but not in git. The port is GPL v2 and this repository
+# carries its own license; the WAD carries no redistribution grant at all. Either one inside a
+# published repository would be a distribution of somebody else's work under our terms.
+# docs/doom.md says how to put both back in a fresh clone.
+native/public/doom/
