@@ -62,6 +62,19 @@ export class PinterestSignedOut extends Error {
 export function createPinterest({ root, redirectUri = '', fetchImpl = fetch }) {
   const storePath = join(root, STORE);
 
+  // A machine does not know its own public address. `origins` is empty on a
+  // real installation -- the public name belongs to the door's proxy, not to
+  // the loopback app -- so a redirect derived from configuration alone is the
+  // empty string on every machine that matters. The browser pressing Connect
+  // *is* at the public address, so that request is the one thing that knows.
+  // A configured value still wins when there is one, and a caller that offers
+  // nothing falls back to it.
+  function redirectFor(origin) {
+    const from = String(origin || '').trim().replace(/\/$/, '');
+    if (from) return `${from}/lab/pinterest/callback`;
+    return redirectUri;
+  }
+
   async function readStore() {
     try { return JSON.parse(await readFile(storePath, 'utf8')); } catch { return {}; }
   }
@@ -73,13 +86,14 @@ export function createPinterest({ root, redirectUri = '', fetchImpl = fetch }) {
   }
 
   /** What the lab shows about the connection, with no secret in it. */
-  async function status() {
+  async function status(origin = '') {
     const store = await readStore();
     return {
       configured: Boolean(store.appId && store.appSecret),
       connected: Boolean(store.access),
       // Shown so a person debugging a redirect mismatch can see both halves.
-      redirectUri,
+      // This is the value that would actually be sent, not a stored guess.
+      redirectUri: redirectFor(origin),
       expires: store.expires || 0,
     };
   }
@@ -107,16 +121,20 @@ export function createPinterest({ root, redirectUri = '', fetchImpl = fetch }) {
   }
 
   /** Where to send the person to approve the connection. */
-  async function authorizeUrl() {
+  async function authorizeUrl(origin = '') {
     const store = await credentials();
-    if (!redirectUri) throw bad(500, 'this machine has no address to return to after Pinterest');
+    const redirect = redirectFor(origin);
+    if (!redirect) throw bad(500, 'this machine has no address to return to after Pinterest');
     // Kept so the callback can prove the code came back from the request this
-    // machine started, rather than from somebody else's page.
+    // machine started, rather than from somebody else's page. The redirect is
+    // kept with it because Pinterest requires the token exchange to repeat the
+    // exact value the authorization used, and by then the request that knew it
+    // is long gone.
     const state = crypto.randomUUID();
-    await writeStore({ ...store, state });
+    await writeStore({ ...store, state, redirect });
     const url = new URL(AUTH_URL);
     url.searchParams.set('client_id', store.appId);
-    url.searchParams.set('redirect_uri', redirectUri);
+    url.searchParams.set('redirect_uri', redirect);
     url.searchParams.set('response_type', 'code');
     url.searchParams.set('scope', SCOPES);
     url.searchParams.set('state', state);
@@ -156,9 +174,12 @@ export function createPinterest({ root, redirectUri = '', fetchImpl = fetch }) {
     const tokens = await tokenRequest(store, {
       grant_type: 'authorization_code',
       code,
-      redirect_uri: redirectUri,
+      // The same value the authorization carried, not one recomputed now:
+      // Pinterest compares them and the callback request may not look like the
+      // one that started this.
+      redirect_uri: store.redirect || redirectUri,
     });
-    await writeStore({ ...store, ...tokens, state: undefined });
+    await writeStore({ ...store, ...tokens, state: undefined, redirect: undefined });
     return status();
   }
 

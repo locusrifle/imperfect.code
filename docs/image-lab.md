@@ -79,6 +79,14 @@ Two ways in:
   registered on the app exactly; `/lab/state` reports the value in use so a
   mismatch can be compared rather than guessed.
 
+  **That origin comes from the request, not from configuration.** Every real
+  installation has `origins: []` — the public name belongs to the door's proxy,
+  and the machine itself is loopback and does not know it. A redirect derived
+  from config alone is the empty string on exactly the machines that matter.
+  The browser pressing Connect is at the public address, so its request is the
+  one thing that knows; the value is then stored with the OAuth state, because
+  the token exchange has to repeat it and by then that request is gone.
+
 ## Streaming
 
 Generation and board import both answer as server-sent events rather than one

@@ -53,6 +53,20 @@ async function readJson(req) {
   }
 }
 
+// The address the person's browser is actually at. Behind the door's proxy the
+// machine is loopback and knows nothing of its public name, so the request has
+// to say. Origin is preferred because a browser sets it honestly; the
+// forwarded headers are what a proxy adds; Host is the last resort.
+function publicOrigin(req) {
+  const origin = String(req.headers.origin || '').trim();
+  if (/^https?:\/\/[^/]+$/.test(origin)) return origin;
+  const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').split(',')[0].trim();
+  if (!host) return '';
+  const proto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim()
+    || (req.socket?.encrypted ? 'https' : 'http');
+  return `${proto}://${host}`;
+}
+
 function sendJson(res, value, status = 200) {
   const body = JSON.stringify(value);
   res.writeHead(status, {
@@ -297,14 +311,14 @@ export function createLabRoutes({
         const [contents, codex, pins] = await Promise.all([
           lab.library(),
           codexStatus(),
-          pinterest.status().catch(() => ({ configured: false, connected: false })),
+          pinterest.status(publicOrigin(req)).catch(() => ({ configured: false, connected: false })),
         ]);
         sendJson(res, { ...contents, codex, pinterest: pins, model });
         return true;
       }
       if (path === '/lab/picture') { sendImage(res, await lab.readPicture(url.searchParams.get('id')), { immutable: true }); return true; }
       if (path === '/lab/pin') { sendImage(res, await lab.readPin(url.searchParams.get('id')), { immutable: true }); return true; }
-      if (path === '/lab/pinterest/authorize') { sendJson(res, { url: await pinterest.authorizeUrl() }); return true; }
+      if (path === '/lab/pinterest/authorize') { sendJson(res, { url: await pinterest.authorizeUrl(publicOrigin(req)) }); return true; }
       if (path === '/lab/pinterest/boards') { sendJson(res, await pinterest.boards({ cursor: url.searchParams.get('cursor') || '' })); return true; }
       if (path === '/lab/pinterest/callback') {
         // Pinterest returns the person here in their browser, so this answers

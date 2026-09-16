@@ -320,3 +320,66 @@ test('an unsolicited Pinterest callback is refused', async () => {
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('the redirect comes from the request, because a machine has no public name of its own', async () => {
+  const root = await scratch('redirect');
+  // Every real installation has origins: [] -- the public name belongs to the
+  // door's proxy, not the loopback app. A redirect built from configuration
+  // alone is the empty string on exactly the machines that matter, and the
+  // Pinterest connection dies at the moment somebody first tries to use it.
+  const pinterest = createPinterest({
+    root,
+    redirectUri: '',
+    fetchImpl: async () => new Response(JSON.stringify({ access_token: 'a', refresh_token: 'r', expires_in: 3600 }), { headers: { 'Content-Type': 'application/json' } }),
+  });
+  try {
+    await pinterest.configure({ appId: '1', appSecret: '2' });
+    await assert.rejects(() => pinterest.authorizeUrl(''), e => e.status === 500);
+
+    const url = new URL(await pinterest.authorizeUrl('https://noah.imperfect.computer'));
+    assert.equal(url.searchParams.get('redirect_uri'), 'https://noah.imperfect.computer/lab/pinterest/callback');
+    assert.equal((await pinterest.status('https://noah.imperfect.computer')).redirectUri,
+      'https://noah.imperfect.computer/lab/pinterest/callback');
+
+    // Pinterest compares the token exchange's redirect against the one the
+    // authorization carried, and the callback request need not resemble the
+    // request that started it -- so the value is kept, not recomputed.
+    let sent = null;
+    const pinned = createPinterest({
+      root,
+      redirectUri: '',
+      fetchImpl: async (_u, options) => {
+        sent = new URLSearchParams(options.body).get('redirect_uri');
+        return new Response(JSON.stringify({ access_token: 'a', refresh_token: 'r', expires_in: 3600 }), { headers: { 'Content-Type': 'application/json' } });
+      },
+    });
+    const next = new URL(await pinned.authorizeUrl('https://noah.imperfect.computer'));
+    await pinned.connect({ code: 'c', state: next.searchParams.get('state') });
+    assert.equal(sent, 'https://noah.imperfect.computer/lab/pinterest/callback');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('the lab reports the redirect a machine with no configured origin would use', async () => {
+  const root = await scratch('origin-route');
+  const lab = createImageLab({ root });
+  const pinterest = createPinterest({ root, redirectUri: '' });
+  const handle = createLabRoutes({ lab, pinterest, agentDir: root, token: async () => ({ access: 'x', accountId: 'a', plan: 'plus' }) });
+  const { createServer } = await import('node:http');
+  const server = createServer((req, res) => {
+    handle(req, res, new URL(req.url, 'http://local').pathname).then(taken => { if (!taken) res.writeHead(404).end(); });
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    // What the door's proxy actually sends.
+    const state = await (await fetch(`${base}/lab/state`, {
+      headers: { 'X-Forwarded-Host': 'noah.imperfect.computer', 'X-Forwarded-Proto': 'https' },
+    })).json();
+    assert.equal(state.pinterest.redirectUri, 'https://noah.imperfect.computer/lab/pinterest/callback');
+  } finally {
+    server.close();
+    await rm(root, { recursive: true, force: true });
+  }
+});
