@@ -101,6 +101,7 @@ function grow() {
 // "three-doom" told a person nothing they could act on, and a drawer is for launching, not for
 // reading. The drawing and the name are the whole row.
 const APPS = [
+	{ id: "files", title: "files", window: { kind: "page", src: "/files.html" } },
 	{ id: "antiburn", title: "antiburn", window: { kind: "page", src: "/antiburn.html" } },
 	{ id: "doom", title: "Doom", window: { kind: "page", src: "/doom/index.html" } },
 	{ id: "image-lab", title: "Image Lab", window: { kind: "page", src: "/image-lab.html" } },
@@ -165,6 +166,7 @@ function listedApps() {
 const shell = desk = mountShell({
 	world: el("imperfect-world"),
 	apps: listedApps,
+	onReveal: () => closeHarness(),
 	onError: (error) => console.warn("application did not open", error),
 });
 
@@ -244,7 +246,6 @@ addEventListener("keydown", event => {
 	}
 	if (event.altKey && event.code === "Space") {
 		event.preventDefault();
-		closeHarness();
 		shell.openSheet();
 	}
 	// A panel in the middle of the screen reads as a dialog, and a dialog a keyboard cannot

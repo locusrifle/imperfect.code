@@ -89,6 +89,7 @@
 /* `page` is the empty container: a mounted in-page application, or any other
    in-app page framed whole. Either way it gets the entire window. */
 .review-panel[data-kind="page"] .review-stage {
+  position: relative;
   display: block;
   align-items: stretch;
   justify-content: stretch;
@@ -106,8 +107,9 @@
   background: var(--om-bg, #f7f0e2);
 }
 
-/* Close sits in the window, always reachable: closing is the way out now that
-   there is no fullscreen to escape from. */
+/* The window's name, top right. The close button that used to sit beside it is gone: Alt/Option+W
+   closes the showing window, and a control that repeats a shortcut is a second thing to explain
+   and a corner of every application permanently covered. */
 .review-panel .review-controls {
   display: flex;
   position: absolute;
@@ -121,7 +123,7 @@
   padding: 0;
   max-width: calc(100% - 12px);
   background: transparent;
-  touch-action: manipulation;
+  pointer-events: none;
 }
 .review-panel .review-status {
   max-width: 10rem;
@@ -131,23 +133,58 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.review-panel .review-controls button {
+
+/* Starting up. It covers the frame rather than sitting beside it, because the thing it is
+   covering is a black rectangle that says nothing. Five squares march across on the same pixel
+   grid the rest of the product is drawn on -- no spinner, nothing round. */
+.review-panel .review-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 10px;
   margin: 0;
-  padding: 2px 8px;
-  min-height: 28px;
-  border: 1px solid var(--om-accent, var(--pi-accent, #f27722));
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--om-bg-darker, #f2e4cd) 78%, transparent);
-  color: inherit;
-  font: inherit;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  cursor: pointer;
+  padding: 16px;
+  background: var(--om-bg, #f7f0e2);
+  color: var(--om-fg, #2a1a10);
+  font: 500 14px/1.3 var(--pi-font, ui-monospace, monospace);
+  text-align: center;
 }
-@media (pointer: coarse), (max-width: 700px) {
-  .review-panel .review-controls button {
-    min-width: 44px;
-    min-height: 44px;
-    padding: 8px 12px;
+.review-panel .review-loading p { margin: 0; }
+.review-panel .review-loading-name {
+  color: var(--om-fg-bright, #2a1a10);
+  letter-spacing: 0.04em;
+}
+.review-panel .review-loading-note {
+  color: var(--om-fg-dim, #8a7259);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: lowercase;
+}
+.review-panel .review-loading-bar {
+  display: flex;
+  gap: 4px;
+}
+.review-panel .review-loading-bar i {
+  width: 8px;
+  height: 8px;
+  background: var(--om-muted, #8a7259);
+  animation: review-loading-march 1s steps(1, end) infinite;
+}
+.review-panel .review-loading-bar i:nth-child(2) { animation-delay: 0.2s; }
+.review-panel .review-loading-bar i:nth-child(3) { animation-delay: 0.4s; }
+.review-panel .review-loading-bar i:nth-child(4) { animation-delay: 0.6s; }
+.review-panel .review-loading-bar i:nth-child(5) { animation-delay: 0.8s; }
+@keyframes review-loading-march {
+  0%, 20% { background: var(--om-accent, var(--pi-accent, #d9451a)); }
+  20.01%, 100% { background: var(--om-muted, #8a7259); }
+}
+/* Without motion the squares still have to say something, so they are simply lit. */
+@media (prefers-reduced-motion: reduce) {
+  .review-panel .review-loading-bar i {
+    animation: none;
+    background: var(--om-accent, var(--pi-accent, #d9451a));
   }
 }

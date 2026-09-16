@@ -3,7 +3,9 @@
    variable, so a rotation is a reflow and never a repaint from JavaScript. */
 
 :root {
-	/* Hyprland's own language: a gap around every window, a border, a corner. */
+	/* Hyprland's own language: a gap around every window and a border. There is no corner: this
+	   product is drawn on a character cell, and a rounded corner is the one shape a cell cannot
+	   make. Everything here meets at a right angle. */
 	--om-gap: 8px;
 	--om-border-width: 2px;
 	--om-bar-h: 44px;
@@ -94,7 +96,6 @@ body.shell-empty #imperfect-world.om-pager { pointer-events: none; }
 	min-height: 0;
 	overflow: hidden;
 	border: var(--om-border-width) solid var(--om-border-idle, #1e1e1e);
-	border-radius: var(--om-round, 8px);
 	background: var(--om-bg, #000);
 	/* Only the compositor animates this. */
 	transition: border-color 160ms linear;
@@ -154,7 +155,7 @@ body.shell-empty #imperfect-world.om-pager { pointer-events: none; }
 	touch-action: manipulation;
 }
 
-/* A 2x2 grid of dots: a menu, without imitating an Android launcher icon. */
+/* A 2x2 grid of squares: a menu, without imitating an Android launcher icon. */
 .om-menu {
 	display: grid;
 	place-items: center;
@@ -165,9 +166,14 @@ body.shell-empty #imperfect-world.om-pager { pointer-events: none; }
 .om-menu-glyph {
 	width: 12px;
 	height: 12px;
-	background-image: radial-gradient(circle at 3px 3px, currentColor 2.5px, transparent 2.6px);
-	background-size: 6px 6px;
-	background-repeat: repeat;
+	background-image:
+		linear-gradient(currentColor, currentColor),
+		linear-gradient(currentColor, currentColor),
+		linear-gradient(currentColor, currentColor),
+		linear-gradient(currentColor, currentColor);
+	background-size: 5px 5px;
+	background-position: 0 0, 7px 0, 0 7px, 7px 7px;
+	background-repeat: no-repeat;
 }
 
 .om-workspaces { display: flex; align-items: center; gap: 7px; min-height: 44px; }
@@ -181,7 +187,6 @@ body.shell-empty #imperfect-world.om-pager { pointer-events: none; }
 	content: "";
 	width: 7px;
 	height: 7px;
-	border-radius: 50%;
 	background: var(--om-muted, #555);
 	transition: background-color 140ms linear, transform 140ms ease-out;
 }
@@ -218,7 +223,6 @@ body.shell-empty #imperfect-world.om-pager { pointer-events: none; }
 	width: min(22rem, calc(100vw - 2 * var(--om-gap)));
 	background: var(--om-bg-dark, #111);
 	border: var(--om-border-width) solid var(--om-border, #555);
-	border-radius: var(--om-round, 8px);
 	color: var(--om-fg, #ddd);
 	font: 500 15px/1.2 var(--pi-font, ui-monospace, monospace);
 	max-height: min(70dvh, calc(100dvh - 2 * var(--om-bar-h)));
@@ -238,7 +242,6 @@ body.shell-empty #imperfect-world.om-pager { pointer-events: none; }
 	min-height: 52px;
 	padding: 0 12px;
 	border: 0;
-	border-radius: calc(var(--om-round, 8px) - 2px);
 	background: transparent;
 	color: inherit;
 	font: inherit;
@@ -250,12 +253,29 @@ body.shell-empty #imperfect-world.om-pager { pointer-events: none; }
 .om-app[data-open="true"] { background: var(--om-selection, #2a2a2a); }
 .om-app[data-open="true"] .om-app-icon { color: var(--om-accent, #d9451a); }
 .om-app-name { color: var(--om-fg-bright, #eee); }
-/* The mark is drawn on a pixel grid, so it is scaled in whole squares and never smoothed. */
+/* One box for every mark, so the names line up no matter what shape the mark is. antiburn's icon
+   is square and Doom's is a wide wordmark; both are contained in here, neither is cropped or
+   stretched. A mark we drew ourselves is on a pixel grid, so it scales in whole squares and is
+   never smoothed. */
 .om-app-icon {
+	display: grid;
+	place-items: center;
+	flex: none;
+	width: 40px;
+	height: 24px;
+	color: var(--om-fg, #ddd);
+}
+.om-app-icon img {
+	display: block;
+	max-width: 100%;
+	max-height: 100%;
+	width: auto;
+	height: auto;
+}
+.om-app-icon svg {
 	display: block;
 	width: 24px;
 	height: 24px;
-	color: var(--om-fg, #ddd);
 	shape-rendering: crispEdges;
 }
 .om-app:hover .om-app-icon, .om-app:focus-visible .om-app-icon { color: var(--om-accent, #d9451a); }

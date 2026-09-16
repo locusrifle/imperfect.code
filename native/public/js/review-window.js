@@ -12,6 +12,17 @@ import { mountAntiburn } from './antiburn-app.js';
 // Pages that are in-page applications rather than documents to frame.
 const MOUNTED_PAGES = new Map([['/antiburn.html', mountAntiburn]]);
 
+// Pages that keep working after the browser calls them loaded, so `load` is not the moment they
+// are up. Doom fetches a four-megabyte WAD and builds a world out of it; until that finishes the
+// frame is black, which is exactly what a broken application looks like. One of these says for
+// itself when it is running, by posting `imperfect:ready` to its parent. Keyed by src, like
+// MOUNTED_PAGES, because it is a fact about the page and not about who opened it.
+const BOOTING_PAGES = new Set(['/doom/index.html']);
+
+// How long a window will say an application is starting before it stops saying anything. Long
+// enough for a WAD on a slow line, short enough that a card does not sit over a dead page forever.
+const BOOT_PATIENCE = 30_000;
+
 function el(tag, text, className) {
 	const node = document.createElement(tag);
 	if (text != null) node.textContent = text;
@@ -101,6 +112,7 @@ export function mountReviewWindow(options = {}) {
 	let opening = null;
 	let ownedUrl = null;
 	let current = null;
+	let boot = null;
 
 	function worldHost() {
 		return options.host?.() ?? options.world ?? document.getElementById('imperfect-world') ?? document.body;
@@ -120,8 +132,39 @@ export function mountReviewWindow(options = {}) {
 	}
 
 	function clearStage() {
+		stopBoot();
 		forgetUrl();
 		if (stage) stage.replaceChildren();
+	}
+
+	function stopBoot() {
+		if (!boot) return;
+		removeEventListener('message', boot.hear);
+		clearTimeout(boot.timer);
+		boot = null;
+	}
+
+	// A black frame is what a game looks like while it loads and also what it looks like when it
+	// is broken, so the window says which one this is until the page is actually up. An ordinary
+	// page is up when the browser says it loaded; a booting one says so itself. The timeout is the
+	// honest end of waiting: if nothing ever says it is running, stop claiming it is on its way.
+	function awaitBoot(frame, name, declared) {
+		stopBoot();
+		const card = el('div', null, 'review-loading');
+		card.setAttribute('role', 'status');
+		const bar = el('div', null, 'review-loading-bar');
+		bar.setAttribute('aria-hidden', 'true');
+		for (let i = 0; i < 5; i += 1) bar.append(el('i'));
+		card.append(el('p', name, 'review-loading-name'), bar, el('p', 'starting up', 'review-loading-note'));
+		const done = () => { card.remove(); stopBoot(); };
+		const hear = event => {
+			if (event.source !== frame.contentWindow) return;
+			if (event.data?.type === 'imperfect:ready') done();
+		};
+		boot = { hear, timer: setTimeout(done, BOOT_PATIENCE) };
+		addEventListener('message', hear);
+		frame.addEventListener('load', () => { if (!declared) done(); }, { once: true });
+		stage.append(card);
 	}
 
 	function paintMessage(kind, text) {
@@ -236,6 +279,7 @@ export function mountReviewWindow(options = {}) {
 			// Workspace apps are not the product. Without same-origin they cannot
 			// reach the shell. Built-in pages keep the existing frame.
 			if (src.split('?')[0].startsWith('/apps/')) frame.setAttribute('sandbox', 'allow-scripts allow-forms');
+			awaitBoot(frame, title || 'this application', BOOTING_PAGES.has(src.split('?')[0]));
 			frame.src = src;
 			stage.append(frame);
 			return;
@@ -258,13 +302,11 @@ export function mountReviewWindow(options = {}) {
 		stage = el('div', null, 'review-stage');
 		bodyHost = el('div', null, 'review-body');
 		viewport.append(stage, bodyHost);
+		// No close button. Alt/Option+W closes the showing window, and a button that repeats a
+		// shortcut is a second thing to explain and a corner of every application covered up. What
+		// stays is the name, because a window still has to say which application it is.
 		const controls = el('div', null, 'review-controls');
 		controls.append(el('span', 'review', 'review-status'));
-		const stop = el('button', 'close', 'review-close');
-		stop.type = 'button';
-		stop.setAttribute('aria-label', 'close review');
-		stop.onclick = () => { close(); options.onClose?.(); };
-		controls.append(stop);
 		next.append(viewport, controls);
 		worldHost().append(next);
 		panel = next;
@@ -273,6 +315,7 @@ export function mountReviewWindow(options = {}) {
 	function close() {
 		gen += 1;
 		opening = null;
+		stopBoot();
 		forgetUrl();
 		current = null;
 		panel?.remove();
@@ -310,7 +353,6 @@ export function mountReviewWindow(options = {}) {
 
 export function mountWorldWindows(options = {}) {
 	const windows = new Map();
-	const closed = new Set();
 	const sticky = new Set();
 	function mark() {
 		document.body?.classList.toggle('world-live', windows.size > 0);
@@ -318,7 +360,6 @@ export function mountWorldWindows(options = {}) {
 	async function spawn(spec = {}) {
 		const id = String(spec.id || 'window');
 		if (spec.sticky) sticky.add(id);
-		if (closed.has(id)) return windows.get(id);
 		let win = windows.get(id);
 		if (!win) {
 			win = mountReviewWindow({
@@ -326,14 +367,6 @@ export function mountWorldWindows(options = {}) {
 				id,
 				// The shell gives each application its own viewport, named by id.
 				host: () => options.host?.(id, spec.title || id),
-				onClose() {
-					options.release?.(id);
-					windows.delete(id);
-					sticky.delete(id);
-					closed.add(id);
-					mark();
-					options.onClose?.(id);
-				},
 			});
 			windows.set(id, win);
 			mark();
@@ -342,15 +375,25 @@ export function mountWorldWindows(options = {}) {
 		options.onOpen?.(id);
 		return win;
 	}
+	// Every close now arrives the same way: Alt+W travels to the server, and the state comes back
+	// without that window. So this is the only teardown, and it has to give the slot back -- the
+	// button's own handler used to be the one thing that called `release`, which meant closing by
+	// keyboard left the pager holding an empty frame and a workspace dot for a window that was
+	// gone. It also kept a set of ids the user had closed, to stop a stale state reopening them;
+	// with the server doing the closing there is no such race, and no such set.
+	function forget(id) {
+		windows.get(id)?.close();
+		windows.delete(id);
+		sticky.delete(id);
+		options.release?.(id);
+	}
 	function close(id) {
 		if (id) {
-			windows.get(id)?.close();
-			windows.delete(id);
+			forget(id);
 			mark();
 			return;
 		}
-		for (const win of windows.values()) win.close();
-		windows.clear();
+		for (const key of [...windows.keys()]) forget(key);
 		mark();
 	}
 	function sync(list) {
@@ -358,10 +401,7 @@ export function mountWorldWindows(options = {}) {
 		for (const spec of Array.isArray(list) ? list : []) {
 			if (!spec?.id) continue;
 			wanted.add(spec.id);
-			if (!closed.has(spec.id)) void spawn(spec);
-		}
-		for (const id of [...closed]) {
-			if (!wanted.has(id)) closed.delete(id);
+			void spawn(spec);
 		}
 		for (const id of [...windows.keys()]) {
 			if (!wanted.has(id) && !sticky.has(id)) close(id);

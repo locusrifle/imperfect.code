@@ -34,12 +34,31 @@ git -C /tmp/three-doom checkout 445dbf41f2fcf032c6dfce2a630851e00b9c6634
 cp -r /tmp/three-doom/* native/public/doom/
 ```
 
-Then re-apply the import change under *What we changed* below. A registered IWAD may go in as
-`doom.wad` or `doom2.wad` instead — the page probes for those before `doom1.wad`.
+Then re-apply the changes under *What we changed* below, and write the logo out of the WAD:
+
+```sh
+node tools/doom-logo.mjs
+```
+
+A registered IWAD may go in as `doom.wad` or `doom2.wad` instead — the page probes for those
+before `doom1.wad`, and so does the logo tool.
 
 ## What we changed
 
 The seven renderer files import `/js/vendor/three.module.js` (which loads `three.core.js` beside it) instead of the bare `'three'` specifier or jsDelivr. Chromium here does not honour an import map on this page. `/doom/*` is allowed `style-src 'unsafe-inline'` because the port writes element styles; the rest of the shell is not. Startup probes missing commercial WAD names (404) then loads `doom1.wad`. No other game logic was rewritten. Upstream tests were not copied.
+
+`src/i_main.js` posts `{ type: 'imperfect:ready' }` to its parent once `D_DoomMain` resolves. The
+window shows a *starting up* card over the frame until then, because the WAD arrives long after
+the browser calls the page loaded, and a loading game is indistinguishable from a broken one.
+`native/public/js/review-window.js` names `/doom/index.html` as a page that boots; without that
+line the card would clear on `load` and the black screen would be back.
+
+## The logo
+
+The drawer shows `M_DOOM`, the title-screen lump, written out by `tools/doom-logo.mjs` to
+`native/public/doom/M_DOOM.png` — inside the ignored directory, with the port and the WAD, for the
+same reason. It is packed into a release because `pack` walks the filesystem. A clone with no WAD
+has no logo, and the drawer falls back to a glyph of its own rather than a broken image.
 
 ## Close
 

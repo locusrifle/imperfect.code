@@ -13,32 +13,58 @@
 
 const BAR_ID = 'om-bar';
 
-// An application is a picture before it is a word. There are no icon files: the product stands on
-// a pixel grid and its mark is a filled square, so each glyph is drawn on an 8x8 grid of that same
-// square in `currentColor` -- it follows the accent, costs no request, and cannot arrive late and
-// shift the row. An application nobody has drawn for gets the brand mark itself rather than a
-// broken-image box or a letter in a circle.
-const ICONS = {
+// An application is a picture before it is a word, and the truest picture is the one the
+// application already answers to. antiburn ships an icon with its desktop build; Doom's is
+// M_DOOM, the title-screen lump inside the IWAD the port loads -- `tools/doom-logo.mjs` writes
+// it out beside the port, which is why it is a path and not a drawing. Neither is in git: see
+// docs/doom.md for the WAD, and neither logo is ours to relicense.
+//
+// The rest are this product's own applications, so they are drawn here on the 8x8 grid the whole
+// product stands on, in `currentColor` -- they follow the accent, cost no request, and cannot
+// arrive late and shift the row. A real logo that is missing (a clone with no WAD) falls back to
+// the same drawing rather than a broken-image box.
+const LOGOS = {
+	antiburn: '/icons/antiburn.png',
+	doom: '/doom/M_DOOM.png',
+};
+const GLYPHS = {
+	// a folder: the tab, then the body as a ruled box
+	files: 'M2 3h5v2H2zM2 5h12v1H2zM2 13h12v1H2zM2 6h1v7H2zM13 6h1v7h-1z',
 	// a meter climbing, which is what antiburn watches
 	antiburn: 'M2 9h3v5H2zM6.5 6h3v8h-3zM11 2h3v12h-3z',
-	// a sight: four arms and the shot between them. It was a square ring, which at this size was
-	// the picture frame next to it with the middle filled in -- two applications, one drawing.
+	// a sight: four arms and the shot between them
 	doom: 'M7 1h2v4H7zM7 11h2v4H7zM1 7h4v2H1zM11 7h4v2h-4zM6 6h4v4H6z',
 	// a picture: a frame with a sun over a peak
 	'image-lab': 'M2 2h12v2H2zM2 12h12v2H2zM2 4h2v8H2zM12 4h2v8h-2zM5 5h2v2H5zM4 10h2v2H4zM6 8h2v4H6zM8 10h2v2H8z',
 };
 const BRAND_MARK = 'M3 3h10v10H3z';
 
-function appIcon(id) {
+function drawnIcon(id) {
 	const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
 	svg.setAttribute('viewBox', '0 0 16 16');
 	svg.setAttribute('aria-hidden', 'true');
-	svg.setAttribute('class', 'om-app-icon');
 	const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-	path.setAttribute('d', ICONS[id] || BRAND_MARK);
+	path.setAttribute('d', GLYPHS[id] || BRAND_MARK);
 	path.setAttribute('fill', 'currentColor');
 	svg.append(path);
 	return svg;
+}
+
+function appIcon(id) {
+	const box = el('span', null, 'om-app-icon');
+	box.setAttribute('aria-hidden', 'true');
+	const logo = LOGOS[id];
+	if (!logo) {
+		box.append(drawnIcon(id));
+		return box;
+	}
+	const mark = document.createElement('img');
+	mark.src = logo;
+	mark.alt = '';
+	mark.draggable = false;
+	mark.onerror = () => { mark.remove(); box.append(drawnIcon(id)); };
+	box.append(mark);
+	return box;
 }
 
 function el(tag, text, className) {
@@ -213,6 +239,11 @@ export function mountShell(options = {}) {
 
 	function openSheet() {
 		if (sheet) { closeSheet(); return; }
+		// The drawer is a panel in the middle of the screen now, and the middle of the screen is
+		// where the agent's drop hangs when it is down -- so the menu button in the bar opened a
+		// drawer underneath the console and looked like it had done nothing. The keyboard already
+		// retracted the drop before opening; the button has to ask for the same thing.
+		options.onReveal?.();
 		// The drawer used to await options.apps() -- a network round trip to /apps/list -- before
 		// creating a single element, so pressing the key did nothing at all for as long as that
 		// took and the drawer felt broken rather than slow. The frame goes up on the same tick as

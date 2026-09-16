@@ -165,7 +165,7 @@ test('a real browser drives the harness: streaming, tools, dialogs, slash comman
 		assert.match(await page.textContent('#entry-spend'), /\$0\.500/);
 		assert.equal(await page.evaluate(() => document.getElementById('terminal-entry').classList.contains('open')), false);
 		assert.equal(await page.locator('#entry-hint').count(), 0);
-		await page.keyboard.press('Alt+h');
+		await page.keyboard.press('Alt+y');
 		await page.waitForFunction(() => document.getElementById('terminal-entry').classList.contains('open'));
 		assert.equal(await page.isVisible('.drop-handle'), true);
 
@@ -284,7 +284,7 @@ test('a real browser drives the harness: streaming, tools, dialogs, slash comman
 		await page.fill('#entry-input', 'kept draft');
 		await page.reload();
 		await page.waitForFunction(() => (document.getElementById('entry-pi-label')?.textContent || '').includes('fixture-model'));
-		await page.keyboard.press('Alt+h');
+		await page.keyboard.press('Alt+y');
 		await page.waitForFunction(() => document.getElementById('terminal-entry').classList.contains('open'));
 		assert.equal(await page.inputValue('#entry-input'), 'kept draft');
 		await page.fill('#entry-input', '');
@@ -297,7 +297,10 @@ test('a real browser drives the harness: streaming, tools, dialogs, slash comman
 		// A dropped socket reconnects, onto the transcript the runtime kept meanwhile.
 		runtime.data.messages.push({ role: 'assistant', content: [{ type: 'text', text: 'kept across the drop' }] });
 		for (const ws of app.sockets.clients) ws.terminate();
-		await page.waitForSelector('#entry-model-status:has-text("reconnecting")');
+		// The status line itself is hidden in this composition -- `body.imperfect .entry-status` is
+		// display:none, because the painting carries no chrome -- so this waits on what the console
+		// knows, not on something a person can read. What the person sees is the next line landing.
+		await page.waitForFunction(() => document.getElementById('entry-model-status')?.textContent === 'reconnecting');
 		await page.waitForSelector('.entry-line.assistant:has-text("kept across the drop")', { timeout: 15000 });
 
 		assert.deepEqual(crashes, []);
@@ -318,7 +321,7 @@ test('desktop and phone play a done tone when the model finishes, even while loo
 	try {
 		await page.goto(`http://127.0.0.1:${address.port}`);
 		await page.waitForFunction(() => (document.getElementById('entry-pi-label')?.textContent || '').includes('fixture-model'));
-		await page.keyboard.press('Alt+h');
+		await page.keyboard.press('Alt+y');
 		await page.waitForFunction(() => document.getElementById('terminal-entry').classList.contains('open'));
 		await page.locator('#entry-input').click();
 		const sounds = () => page.evaluate(() => window.__gueyDoneSounds || 0);
@@ -356,7 +359,7 @@ test('attaching an image shows it in the composer, then in the transcript', asyn
 	try {
 		await page.goto(`http://127.0.0.1:${address.port}`);
 		await page.waitForFunction(() => (document.getElementById('entry-pi-label')?.textContent || '').includes('fixture-model'));
-		await page.keyboard.press('Alt+h');
+		await page.keyboard.press('Alt+y');
 		await page.waitForFunction(() => document.getElementById('terminal-entry').classList.contains('open'));
 		const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
 		await page.setInputFiles('#entry-files', { name: 'phone.png', mimeType: 'image/png', buffer: png });
@@ -401,7 +404,7 @@ test('attaching an image shows it in the composer, then in the transcript', asyn
 async function openPersonalComposer(page, address) {
 	await page.goto(`http://127.0.0.1:${address.port}`);
 	await page.waitForFunction(() => (document.getElementById('entry-pi-label')?.textContent || '').includes('fixture-model'));
-	await page.keyboard.press('Alt+h');
+	await page.keyboard.press('Alt+y');
 	await page.waitForFunction(() => document.getElementById('terminal-entry').classList.contains('open'));
 }
 
@@ -597,7 +600,7 @@ test('steering and follow-up queues show in the editor chrome', async (t) => {
 	try {
 		await page.goto(`http://127.0.0.1:${address.port}`);
 		await page.waitForFunction(() => (document.getElementById('entry-pi-label')?.textContent || '').includes('fixture-model'));
-		await page.keyboard.press('Alt+h');
+		await page.keyboard.press('Alt+y');
 		await page.waitForFunction(() => document.getElementById('terminal-entry').classList.contains('open'));
 		runtime.data.busy = true; runtime.data.operation = 'working'; runtime.data.thinkingLevel = 'medium'; runtime.events.emit('change');
 		await page.waitForSelector('#entry-input-zone.working');
@@ -666,7 +669,7 @@ test('/guey-reload reloads the page instead of prompting', async (t) => {
 	try {
 		await page.goto(`http://127.0.0.1:${address.port}`);
 		await page.waitForFunction(() => (document.getElementById('entry-pi-label')?.textContent || '').includes('fixture-model'));
-		await page.keyboard.press('Alt+h');
+		await page.keyboard.press('Alt+y');
 		await page.waitForFunction(() => document.getElementById('terminal-entry').classList.contains('open'));
 		const cache = await page.evaluate(async () => (await fetch('/js/harness.js')).headers.get('cache-control'));
 		assert.equal(cache, 'no-store');
@@ -694,7 +697,7 @@ test('/tab opens the tabs window and can start a new one', async (t) => {
 	try {
 		await page.goto(`http://127.0.0.1:${address.port}`);
 		await page.waitForFunction(() => (document.getElementById('entry-pi-label')?.textContent || '').includes('fixture-model'));
-		await page.keyboard.press('Alt+h');
+		await page.keyboard.press('Alt+y');
 		await page.waitForFunction(() => document.getElementById('terminal-entry').classList.contains('open'));
 		await page.waitForSelector('#session-rail', { state: 'attached' });
 		await page.fill('#entry-input', '/tab');
@@ -726,7 +729,7 @@ test('+ new opens a blank session and the previous tab keeps its transcript', as
 	try {
 		await page.goto(`http://127.0.0.1:${address.port}`);
 		await page.waitForFunction(() => (document.getElementById('entry-pi-label')?.textContent || '').includes('fixture-model'));
-		await page.keyboard.press('Alt+h');
+		await page.keyboard.press('Alt+y');
 		await page.waitForFunction(() => document.getElementById('terminal-entry').classList.contains('open'));
 		await page.waitForFunction(() => (document.getElementById('entry-output')?.textContent || '').includes('stay on the first tab'));
 		await page.fill('#entry-input', '/tab');
@@ -766,7 +769,7 @@ test('/tab titles use the first prompt and X closes a tab, not the last one', as
 	try {
 		await page.goto(`http://127.0.0.1:${address.port}`);
 		await page.waitForFunction(() => (document.getElementById('entry-pi-label')?.textContent || '').includes('fixture-model'));
-		await page.keyboard.press('Alt+h');
+		await page.keyboard.press('Alt+y');
 		await page.waitForFunction(() => document.getElementById('terminal-entry').classList.contains('open'));
 		await page.fill('#entry-input', '/tab');
 		await page.press('#entry-input', 'Enter');
@@ -810,7 +813,7 @@ test('choosing a tab closes the list immediately, even if focus is slow', async 
 	try {
 		await page.goto(`http://127.0.0.1:${address.port}`);
 		await page.waitForFunction(() => (document.getElementById('entry-pi-label')?.textContent || '').includes('fixture-model'));
-		await page.keyboard.press('Alt+h');
+		await page.keyboard.press('Alt+y');
 		await page.waitForFunction(() => document.getElementById('terminal-entry').classList.contains('open'));
 		await page.fill('#entry-input', '/tab');
 		await page.press('#entry-input', 'Enter');
@@ -842,7 +845,7 @@ test('arrow keys move through the tabs list; rows have no dividing lines', async
 	try {
 		await page.goto(`http://127.0.0.1:${address.port}`);
 		await page.waitForFunction(() => (document.getElementById('entry-pi-label')?.textContent || '').includes('fixture-model'));
-		await page.keyboard.press('Alt+h');
+		await page.keyboard.press('Alt+y');
 		await page.waitForFunction(() => document.getElementById('terminal-entry').classList.contains('open'));
 		await page.fill('#entry-input', '/tab');
 		await page.press('#entry-input', 'Enter');
@@ -879,7 +882,7 @@ test('an unfocused tab titled new still shows its first prompt', async (t) => {
 	try {
 		await page.goto(`http://127.0.0.1:${address.port}`);
 		await page.waitForFunction(() => (document.getElementById('entry-pi-label')?.textContent || '').includes('fixture-model'));
-		await page.keyboard.press('Alt+h');
+		await page.keyboard.press('Alt+y');
 		await page.waitForFunction(() => document.getElementById('terminal-entry').classList.contains('open'));
 		await page.fill('#entry-input', '/tab');
 		await page.press('#entry-input', 'Enter');
@@ -908,7 +911,7 @@ test('arrow keys switch tabs without opening the list', async (t) => {
 	try {
 		await page.goto(`http://127.0.0.1:${address.port}`);
 		await page.waitForFunction(() => (document.getElementById('entry-pi-label')?.textContent || '').includes('fixture-model'));
-		await page.keyboard.press('Alt+h');
+		await page.keyboard.press('Alt+y');
 		await page.waitForFunction(() => document.getElementById('terminal-entry').classList.contains('open'));
 		await page.locator('#entry-input').click();
 		assert.equal(await page.evaluate(() => document.getElementById('session-rail')?.classList.contains('open')), false);
@@ -939,7 +942,7 @@ test('a tab still named new takes its title from the first prompt', async (t) =>
 	try {
 		await page.goto(`http://127.0.0.1:${address.port}`);
 		await page.waitForFunction(() => (document.getElementById('entry-pi-label')?.textContent || '').includes('fixture-model'));
-		await page.keyboard.press('Alt+h');
+		await page.keyboard.press('Alt+y');
 		await page.waitForFunction(() => document.getElementById('terminal-entry').classList.contains('open'));
 		await page.fill('#entry-input', '/tab');
 		await page.press('#entry-input', 'Enter');
@@ -963,7 +966,7 @@ test('compaction summary is the TUI completed box, expandable', async (t) => {
 	try {
 		await page.goto(`http://127.0.0.1:${address.port}`);
 		await page.waitForFunction(() => (document.getElementById('entry-pi-label')?.textContent || '').includes('fixture-model'));
-		await page.keyboard.press('Alt+h');
+		await page.keyboard.press('Alt+y');
 		await page.waitForFunction(() => document.getElementById('terminal-entry').classList.contains('open'));
 		runtime.data.messages = [
 			{ role: 'compactionSummary', tokensBefore: 250983, summary: 'Kept the session rail and garden charcoal.' },
@@ -997,7 +1000,7 @@ test('theme picker arrows preview without saving, escape restores', async (t) =>
 	try {
 		await page.goto(`http://127.0.0.1:${address.port}`);
 		await page.waitForFunction(() => (document.getElementById('entry-pi-label')?.textContent || '').includes('fixture-model'));
-		await page.keyboard.press('Alt+h');
+		await page.keyboard.press('Alt+y');
 		await page.waitForFunction(() => document.getElementById('terminal-entry').classList.contains('open'));
 		await page.fill('#entry-input', '/theme');
 		await page.press('#entry-input', 'Enter');
@@ -1273,7 +1276,7 @@ test('clipboard image paste attaches; imperfect composer grows with lines', asyn
 	try {
 		await page.goto(`http://127.0.0.1:${pAddr.port}`);
 		await page.waitForFunction(() => (document.getElementById('entry-pi-label')?.textContent || '').includes('fixture-model'));
-		await page.keyboard.press('Alt+h');
+		await page.keyboard.press('Alt+y');
 		await page.waitForFunction(() => document.getElementById('terminal-entry').classList.contains('open'));
 		await page.locator('#entry-input').focus();
 		await pastePng(page);
@@ -1325,7 +1328,7 @@ test('/graph opens personal map on grid; read/back/close; phone; failed load; st
 	try {
 		await page.goto(`http://127.0.0.1:${pAddr.port}`);
 		await page.waitForFunction(() => (document.getElementById('entry-pi-label')?.textContent || '').includes('fixture-model'));
-		await page.keyboard.press('Alt+h');
+		await page.keyboard.press('Alt+y');
 		await page.waitForFunction(() => document.getElementById('terminal-entry').classList.contains('open'));
 		await page.fill('#entry-input', 'keep this draft');
 		await page.fill('#entry-input', '/graph');
@@ -1432,7 +1435,7 @@ test('/graph opens personal map on grid; read/back/close; phone; failed load; st
 		await page.setViewportSize({ width: 390, height: 844 });
 		const harnessOpen = await page.locator('#terminal-entry').evaluate(el => el.classList.contains('open'));
 		if (!harnessOpen) {
-			await page.keyboard.press('Alt+h');
+			await page.keyboard.press('Alt+y');
 			await page.waitForFunction(() => document.getElementById('terminal-entry').classList.contains('open'));
 		}
 		const graphOpen = await page.locator('#knowledge-graph-host').evaluate(el => el.classList.contains('open') && !el.hidden);
@@ -1477,7 +1480,7 @@ test('/graph opens personal map on grid; read/back/close; phone; failed load; st
 		await page.evaluate(() => document.getElementById('knowledge-graph-close').click());
 
 		await page.route('**/graph/page**', route => route.fulfill({ status: 500, body: 'nope' }));
-		if (!await page.locator('#terminal-entry').evaluate(el => el.classList.contains('open'))) await page.keyboard.press('Alt+h');
+		if (!await page.locator('#terminal-entry').evaluate(el => el.classList.contains('open'))) await page.keyboard.press('Alt+y');
 		await page.waitForFunction(() => document.getElementById('terminal-entry').classList.contains('open'));
 		await page.evaluate(() => document.getElementById('knowledge-graph-host').classList.contains('open') || null);
 		await page.fill('#entry-input', '/graph');
@@ -1569,7 +1572,7 @@ test('knowledge tree grows upwards symmetrically through seven pages, including 
 	try {
 		await page.goto(`http://127.0.0.1:${addr.port}`);
 		await page.waitForFunction(() => document.querySelector('#entry-pi-label')?.textContent.includes('fixture-model'));
-		await page.keyboard.press('Alt+h');
+		await page.keyboard.press('Alt+y');
 		await page.fill('#entry-input', '/graph');
 		await page.press('#entry-input', 'Enter');
 		await page.waitForSelector('#knowledge-cards [data-node="practice"]');
@@ -1599,7 +1602,7 @@ test('knowledge tree grows upwards symmetrically through seven pages, including 
 	}
 });
 
-test('the phone shell is Omarchy wallpaper, a pager of viewports, and its own bar', async (t) => {
+test('the phone shell is the painting, a pager of viewports, and its own bar', async (t) => {
 	const executablePath = browserPath();
 	if (executablePath === null) return t.skip('No chromium available; run `npx playwright install chromium`');
 	const root = await mkdtemp(join(tmpdir(), 'guey-browser-scene-'));
@@ -1614,8 +1617,10 @@ test('the phone shell is Omarchy wallpaper, a pager of viewports, and its own ba
 		await openPersonalComposer(page, addr);
 
 		assert.equal(await page.locator('#imperfect-scene').count(), 0);
-		// Omarchy's own wallpaper, on its own fixed layer so `cover` re-fits on
-		// rotation with no script.
+		// The ground is the painting the door is set in, on its own fixed layer so `cover` re-fits
+		// on rotation with no script. Omarchy supplied a wallpaper here until 2026-09-14 and this
+		// test still asked for it; a hosted machine has no Omarchy to ask. A phone is taller than
+		// it is wide, so it gets the portrait crop.
 		const wall = await page.evaluate(() => {
 			const node = document.getElementById('om-wall');
 			if (!node) return null;
@@ -1624,11 +1629,11 @@ test('the phone shell is Omarchy wallpaper, a pager of viewports, and its own ba
 			return { image: style.backgroundImage, size: style.backgroundSize, w: Math.round(box.width), h: Math.round(box.height) };
 		});
 		assert.ok(wall, 'the wallpaper layer exists');
-		assert.match(wall.image, /\/omarchy\/background/);
+		assert.match(wall.image, /\/media\/ground\/temple-tall\.webp/);
 		assert.equal(wall.size, 'cover');
 		assert.equal(wall.w, 390);
 		assert.equal(wall.h, 844);
-		assert.equal((await page.request.get(`http://127.0.0.1:${addr.port}/omarchy/background`)).status(), 200);
+		assert.equal((await page.request.get(`http://127.0.0.1:${addr.port}/media/ground/temple-tall.webp`)).status(), 200);
 
 		// The pager fills the viewport above the bar, and scrolls one axis only.
 		const world = await page.evaluate(() => {
@@ -1651,8 +1656,8 @@ test('the phone shell is Omarchy wallpaper, a pager of viewports, and its own ba
 		assert.equal(world.overflowX, 'auto');
 		assert.equal(world.overflowY, 'hidden');
 
-		// The bar's arrangement is Omarchy's: its position, its widgets, its clock
-		// format. Nothing open is the wallpaper, and the menu is the way in.
+		// The bar is this shell's own: its position, its widgets, its clock format. Nothing open is
+		// the painting, and the menu is the way in.
 		const bar = await page.evaluate(() => {
 			const node = document.getElementById('om-bar');
 			if (!node) return null;
@@ -1667,18 +1672,33 @@ test('the phone shell is Omarchy wallpaper, a pager of viewports, and its own ba
 		assert.ok(bar, 'the bar mounted');
 		assert.equal(bar.position, 'bottom');
 		assert.ok(bar.menu);
-		assert.ok(bar.workspaces);
 		assert.match(bar.clock, /\d\d:\d\d/);
-		assert.equal(bar.dots, 0, 'no applications open yet');
+		// The bar carries the menu and the clock. It had a workspace indicator while its
+		// arrangement came from Omarchy's shell.json; that went with shell.json, and the pager has
+		// had no indicator since -- open two applications and nothing says which one is showing.
+		assert.equal(bar.workspaces, false);
+		assert.equal(bar.dots, 0);
 		assert.ok(await page.evaluate(() => document.body.classList.contains('shell-empty')));
 
 		// The menu lists the applications, and opening one gives it a viewport.
 		await page.click('.om-menu');
 		await page.waitForSelector('.om-sheet .om-app');
 		const apps = await page.$$eval('.om-sheet .om-app-name', nodes => nodes.map(n => n.textContent));
-		// 'desktop' rather than 'laptop': the machine behind this shell is whatever the account
-		// points at, and a headless one drops the entry entirely rather than offering a dead tile.
-		assert.deepEqual(apps, ['desktop', 'files', 'antiburn']);
+		assert.deepEqual(apps, ['files', 'antiburn', 'Doom', 'Image Lab']);
+		// Every row is a picture and a name. antiburn and Doom answer to logos of their own, which
+		// are files; the product's own applications are drawn on the pixel grid, which are not.
+		const marks = await page.$$eval('.om-sheet .om-app-icon', boxes => boxes.map(box => {
+			const img = box.querySelector('img');
+			return img ? `img:${new URL(img.src).pathname}:${img.naturalWidth > 0}` : 'drawn';
+		}));
+		assert.deepEqual(marks, ['drawn', 'img:/icons/antiburn.png:true', 'img:/doom/M_DOOM.png:true', 'drawn']);
+		// The drawer is a panel in the middle, not a bar across the foot of the screen.
+		const drawer = await page.evaluate(() => {
+			const box = document.querySelector('.om-sheet-list').getBoundingClientRect();
+			return { w: Math.round(box.width), left: Math.round(box.left), right: Math.round(box.right) };
+		});
+		assert.ok(drawer.w < 390, `the drawer is no wider than it needs, got ${drawer.w}`);
+		assert.equal(drawer.left, 390 - drawer.right, 'the drawer is centred');
 		await page.click('.om-sheet .om-app:has-text("files")');
 		await page.waitForSelector('.om-slot[data-app="files"] .review-page-frame');
 		const slot = await page.evaluate(() => {
@@ -1691,13 +1711,15 @@ test('the phone shell is Omarchy wallpaper, a pager of viewports, and its own ba
 				dots: document.querySelectorAll('.om-ws').length,
 			};
 		});
-		// One full viewport per application, inset by Omarchy's gap and rounded
-		// with the corner the theme gives Hyprland.
+		// One full viewport per application, inset by the gap. The corner is square: this product is
+		// drawn on a character cell, and a rounded corner is the one shape a cell cannot make.
 		assert.equal(slot.w, 390);
-		assert.ok(slot.frameW < 390 && slot.frameW > 360, `the gap shows the wallpaper, got ${slot.frameW}`);
-		assert.equal(slot.radius, '6px');
-		assert.equal(slot.dots, 1);
+		assert.ok(slot.frameW < 390 && slot.frameW > 360, `the gap shows the painting, got ${slot.frameW}`);
+		assert.equal(slot.radius, '0px');
+		assert.equal(slot.dots, 0, 'still no indicator, see above');
 		assert.equal(await page.locator('.om-sheet').count(), 0, 'the sheet closes on choice');
+		// Alt+W closes a window, so no button repeats it in the corner of every application.
+		assert.equal(await page.locator('.review-close').count(), 0);
 
 		await page.screenshot({ path: '/tmp/imperfect-canvas.png' });
 

@@ -340,7 +340,6 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 	const world = personal ? mountWorldWindows({
 		host: (id, title) => hooks.slot?.(id, title),
 		release: (id) => hooks.release?.(id),
-		onClose: (id) => { command('window-close', { windowId: id }).catch(() => {}); },
 		onOpen: () => { hooks.onWindowOpen?.(); },
 	}) : { spawn: async () => {}, close: () => {}, sync: () => {} };
 	const inputZone = input?.closest?.('#entry-input-zone');

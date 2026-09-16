@@ -2,8 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { applyWorldWindow, closeWorldWindow, sanitizeWorldWindow } from '../world-windows.mjs';
 
-test('only desktop, video, image, text, or page; media src is an in-app asset', () => {
-  assert.deepEqual(sanitizeWorldWindow({ kind: 'desktop', title: 'Laptop' }), { id: 'desktop', kind: 'desktop', title: 'Laptop' });
+test('only video, image, text, or page; media src is an in-app asset', () => {
+  // `desktop` was the remote view of the laptop, and it went with the laptop shell on 2026-09-14:
+  // a hosted machine has no other machine to look at. It is refused like any other unknown kind.
+  assert.throws(() => sanitizeWorldWindow({ kind: 'desktop', title: 'Laptop' }), /kind/);
   const src = '/content/media/1277046e60949e6f/dafde4200f652cdb';
   assert.equal(sanitizeWorldWindow({ kind: 'video', src, title: 'Clip' }).src, src);
   assert.throws(() => sanitizeWorldWindow({ kind: 'video', src: 'https://example.com/x.mp4' }), /in-app/);

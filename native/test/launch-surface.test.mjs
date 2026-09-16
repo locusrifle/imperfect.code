@@ -60,7 +60,10 @@ test('cookie sets startup theme when none is saved; wallpaper and doom serve', a
     assert.match(site, /id: "antiburn"/);
     assert.match(site, /id: "doom"/);
     assert.match(site, /id: "image-lab"/);
-    assert.doesNotMatch(site, /id: "files"/);
+    // The files application was written, served, and then not listed anywhere, so the only way to
+    // see what is on your own computer was to ask the agent to open it.
+    assert.match(site, /id: "files"/);
+    assert.equal((await fetch(`${origin}/files.html`)).status, 200);
     const keys = await readFile(new URL('../public/js/pi-card.js', import.meta.url), 'utf8');
     assert.match(keys, /KeyY/);
   } finally {

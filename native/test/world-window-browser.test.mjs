@@ -56,7 +56,11 @@ test('closing a canvas window on one browser closes it on the other', async (t) 
     assert.equal(opened.success, true);
     await laptop.waitForSelector('#note');
     await phone.waitForSelector('#note');
-    await phone.click('#note .review-close');
+    // Alt+W is the way a window closes -- there is no button. It also has to reach the server and
+    // come back, which is the whole point: the other browser is holding the same window.
+    // This used to click a close button and had been failing since the first-sign-in guide was
+    // added, because that card sat over the corner the button was in.
+    await phone.keyboard.press('Alt+w');
     await laptop.waitForSelector('#note', { state: 'detached' });
     await phone.waitForSelector('#note', { state: 'detached' });
   } finally {

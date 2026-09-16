@@ -26,6 +26,7 @@ class Elem {
     this.hidden = false;
     this.focused = false;
     this.listeners = {};
+    if (this.tagName === 'IFRAME') this.contentWindow = { frame: this };
     this.classList = {
       add: (...names) => { for (const name of names) this.className = `${this.className} ${name}`.trim(); },
       remove: (...names) => {
@@ -119,7 +120,12 @@ function installDom({ phone = false, world = true } = {}) {
     return url;
   };
   globalThis.URL.revokeObjectURL = url => { revoked.push(url); };
-  return { body, host, created, revoked };
+  // The booting card listens for the page's own "I am running" message.
+  const heard = new Set();
+  globalThis.addEventListener = (type, fn) => { if (type === 'message') heard.add(fn); };
+  globalThis.removeEventListener = (type, fn) => { if (type === 'message') heard.delete(fn); };
+  const post = event => { for (const fn of [...heard]) fn(event); };
+  return { body, host, created, revoked, post };
 }
 
 test('classifyContent reads kind, mime, name, and studio media path', () => {
@@ -162,7 +168,7 @@ test('show mounts a desk-shaped window with a parent body host', async () => {
   assert.equal(panel.attrs['aria-label'], 'Clip title');
   assert.equal(host.querySelector('.review-status').textContent, 'Clip title');
   assert.ok(host.querySelector('.review-controls'));
-  assert.ok(host.querySelector('.review-close'));
+  assert.equal(host.querySelector('.review-close'), null, 'Alt+W closes a window; no button repeats it');
   assert.equal(host.querySelector('.review-expand'), null);
   assert.equal(host.querySelectorAll('.review-corner').length, 0);
   assert.equal(body.querySelector('.desk-panel'), null);
@@ -247,22 +253,19 @@ test('show does not focus the panel or the media', async () => {
   await review.show({ title: 'Clip', src: '/content/media/p/a' });
   assert.equal(host.querySelector('#review-panel').focused, false);
   assert.equal(host.querySelector('.review-video').focused, false);
-  assert.equal(host.querySelector('.review-close').focused, false);
   assert.equal(host.querySelector('.review-video').attrs.autofocus, undefined);
 });
 
 test('close removes the panel and revokes an owned object URL', async () => {
   const { host, created, revoked } = installDom();
-  let closed = 0;
-  const review = mountReviewWindow({ onClose: () => { closed += 1; } });
+  const review = mountReviewWindow();
   await review.open({ file: { name: 'a.png', type: 'image/png' } });
   assert.equal(created.length, 1);
-  host.querySelector('.review-close').onclick();
+  review.close();
   assert.equal(review.isOpen(), false);
   assert.equal(review.body, null);
   assert.equal(host.children.length, 0);
   assert.deepEqual(revoked, [created[0].url]);
-  assert.equal(closed, 1);
 });
 
 test('replacing content revokes the previous owned URL', async () => {
@@ -343,4 +346,36 @@ test('page is the empty container: any in-app page is framed, a foreign one is n
   await review.show({ kind: 'page', title: 'evil', src: 'https://example.com/x.html' });
   assert.equal(host.querySelector('.review-page-frame'), null);
   assert.match(host.querySelector('.review-blocked').textContent, /in-app/);
+});
+
+test('an ordinary page is up when it has loaded', async () => {
+  const { host } = installDom();
+  const review = mountReviewWindow();
+  await review.show({ kind: 'page', title: 'files', src: '/files.html' });
+  const card = host.querySelector('.review-loading');
+  assert.ok(card, 'a frame that has not loaded says so rather than sitting blank');
+  assert.equal(card.querySelector('.review-loading-name').textContent, 'files');
+  const frame = host.querySelector('.review-page-frame');
+  for (const fn of frame.listeners.load ?? []) fn();
+  assert.equal(host.querySelector('.review-loading'), null);
+});
+
+test('a booting page waits for the page to say it is running, not for load', async () => {
+  const { host, post } = installDom();
+  const review = mountReviewWindow();
+  await review.show({ kind: 'page', title: 'Doom', src: '/doom/index.html' });
+  const frame = host.querySelector('.review-page-frame');
+  for (const fn of frame.listeners.load ?? []) fn();
+  assert.ok(host.querySelector('.review-loading'), 'Doom is still fetching a WAD when the frame loads');
+  post({ source: frame.contentWindow, data: { type: 'imperfect:ready' } });
+  assert.equal(host.querySelector('.review-loading'), null);
+});
+
+test("one frame saying it is running does not clear another window's card", async () => {
+  const { host, post } = installDom();
+  const review = mountReviewWindow();
+  await review.show({ kind: 'page', title: 'Doom', src: '/doom/index.html' });
+  post({ source: { other: true }, data: { type: 'imperfect:ready' } });
+  assert.ok(host.querySelector('.review-loading'));
+  review.close();
 });

@@ -1,12 +1,24 @@
-/* Files: Omarchy's colours, a phone's touch targets, nothing else. */
+/* Files: the brand's colours, a phone's touch targets, nothing else.
+   The shell names its surfaces `--om-*` on the desk's own body, and this page is a separate
+   document inside a frame, so it reaches none of that. The names are bound here instead, once, to
+   the same garden tokens the desk binds them to -- the literals that used to stand in for them
+   were a dark editor's palette, and the window looked like a different product. */
 .files-app {
+	--om-bg: var(--panel);
+	--om-bg-dark: var(--panel-raised);
+	--om-fg: var(--panel-text);
+	--om-fg-bright: var(--panel-bright);
+	--om-fg-dim: var(--muted);
+	--om-accent: var(--orange);
+	--om-selection: var(--panel-band);
+
 	margin: 0;
 	display: grid;
 	grid-template-rows: auto minmax(0, 1fr);
 	height: 100dvh;
-	background: var(--om-bg, #101315);
-	color: var(--om-fg, #cacccc);
-	font: 500 15px/1.35 ui-monospace, "SF Mono", Menlo, monospace;
+	background: var(--om-bg);
+	color: var(--om-fg);
+	font: 500 15px/1.35 "Commit Mono", ui-monospace, monospace;
 	overflow: hidden;
 }
 .files-head {
@@ -32,7 +44,6 @@
 	width: 34px;
 	height: 34px;
 	border: 0;
-	border-radius: 4px;
 	background: transparent;
 	color: var(--om-accent, #798186);
 	font: 600 22px/1 inherit;
