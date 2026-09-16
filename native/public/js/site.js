@@ -97,10 +97,13 @@ function grow() {
 // The applications the menu can open. Everything but the desktop is a `page`,
 // the empty container — which is how the next web project joins this list
 // without a new window kind.
+// The notes each of these carried are gone with the column that showed them. "placeholder" and
+// "three-doom" told a person nothing they could act on, and a drawer is for launching, not for
+// reading. The drawing and the name are the whole row.
 const APPS = [
-	{ id: "antiburn", title: "antiburn", note: "what you are spending", window: { kind: "page", src: "/antiburn.html" } },
-	{ id: "doom", title: "Doom", note: "three-doom", window: { kind: "page", src: "/doom/index.html" } },
-	{ id: "image-lab", title: "Image Lab", note: "placeholder", window: { kind: "page", src: "/image-lab.html" } },
+	{ id: "antiburn", title: "antiburn", window: { kind: "page", src: "/antiburn.html" } },
+	{ id: "doom", title: "Doom", window: { kind: "page", src: "/doom/index.html" } },
+	{ id: "image-lab", title: "Image Lab", window: { kind: "page", src: "/image-lab.html" } },
 ];
 
 const LAUNCH_THEMES = new Set(["garden", "night"]);
@@ -121,18 +124,24 @@ function applyDeskTheme(name) {
 
 applyDeskTheme(readLaunchTheme() || "garden");
 
-async function listedApps() {
-	const built = APPS.map(app => ({
-		id: app.id,
-		title: app.title,
-		note: app.note,
-		open: () => pi.openWindow({ ...app.window, id: app.id, title: app.title }),
-	}));
+const builtInApps = () => APPS.map(app => ({
+	id: app.id,
+	title: app.title,
+	open: () => pi.openWindow({ ...app.window, id: app.id, title: app.title }),
+}));
+
+// What the agent has written into /apps changes when the agent writes an app, which is rare, and
+// never between two presses of the same key. So the answer is kept and the drawer opens out of it
+// at once; the fetch behind it only decides what the NEXT open shows. Asking the network every
+// time is what made a keystroke feel like a page load.
+let appsKnown = null;
+async function refreshApps() {
+	const built = builtInApps();
 	try {
 		const response = await fetch("/apps/list");
-		if (!response.ok) return built;
+		if (!response.ok) return (appsKnown = built);
 		const extra = await response.json();
-		if (!Array.isArray(extra)) return built;
+		if (!Array.isArray(extra)) return (appsKnown = built);
 		const seen = new Set(built.map(app => app.id));
 		for (const app of extra) {
 			if (!app?.id || seen.has(app.id) || !String(app.src || "").startsWith("/apps/")) continue;
@@ -140,12 +149,17 @@ async function listedApps() {
 			built.push({
 				id: app.id,
 				title: app.title || app.id,
-				note: app.note || "on this computer",
 				open: () => pi.openWindow({ kind: "page", src: app.src, id: app.id, title: app.title || app.id }),
 			});
 		}
 	} catch {}
-	return built;
+	return (appsKnown = built);
+}
+
+// Synchronous when we already know, a promise only on the very first open.
+function listedApps() {
+	if (appsKnown) { void refreshApps(); return appsKnown; }
+	return refreshApps();
 }
 
 const shell = desk = mountShell({
@@ -232,6 +246,14 @@ addEventListener("keydown", event => {
 		event.preventDefault();
 		closeHarness();
 		shell.openSheet();
+	}
+	// A panel in the middle of the screen reads as a dialog, and a dialog a keyboard cannot
+	// dismiss is a trap. The backdrop closes it for a pointer; this is the same way out.
+	// Only when the drawer is showing, so Escape still belongs to the harness the rest of the time.
+	if (event.code === "Escape" && !event.altKey && shell.sheetOpen()) {
+		event.preventDefault();
+		event.stopPropagation();
+		shell.closeSheet();
 	}
 }, true);
 

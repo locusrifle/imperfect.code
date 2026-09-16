@@ -201,27 +201,39 @@ body.shell-empty #imperfect-world.om-pager { pointer-events: none; }
 
 /* ---- the application sheet ---- */
 
-.om-sheet { position: fixed; inset: 0; z-index: 60; display: grid; align-items: end; }
+/* ---- the drawer ----
+   It used to be a bar across the whole foot of the screen: a row of names stretched the width of a
+   laptop with its note pushed to the far right edge, so the eye had to cross the entire window to
+   join a word to its application. Three applications do not need a window's width. It is a panel in
+   the middle of the screen now, no wider than its longest name needs, and each row is a drawing
+   and a word standing next to each other. */
+.om-sheet { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; }
 .om-sheet-back { position: absolute; inset: 0; background: color-mix(in srgb, var(--ink, #2a1a10) 45%, transparent); }
 .om-sheet-list {
 	position: relative;
-	margin: 0 var(--om-gap) calc(var(--om-bar-h) + var(--om-gap) + env(safe-area-inset-bottom, 0px));
+	margin: 0 var(--om-gap);
 	padding: 6px;
 	display: grid;
 	gap: 2px;
+	width: min(22rem, calc(100vw - 2 * var(--om-gap)));
 	background: var(--om-bg-dark, #111);
 	border: var(--om-border-width) solid var(--om-border, #555);
 	border-radius: var(--om-round, 8px);
 	color: var(--om-fg, #ddd);
 	font: 500 15px/1.2 var(--pi-font, ui-monospace, monospace);
-	max-height: 70dvh;
+	max-height: min(70dvh, calc(100dvh - 2 * var(--om-bar-h)));
 	overflow-y: auto;
+	/* It arrives rather than appears. 120ms is under the threshold where a person waits for it,
+	   and it starts from the press because the frame is now built on the same tick. */
+	animation: om-sheet-arrive 120ms ease-out;
 }
+@keyframes om-sheet-arrive { from { opacity: 0; transform: translateY(4px); } }
+@media (prefers-reduced-motion: reduce) { .om-sheet-list { animation: none; } }
 .om-app {
 	display: grid;
-	grid-template-columns: 1fr auto;
-	align-items: baseline;
-	gap: 10px;
+	grid-template-columns: auto 1fr;
+	align-items: center;
+	gap: 12px;
 	width: 100%;
 	min-height: 52px;
 	padding: 0 12px;
@@ -234,9 +246,20 @@ body.shell-empty #imperfect-world.om-pager { pointer-events: none; }
 	cursor: pointer;
 	touch-action: manipulation;
 }
+.om-app:hover, .om-app:focus-visible { background: var(--om-selection, #2a2a2a); outline: none; }
 .om-app[data-open="true"] { background: var(--om-selection, #2a2a2a); }
+.om-app[data-open="true"] .om-app-icon { color: var(--om-accent, #d9451a); }
 .om-app-name { color: var(--om-fg-bright, #eee); }
-.om-app-note { color: var(--om-fg-dim, #888); font-size: 12px; }
+/* The mark is drawn on a pixel grid, so it is scaled in whole squares and never smoothed. */
+.om-app-icon {
+	display: block;
+	width: 24px;
+	height: 24px;
+	color: var(--om-fg, #ddd);
+	shape-rendering: crispEdges;
+}
+.om-app:hover .om-app-icon, .om-app:focus-visible .om-app-icon { color: var(--om-accent, #d9451a); }
+.om-app-empty { margin: 0; padding: 12px; color: var(--om-fg-dim, #888); }
 
 /* ---- rotation ----
    Landscape is for looking and driving: the harness drop is a portrait posture,

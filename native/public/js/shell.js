@@ -13,6 +13,34 @@
 
 const BAR_ID = 'om-bar';
 
+// An application is a picture before it is a word. There are no icon files: the product stands on
+// a pixel grid and its mark is a filled square, so each glyph is drawn on an 8x8 grid of that same
+// square in `currentColor` -- it follows the accent, costs no request, and cannot arrive late and
+// shift the row. An application nobody has drawn for gets the brand mark itself rather than a
+// broken-image box or a letter in a circle.
+const ICONS = {
+	// a meter climbing, which is what antiburn watches
+	antiburn: 'M2 9h3v5H2zM6.5 6h3v8h-3zM11 2h3v12h-3z',
+	// a sight: four arms and the shot between them. It was a square ring, which at this size was
+	// the picture frame next to it with the middle filled in -- two applications, one drawing.
+	doom: 'M7 1h2v4H7zM7 11h2v4H7zM1 7h4v2H1zM11 7h4v2h-4zM6 6h4v4H6z',
+	// a picture: a frame with a sun over a peak
+	'image-lab': 'M2 2h12v2H2zM2 12h12v2H2zM2 4h2v8H2zM12 4h2v8h-2zM5 5h2v2H5zM4 10h2v2H4zM6 8h2v4H6zM8 10h2v2H8z',
+};
+const BRAND_MARK = 'M3 3h10v10H3z';
+
+function appIcon(id) {
+	const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+	svg.setAttribute('viewBox', '0 0 16 16');
+	svg.setAttribute('aria-hidden', 'true');
+	svg.setAttribute('class', 'om-app-icon');
+	const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+	path.setAttribute('d', ICONS[id] || BRAND_MARK);
+	path.setAttribute('fill', 'currentColor');
+	svg.append(path);
+	return svg;
+}
+
 function el(tag, text, className) {
 	const node = document.createElement(tag);
 	if (text != null) node.textContent = text;
@@ -183,31 +211,18 @@ export function mountShell(options = {}) {
 		document.body.classList.remove('sheet-open');
 	}
 
-	async function openSheet() {
+	function openSheet() {
 		if (sheet) { closeSheet(); return; }
-		let apps = [];
-		try { apps = await Promise.resolve(options.apps?.() ?? []); }
-		catch { apps = []; }
-		if (!Array.isArray(apps)) apps = [];
-		if (sheet) return;
+		// The drawer used to await options.apps() -- a network round trip to /apps/list -- before
+		// creating a single element, so pressing the key did nothing at all for as long as that
+		// took and the drawer felt broken rather than slow. The frame goes up on the same tick as
+		// the press; the rows arrive into it. A list that resolves synchronously (the second open,
+		// from cache) never paints an empty frame at all, because rows are filled before the
+		// browser has had a chance to draw.
 		const next = el('div', null, 'om-sheet');
 		next.setAttribute('role', 'dialog');
 		next.setAttribute('aria-label', 'applications');
 		const list = el('div', null, 'om-sheet-list');
-		for (const app of apps) {
-			const item = el('button', null, 'om-app');
-			item.type = 'button';
-			item.append(el('span', app.title, 'om-app-name'));
-			if (app.note) item.append(el('span', app.note, 'om-app-note'));
-			if (slots.has(app.id)) item.dataset.open = 'true';
-			item.onclick = () => {
-				closeSheet();
-				if (slots.has(app.id)) { focus(app.id); return; }
-				Promise.resolve(app.open()).catch(error => options.onError?.(error));
-			};
-			list.append(item);
-		}
-		if (!apps.length) list.append(el('p', 'no applications', 'om-app-note'));
 		next.append(list);
 		const backdrop = el('div', null, 'om-sheet-back');
 		backdrop.onclick = closeSheet;
@@ -215,6 +230,32 @@ export function mountShell(options = {}) {
 		document.body.append(next);
 		document.body.classList.add('sheet-open');
 		sheet = next;
+		const mine = next;
+
+		const paint = apps => {
+			// A slow answer that lands after the drawer was closed, or after it was closed and
+			// opened again, must not write into the sheet that is showing now.
+			if (sheet !== mine) return;
+			list.replaceChildren();
+			for (const app of Array.isArray(apps) ? apps : []) {
+				const item = el('button', null, 'om-app');
+				item.type = 'button';
+				item.append(appIcon(app.id), el('span', app.title, 'om-app-name'));
+				if (slots.has(app.id)) item.dataset.open = 'true';
+				item.onclick = () => {
+					closeSheet();
+					if (slots.has(app.id)) { focus(app.id); return; }
+					Promise.resolve(app.open()).catch(error => options.onError?.(error));
+				};
+				list.append(item);
+			}
+			if (!list.childElementCount) list.append(el('p', 'no applications', 'om-app-empty'));
+		};
+
+		let apps;
+		try { apps = options.apps?.() ?? []; } catch { apps = []; }
+		if (apps && typeof apps.then === 'function') apps.then(paint, () => paint([]));
+		else paint(apps);
 	}
 
 	function paintClock() {
@@ -298,6 +339,7 @@ export function mountShell(options = {}) {
 		focus,
 		openSheet,
 		closeSheet,
+		sheetOpen: () => Boolean(sheet),
 		restore,
 		has: id => slots.has(String(id || '')),
 		ids: () => [...order],
