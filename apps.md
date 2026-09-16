@@ -1,6 +1,8 @@
 # Apps
 
-Shipped in the drawer: antiburn, Doom (`/doom/index.html`, vendored [mrdoob/three-doom](https://github.com/mrdoob/three-doom) at `445dbf41`; see [docs/doom.md](docs/doom.md)), and Image Lab (placeholder). These pages are static. Closing one removes the window record and the iframe; there is no separate backend process to kill.
+Shipped in the drawer: antiburn, Doom (`/doom/index.html`, vendored [mrdoob/three-doom](https://github.com/mrdoob/three-doom) at `445dbf41`; see [docs/doom.md](docs/doom.md)), files, and **Image Lab** (`/image-lab.html`, see [docs/image-lab.md](docs/image-lab.md)). Closing one removes the window record and the iframe; there is no separate backend process to kill.
+
+Image Lab is the first shipped app with a backend of its own: it answers on `/lab/*` and keeps pictures in the workspace. It is still one page and one window, and closing it still kills nothing.
 
 Further apps are pages the person asks for.
 

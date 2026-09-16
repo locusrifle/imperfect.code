@@ -30,7 +30,10 @@ const app = await createGueyServer({
   origins: config.origins,
   serviceOptions: {
     resourceLoaderOptions: {
-      additionalExtensionPaths: [join(here, 'extensions/imperfect-environment')],
+      additionalExtensionPaths: [
+        join(here, 'extensions/imperfect-environment'),
+        join(here, 'extensions/image-lab'),
+      ],
     },
   },
 });

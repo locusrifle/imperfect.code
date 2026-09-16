@@ -1,0 +1,280 @@
+/* The image lab.
+   Square edges throughout, because that is what this product is: a machine
+   built on a pixel grid whose own mark is a filled square. No radius anywhere
+   below is an oversight.
+   The ground is opaque rather than the painting garden.css puts behind every
+   page: a wall of pictures needs a quiet wall, and the temple showing between
+   somebody's photographs is noise arguing with their work. */
+
+.lab {
+	display: grid;
+	grid-template-columns: 13rem 1fr;
+	grid-template-rows: 1fr auto;
+	grid-template-areas: "rail main" "rail bar";
+	height: 100%;
+	margin: 0;
+	overflow: hidden;
+	background: var(--panel, #f7f0e2);
+	color: var(--panel-text, #3a2618);
+	font-family: "Commit Mono", ui-monospace, monospace;
+	font-size: 13px;
+}
+.lab::before { display: none; }
+
+/* ---- the rail: what the pictures are filed under ---- */
+
+.lab-rail {
+	grid-area: rail;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding: 12px 0 12px 12px;
+	overflow-y: auto;
+	border-right: 1px solid var(--panel-rule, #c6b299);
+}
+.lab-rail-title {
+	margin: 10px 0 4px;
+	font-size: 11px;
+	font-weight: 400;
+	letter-spacing: .08em;
+	text-transform: uppercase;
+	color: var(--muted, #8a7259);
+}
+.lab-rail-title:first-child { margin-top: 0; }
+.lab-shelf { margin: 0; padding: 0; list-style: none; }
+.lab-shelf li { display: flex; align-items: center; }
+.lab-shelf button {
+	flex: 1;
+	min-width: 0;
+	padding: 5px 8px;
+	border: 0;
+	border-left: 2px solid transparent;
+	background: none;
+	color: inherit;
+	font: inherit;
+	text-align: left;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	cursor: pointer;
+}
+.lab-shelf button:hover { background: var(--panel-raised, #f2e7d3); }
+.lab-shelf button[aria-current="true"] {
+	border-left-color: var(--orange, #d9451a);
+	background: var(--panel-band, #ebdfc7);
+	color: var(--panel-bright, #1e120a);
+}
+.lab-shelf .lab-count { flex: none; padding-right: 8px; color: var(--muted, #8a7259); }
+.lab-rail-action {
+	margin: 8px 12px 0 0;
+	padding: 6px 8px;
+	border: 1px solid var(--panel-rule, #c6b299);
+	background: none;
+	color: var(--muted, #8a7259);
+	font: inherit;
+	cursor: pointer;
+}
+.lab-rail-action:hover { border-color: var(--orange, #d9451a); color: var(--panel-bright, #1e120a); }
+
+/* ---- the wall ---- */
+
+.lab-main { grid-area: main; overflow-y: auto; padding: 12px; }
+/* Columns rather than a fixed grid: inspiration arrives in every proportion,
+   and a square cell either crops somebody's picture or pads it. */
+.lab-grid { column-count: 4; column-gap: 8px; }
+@media (max-width: 1100px) { .lab-grid { column-count: 3; } }
+@media (max-width: 760px) { .lab-grid { column-count: 2; } }
+
+.lab-card {
+	position: relative;
+	display: block;
+	width: 100%;
+	margin: 0 0 8px;
+	padding: 0;
+	border: 0;
+	/* Keeps a card from being split across two columns mid-picture. */
+	break-inside: avoid;
+	background: var(--panel-raised, #f2e7d3);
+	cursor: pointer;
+}
+.lab-card img { display: block; width: 100%; height: auto; }
+/* The selection ring is drawn inside the card rather than as a border, so
+   picking a picture does not move every picture after it. */
+.lab-card::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	box-shadow: inset 0 0 0 2px transparent;
+}
+.lab-card:hover::after { box-shadow: inset 0 0 0 2px var(--panel-rule, #c6b299); }
+.lab-card[aria-pressed="true"]::after { box-shadow: inset 0 0 0 3px var(--orange, #d9451a); }
+
+/* The order a picture was picked in, because combining three references is an
+   instruction with an order in it and the person should see the one they gave. */
+.lab-rank {
+	position: absolute;
+	top: 0;
+	left: 0;
+	min-width: 20px;
+	padding: 2px 5px;
+	background: var(--orange, #d9451a);
+	color: #fff;
+	font-size: 11px;
+	text-align: center;
+}
+.lab-card[aria-pressed="false"] .lab-rank { display: none; }
+
+.lab-card-note {
+	/* The extra bottom padding is not decoration: at 11px the descenders of a
+	   "y" or a "g" fall outside a 1.3 line box, and `overflow: hidden` here --
+	   which the ellipsis needs -- slices them off. A caption reading
+	   "butterfl" is how that looks. */
+	display: block;
+	padding: 4px 6px 6px;
+	color: var(--muted, #8a7259);
+	font-size: 11px;
+	line-height: 1.45;
+	/* Buttons centre their text. Every other label in this lab is ranged left
+	   against the rail, and a caption drifting to the middle of each card
+	   breaks that line. */
+	text-align: left;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* A picture being drawn. It holds its own space from the first tick so the
+   wall does not jump when the first frame lands. */
+.lab-card.is-drawing { background: var(--panel-band, #ebdfc7); }
+.lab-card.is-drawing::before {
+	content: "";
+	display: block;
+	padding-top: 100%;
+}
+.lab-card.is-drawing img {
+	position: absolute;
+	inset: 0;
+	height: 100%;
+	object-fit: cover;
+	/* Each frame is sharper than the last; fading them in stops the picture
+	   flickering as it resolves. */
+	animation: lab-fade .4s ease-out;
+}
+@keyframes lab-fade { from { opacity: .3; } to { opacity: 1; } }
+.lab-drawing-label {
+	position: absolute;
+	inset: auto 0 0 0;
+	padding: 4px 6px;
+	background: color-mix(in srgb, var(--panel, #f7f0e2) 88%, transparent);
+	color: var(--panel-bright, #1e120a);
+	font-size: 11px;
+}
+.lab-card.is-failed { outline: 2px solid #a8320f; }
+
+.lab-empty {
+	margin: 3rem auto;
+	max-width: 24rem;
+	color: var(--muted, #8a7259);
+	text-align: center;
+	line-height: 1.5;
+}
+
+/* ---- the prompt ---- */
+
+.lab-bar {
+	grid-area: bar;
+	padding: 8px 12px 12px;
+	border-top: 1px solid var(--panel-rule, #c6b299);
+	background: var(--panel, #f7f0e2);
+}
+.lab-picked {
+	display: flex;
+	gap: 6px;
+	align-items: center;
+	margin-bottom: 8px;
+	overflow-x: auto;
+}
+.lab-picked-thumb {
+	position: relative;
+	flex: none;
+	width: 40px;
+	height: 40px;
+	padding: 0;
+	border: 1px solid var(--panel-rule, #c6b299);
+	background: none;
+	cursor: pointer;
+}
+.lab-picked-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.lab-picked-thumb:hover { border-color: var(--orange, #d9451a); }
+.lab-picked-label { flex: none; color: var(--muted, #8a7259); }
+.lab-picked-actions { flex: none; margin-left: auto; display: flex; gap: 6px; }
+
+.lab-compose { display: flex; gap: 8px; align-items: flex-end; }
+.lab-compose textarea {
+	flex: 1;
+	min-height: 2.2rem;
+	max-height: 9rem;
+	padding: 7px 9px;
+	border: 1px solid var(--panel-rule, #c6b299);
+	background: var(--panel-raised, #f2e7d3);
+	color: inherit;
+	font: inherit;
+	line-height: 1.4;
+	resize: none;
+}
+.lab-compose textarea:focus {
+	outline: none;
+	border-color: var(--orange, #d9451a);
+}
+.lab-bar button {
+	padding: 8px 14px;
+	border: 1px solid var(--panel-rule, #c6b299);
+	background: var(--panel-raised, #f2e7d3);
+	color: inherit;
+	font: inherit;
+	cursor: pointer;
+}
+.lab-bar button:hover:not(:disabled) { border-color: var(--orange, #d9451a); color: var(--panel-bright, #1e120a); }
+.lab-bar button:disabled { opacity: .45; cursor: default; }
+#lab-send { border-color: var(--orange, #d9451a); color: var(--panel-bright, #1e120a); }
+
+.lab-note { margin: 8px 0 0; color: var(--muted, #8a7259); line-height: 1.4; }
+.lab-note.is-bad { color: #a8320f; }
+.lab-note a { color: inherit; }
+
+/* On a phone the rail is a shelf across the top: a 13rem column beside a
+   two-column wall leaves no room for the pictures, which are the point. */
+@media (max-width: 620px) {
+	.lab {
+		grid-template-columns: 1fr;
+		grid-template-rows: auto 1fr auto;
+		grid-template-areas: "rail" "main" "bar";
+	}
+	.lab-rail {
+		flex-direction: row;
+		align-items: center;
+		gap: 6px;
+		padding: 8px 12px;
+		border-right: 0;
+		border-bottom: 1px solid var(--panel-rule, #c6b299);
+		overflow-x: auto;
+	}
+	/* The titles stay. Hiding them turned two shelves into one unlabelled
+	   strip that scrolls sideways: the boards sat off the edge of a phone with
+	   nothing to say they were there, and nothing to say where the folders
+	   ended and the inspiration began. */
+	.lab-rail-title {
+		flex: none;
+		margin: 0 2px 0 0;
+		align-self: center;
+	}
+	.lab-shelf { flex: none; display: flex; gap: 6px; }
+	.lab-shelf button {
+		border: 1px solid var(--panel-rule, #c6b299);
+		border-left-width: 1px;
+		padding: 4px 8px;
+	}
+	.lab-shelf button[aria-current="true"] { border-color: var(--orange, #d9451a); }
+	.lab-rail-action { margin: 0; white-space: nowrap; }
+}

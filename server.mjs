@@ -18,6 +18,9 @@ import { answerEvidence, staleCommandError, tabCloseBusyError } from './native/p
 import { receiveHttpUpload, filenameFromHeader, MAX_UPLOAD_BYTES, UPLOAD_TIMEOUT_MS, OTHER_POST_TIMEOUT_MS } from './native/uploads.mjs';
 import { applyWorldWindow, closeWorldWindow, sanitizeWorldWindow } from './native/world-windows.mjs';
 import { createFiles } from './native/files.mjs';
+import { createImageLab } from './native/image-lab.mjs';
+import { createPinterest } from './native/pinterest.mjs';
+import { createLabRoutes } from './native/lab-routes.mjs';
 import { resolveAppFile } from './native/apps.mjs';
 import { listRegisteredApps, loadOverlayCss } from './native/customization.mjs';
 import { buildIdentity } from './machine.mjs';
@@ -109,6 +112,16 @@ export async function createGueyServer(options = {}) {
   const uploadMaxBytes = options.uploadMaxBytes ?? MAX_UPLOAD_BYTES;
   const uploadTimeoutMs = options.uploadTimeoutMs ?? UPLOAD_TIMEOUT_MS;
   const extraOrigins = options.origins ?? (process.env.GUEY_ORIGINS ?? '').split(',').filter(Boolean);
+  // The image lab keeps its pictures in the workspace, beside everything else
+  // the person's machine made. Not under the files root: that is home on a
+  // laptop, and a library scattered through somebody's home directory is not a
+  // library. Pinterest's redirect has to be an address a browser can return
+  // to, so it is built from a configured public origin rather than the
+  // loopback bind, which Pinterest could never reach.
+  const lab = createImageLab({ root: resolve(options.labRoot ?? process.env.GUEY_LAB_ROOT ?? join(cwd, 'images')) });
+  const labOrigin = options.labOrigin ?? extraOrigins[0] ?? '';
+  const pinterest = createPinterest({ root: lab.root, redirectUri: labOrigin ? `${labOrigin.replace(/\/$/, '')}/lab/pinterest/callback` : '' });
+  const handleLab = createLabRoutes({ lab, pinterest, agentDir, model: options.labModel ?? process.env.GUEY_LAB_MODEL ?? undefined });
   // Host/Origin pinning stops a hostile page in a browser on the tailnet from
   // scripting this console. A reverse proxy (tailscale serve) forwards its own
   // name, so each configured origin is trusted with and without its port —
@@ -158,6 +171,12 @@ export async function createGueyServer(options = {}) {
       }, OTHER_POST_TIMEOUT_MS);
       res.once('close', () => clearTimeout(timer));
       res.once('finish', () => clearTimeout(timer));
+    }
+    // Before the method gate below: the lab owns POST verbs of its own, and
+    // is the machine's own application rather than a page the agent wrote, so
+    // it answers on personal compositions only.
+    if (personal && path.startsWith('/lab/')) {
+      if (await handleLab(req, res, path)) return;
     }
     if (path === '/upload' && req.method === 'POST') {
       if (!personal) { res.writeHead(404).end('Not found'); return; }
