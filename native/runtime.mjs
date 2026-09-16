@@ -190,7 +190,7 @@ export async function createRuntime({ cwd = process.cwd(), agentDir = getAgentDi
     if (failed) throw new Error(`Runtime replacement failed; restart GUEY: ${failed}`);
     if (auth?.busy || operation || preflights || adapter.state.dialogs.length || !runtime.session.isIdle) throw new Error('Agent is busy; abort or wait before changing session/model');
   };
-  const auth = authentication ? createAuth({ models: () => runtime.services.modelRuntime, changed, assertIdle }) : null;
+  const auth = authentication ? createAuth({ models: () => runtime.services.modelRuntime, changed, assertIdle, agentDir }) : null;
   const replace = async fn => {
     assertIdle(); operation = 'switching'; changed();
     try { return await fn(); }

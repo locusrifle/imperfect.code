@@ -50,7 +50,31 @@ function harnessEdge(node) {
 
 let swipe = null;
 
+// Two fingers anywhere, not an edge. The one-finger reaches are anchored to the
+// handle, the top and the bottom because a finger dragging in the middle of the
+// desk is doing something else; two fingers are not, so the tabs do not need an
+// edge of their own. Touch only — a trackpad reports the same gesture as wheel.
+const fingers = new Map();
+let tabsGesture = false;
+
+function twoFingerDrop() {
+	if (fingers.size !== 2) return;
+	const moves = [...fingers.values()].map(f => ({ dx: f.x - f.startX, dy: f.y - f.startY }));
+	if (!moves.every(m => Math.abs(m.dy) >= SWIPE_MIN && Math.abs(m.dy) > Math.abs(m.dx))) return;
+	const down = moves.every(m => m.dy > 0);
+	const up = moves.every(m => m.dy < 0);
+	if (!down && !up) return; // fingers disagreeing is a pinch or a stretch, not a drop
+	tabsGesture = true;
+	swipe = null; // a finger that armed an edge reach loses it to the two-finger one
+	if (down) openTabs();
+	else if (isHarnessOpen()) { pi.closeTabs(); closeHarness(); }
+}
+
 addEventListener("pointerdown", event => {
+	if (event.pointerType === "touch") {
+		fingers.set(event.pointerId, { startX: event.clientX, startY: event.clientY, x: event.clientX, y: event.clientY });
+		if (fingers.size > 1) swipe = null;
+	}
 	if (event.button) return;
 	const fromHandle = harnessEdge(event.target);
 	const fromTop = event.clientY < 28;
@@ -61,6 +85,12 @@ addEventListener("pointerdown", event => {
 }, { capture: true });
 
 addEventListener("pointermove", event => {
+	const finger = fingers.get(event.pointerId);
+	if (finger) {
+		finger.x = event.clientX;
+		finger.y = event.clientY;
+		if (!tabsGesture) twoFingerDrop();
+	}
 	if (!swipe || event.pointerId !== swipe.id) return;
 	const dx = event.clientX - swipe.x;
 	const dy = event.clientY - swipe.y;
@@ -71,7 +101,15 @@ addEventListener("pointermove", event => {
 	swipe = null;
 }, { capture: true });
 
-function endSwipe() { swipe = null; }
+function endSwipe(event) {
+	swipe = null;
+	if (event?.pointerType === "touch") {
+		fingers.delete(event.pointerId);
+		// The gesture is spent until every finger is off, so one drag drops the
+		// panel once rather than repeating as the fingers keep travelling.
+		if (!fingers.size) tabsGesture = false;
+	}
+}
 addEventListener("pointerup", endSwipe, { capture: true });
 addEventListener("pointercancel", endSwipe, { capture: true });
 
@@ -290,7 +328,20 @@ visualViewport?.addEventListener("resize", () => {
 	knowledge.layout();
 });
 
-bindHarnessKeys({ onHarness: toggleHarness });
+// The tabs are a face of the harness panel, not a second panel: Alt+T drops it
+// already showing them, and drops it again to put the whole thing away. Escape
+// inside the rail steps back to the conversation, so this reach is only ever
+// one press from either direction.
+function openTabs() {
+	if (!isHarnessOpen()) openHarness();
+	pi.openTabs();
+}
+function toggleTabs() {
+	if (isHarnessOpen() && pi.tabsOpen()) { pi.closeTabs(); closeHarness(); return; }
+	openTabs();
+}
+
+bindHarnessKeys({ onHarness: toggleHarness, onTabs: toggleTabs });
 addEventListener("keydown", event => {
 	if (event.repeat || event.ctrlKey || event.metaKey) return;
 	if (event.altKey && event.code === "KeyW") {
@@ -330,6 +381,7 @@ function paintIntro() {
 	title.textContent = "A few reaches";
 	const lines = [
 		`${alt}+Y drops the agent. On a phone, swipe down.`,
+		`${alt}+T drops it showing your sessions. On a phone, swipe down with two fingers.`,
 		`${alt}+W closes the app that is showing, and stops it. It never closes the agent.`,
 		`${alt}+Space opens the app drawer. On a phone, swipe up.`,
 	];

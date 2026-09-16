@@ -1,5 +1,6 @@
 import { EventEmitter } from 'node:events';
 import { createRuntime } from './runtime.mjs';
+import { createClaudeRuntime } from './claude-runtime.mjs';
 import { answerEvidence } from './public/js/session-logic.js';
 
 function messageText(content) {
@@ -41,17 +42,33 @@ function summary(tab, focused) {
     busy: snap.busy,
     streaming: Boolean(snap.streaming),
     failed: snap.failed ?? null,
+    // The rail is the one place a person can see which agent a tab is, so it
+    // travels with every summary rather than being asked for separately.
+    agent: tab.agent,
     focused,
   };
 }
 
+// One machine, two harnesses. The choice lives here and nowhere else: both
+// runtimes answer the same four members, so every surface above this point —
+// the rail, the composer, the dialogs, the themes — is shared between them.
+export const AGENTS = ['pi', 'claude'];
+
 export async function createTabHost(options = {}) {
   const events = new EventEmitter();
-  const { createRuntime: makeRuntime = createRuntime, ...shared } = options;
-  const make = extra => makeRuntime({ ...shared, ...extra });
+  const {
+    createRuntime: makeRuntime = createRuntime,
+    createClaudeRuntime: makeClaudeRuntime = createClaudeRuntime,
+    ...shared
+  } = options;
+  const make = (extra, agent = 'pi') => agent === 'claude'
+    ? makeClaudeRuntime({ ...shared, ...extra })
+    : makeRuntime({ ...shared, ...extra });
+  // The machine still opens on Pi. A person who has never signed in to Claude
+  // must not meet a dead tab on their first sight of the console.
   const first = await make({ persistPointer: true });
   let seq = 1;
-  const tabs = [{ id: 't1', runtime: first, wasTurn: turnActive(first.snapshot()) }];
+  const tabs = [{ id: 't1', runtime: first, agent: 'pi', wasTurn: turnActive(first.snapshot()) }];
   let focused = 't1';
   const current = () => tabs.find(tab => tab.id === focused) ?? tabs[0];
 
@@ -87,8 +104,11 @@ export async function createTabHost(options = {}) {
       return summary(tab, true);
     }
     if (c.type === 'tab-new') {
-      const runtime = await make({ fresh: true, persistPointer: false });
-      const tab = { id: `t${++seq}`, runtime, wasTurn: false };
+      const agent = c.agent === 'claude' ? 'claude' : 'pi';
+      // A Claude tab with no key throws before it is ever pushed, so a refused
+      // new tab leaves the rail exactly as it was rather than half-open.
+      const runtime = await make({ fresh: true, persistPointer: false }, agent);
+      const tab = { id: `t${++seq}`, runtime, agent, wasTurn: false };
       tabs.push(tab);
       bind(tab);
       focused = tab.id;
@@ -103,8 +123,11 @@ export async function createTabHost(options = {}) {
         events.emit('change');
         return summary(already, true);
       }
-      const runtime = await make({ sessionPath: path, persistPointer: false });
-      const tab = { id: `t${++seq}`, runtime, wasTurn: turnActive(runtime.snapshot()) };
+      // A session belongs to the agent that wrote it; reopening one in the
+      // other harness would hand it a transcript it cannot continue.
+      const agent = c.agent === 'claude' ? 'claude' : 'pi';
+      const runtime = await make({ sessionPath: path, persistPointer: false }, agent);
+      const tab = { id: `t${++seq}`, runtime, agent, wasTurn: turnActive(runtime.snapshot()) };
       tabs.push(tab);
       bind(tab);
       focused = tab.id;

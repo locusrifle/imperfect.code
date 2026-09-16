@@ -566,13 +566,13 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 		closeSessionRail();
 		return command('tab-focus', { tabId });
 	}
-	function newTab() {
+	function newTab(agent = 'pi') {
 		closeSessionRail();
-		return command('tab-new');
+		return command('tab-new', { agent });
 	}
 	let railIndex = 0;
 	function railChoices() {
-		return ['new', ...(state?.tabs ?? []).map(tab => tab.id)];
+		return ['new', 'new-claude', ...(state?.tabs ?? []).map(tab => tab.id)];
 	}
 	function paintSessionRail() {
 		if (!sessionRail) return;
@@ -582,7 +582,13 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 		const neu = el('button', '+ new', 'session-rail-new');
 		neu.type = 'button';
 		neu.classList.toggle('cursor', choices[railIndex] === 'new');
-		neu.onclick = () => newTab().catch(fail);
+		neu.onclick = () => newTab('pi').catch(fail);
+		// The second harness is a second row, not a mode hidden behind the
+		// first: a person should be able to see that this machine has two.
+		const neuClaude = el('button', '+ new Claude', 'session-rail-new');
+		neuClaude.type = 'button';
+		neuClaude.classList.toggle('cursor', choices[railIndex] === 'new-claude');
+		neuClaude.onclick = () => newTab('claude').catch(fail);
 		const list = el('div', null, 'session-rail-list');
 		const tabs = state?.tabs ?? [];
 		const closable = tabs.length > 1;
@@ -593,7 +599,8 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 			const open = el('button', null, 'session-rail-open');
 			open.type = 'button';
 			open.append(el('span', tabTitle(tab), 'session-rail-title'));
-			open.append(el('span', tab.busy ? 'working' : 'idle', 'session-rail-note'));
+			const note = tab.agent === 'claude' ? `claude · ${tab.busy ? 'working' : 'idle'}` : (tab.busy ? 'working' : 'idle');
+			open.append(el('span', note, 'session-rail-note'));
 			open.onclick = () => enterTab(tab.id).catch(fail);
 			const close = el('button', 'X', 'session-rail-close');
 			close.type = 'button';
@@ -608,7 +615,7 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 			row.append(open, close);
 			list.append(row);
 		}
-		sessionRail.replaceChildren(heading, neu, list);
+		sessionRail.replaceChildren(heading, neu, neuClaude, list);
 		sessionRail.querySelector('.cursor')?.scrollIntoView({ block: 'nearest' });
 	}
 	function moveRail(delta) {
@@ -619,7 +626,8 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 	}
 	function activateRail() {
 		const id = railChoices()[railIndex];
-		if (id === 'new') newTab().catch(fail);
+		if (id === 'new') newTab('pi').catch(fail);
+		else if (id === 'new-claude') newTab('claude').catch(fail);
 		else if (id) enterTab(id).catch(fail);
 	}
 	function cycleTab(delta) {
@@ -633,8 +641,10 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 	}
 	function openSessionRail() {
 		if (!sessionRail) return;
+		// Two rows stand before the tabs now ('+ new' and '+ new Claude'), so the
+		// cursor lands on the tab a person is actually in, not one above it.
 		const focused = (state?.tabs ?? []).findIndex(tab => tab.focused);
-		railIndex = focused >= 0 ? focused + 1 : 0;
+		railIndex = focused >= 0 ? focused + 2 : 0;
 		paintSessionRail();
 		sessionRail.hidden = false;
 		requestAnimationFrame(() => sessionRail.classList.add('open'));
@@ -1957,6 +1967,11 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 		newTab: () => command('tab-new'),
 		focusTab: (tabId, extra = {}) => command('tab-focus', { tabId, ...extra }),
 		closeTab: (tabId, extra = {}) => command('tab-close', { tabId, ...extra }),
+		// The rail is the harness's own face, so the shell drops the panel and
+		// this decides what it lands on. `/tab` was the only way in until now.
+		tabsOpen: () => sessionRailOpen(),
+		openTabs: () => openSessionRail(),
+		closeTabs: () => closeSessionRail(),
 		openWindow: (spec) => command('window-open', { window: spec }),
 		closeWindow: (id) => command('window-close', { windowId: id }),
 		setTheme: (name, persist = true) => command('theme', { name, persist }),

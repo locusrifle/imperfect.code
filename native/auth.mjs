@@ -1,22 +1,47 @@
 import { randomUUID } from 'node:crypto';
 import { CredentialSynchronizationError } from '@earendil-works/pi-coding-agent';
+import {
+  CLAUDE_PROVIDER_ID, CLAUDE_PROVIDER_NAME, ClaudeKeyRejected,
+  ambientClaudeKey, claudeConfigured, readClaudeKey, removeClaudeKey,
+  verifyClaudeKey, writeClaudeKey,
+} from './claude-credentials.mjs';
 
 // Only UI/lifecycle adaptation. Pi owns provider flows, callbacks, token exchange,
 // credential persistence, refresh and availability. No credentials enter snapshots.
-export function createAuth({ models, changed, assertIdle, timeoutMs = 10 * 60 * 1000 }) {
+//
+// One panel, two destinations. This machine runs two harnesses, and a person
+// should not have to know which one owns their account to sign in: the provider
+// list is a single list, and the row decides where the answer goes. Every row
+// but Claude Agent is Pi's; that one is ours, and takes an API key only.
+export function createAuth({ models, changed, assertIdle, timeoutMs = 10 * 60 * 1000, agentDir = null, verifyClaude = verifyClaudeKey }) {
   let flow = null;
   let state = { status: 'idle', prompt: null, events: [] };
   const update = () => changed();
+  // Offered only where there is somewhere to put the key. Without an agentDir
+  // this console has no profile of its own, so the row would be a dead door.
+  function claudeProvider() {
+    if (!agentDir) return null;
+    const ambient = Boolean(ambientClaudeKey());
+    return {
+      id: CLAUDE_PROVIDER_ID, name: CLAUDE_PROVIDER_NAME,
+      configured: claudeConfigured(agentDir),
+      // No oauth shape exists here at all. Anthropic does not permit a third
+      // party to offer claude.ai login for its own product, so the subscription
+      // is not filtered out downstream — it is never constructed.
+      methods: [{ type: 'api_key', name: 'Anthropic API key', label: 'Use an API key', ambient: ambient && !readClaudeKey(agentDir) }],
+    };
+  }
   function providers() {
     const runtime = models();
-    return runtime.getProviders().map(p => ({
+    const pi = runtime.getProviders().map(p => ({
       id: p.id, name: p.name,
       configured: runtime.getProviderAuthStatus(p.id).configured,
       methods: [
         ...(p.auth.oauth ? [{ type: 'oauth', name: p.auth.oauth.name, label: p.auth.oauth.loginLabel ?? 'Use a subscription / sign in', subscription: Boolean(p.auth.oauth.isSubscription) }] : []),
         ...(p.auth.apiKey ? [{ type: 'api_key', name: p.auth.apiKey.name, label: 'Use an API key', ambient: !p.auth.apiKey.login }] : []),
       ],
-    })).filter(p => p.methods.length);
+    }));
+    return [...pi, claudeProvider()].filter(p => p?.methods.length);
   }
   function notify(event, current) {
     if (flow !== current || current.controller.signal.aborted) return;
@@ -48,26 +73,50 @@ export function createAuth({ models, changed, assertIdle, timeoutMs = 10 * 60 * 
       update();
     });
   }
+  // Ours, not Pi's. Same prompt/notify channel, so the panel renders this the
+  // way it renders every other provider and needs to know nothing about it.
+  async function runClaude(current, logout) {
+    if (logout) {
+      removeClaudeKey(agentDir);
+      state.message = 'Stored credentials removed. Environment and cloud credentials are unchanged.';
+      return;
+    }
+    const key = await prompt({ type: 'secret', message: 'Anthropic API key', placeholder: 'sk-ant-…' }, current);
+    state.message = 'Checking the key with Anthropic…'; update();
+    // Metadata only, never a model turn — the same courtesy Pi's catalog
+    // refresh does, and the same rule: only an outright rejection is fatal.
+    const checkSignal = AbortSignal.any([current.controller.signal, AbortSignal.timeout(15000)]);
+    const result = await verifyClaude(key, { signal: checkSignal });
+    writeClaudeKey(agentDir, key);
+    state.message = result.checked
+      ? 'Signed in. The key is saved in this console’s own profile.'
+      : 'Key saved, but Anthropic could not be reached to check it. A Claude session will say so if it is wrong.';
+  }
+
   function begin(providerId, method, logout = false) {
     assertIdle();
-    const provider = providers().find(p => p.id === providerId) ?? (logout ? { id: providerId, name: providerId } : null);
+    const claude = providerId === CLAUDE_PROVIDER_ID;
+    const provider = providers().find(p => p.id === providerId) ?? (logout && !claude ? { id: providerId, name: providerId } : null);
     if (!provider) throw new Error('Unknown login provider');
     if (!logout && !provider.methods.some(m => m.type === method && !m.ambient)) throw new Error('Unsupported login method; ambient credentials are configured outside this console');
     const current = { controller: new AbortController(), pending: null, done: null };
     flow = current;
-    state = { id: randomUUID(), status: 'working', providerId, providerName: provider.name, method, prompt: null, events: [], message: logout ? 'Removing stored credentials…' : 'Starting Pi sign-in…' };
+    state = { id: randomUUID(), status: 'working', providerId, providerName: provider.name, method, prompt: null, events: [], message: logout ? 'Removing stored credentials…' : `Starting ${claude ? 'Claude' : 'Pi'} sign-in…` };
     update();
     const timer = setTimeout(() => current.controller.abort(), logout ? 15000 : timeoutMs);
     current.done = (async () => {
       const runtime = models();
       try {
-        if (logout) await runtime.logout(providerId, { signal: current.controller.signal });
+        if (claude) await runClaude(current, logout);
+        else if (logout) await runtime.logout(providerId, { signal: current.controller.signal });
         else await runtime.login(providerId, method, { signal: current.controller.signal, prompt: p => prompt(p, current), notify: e => notify(e, current) });
         state.status = 'success';
-        state.message = logout ? 'Stored credentials removed. Environment and cloud credentials are unchanged.' : 'Signed in. Credentials saved in this console’s own profile.';
+        if (!claude) state.message = logout ? 'Stored credentials removed. Environment and cloud credentials are unchanged.' : 'Signed in. Credentials saved in this console’s own profile.';
         // The same supported catalog refresh used after terminal Pi login. This
         // fetches metadata only, not a model turn; failure cannot undo login.
-        if (!logout) {
+        // Claude has no catalog in Pi's ModelRuntime, so there is nothing here
+        // to refresh — its own check already ran inside runClaude.
+        if (!logout && !claude) {
           state.message = 'Signed in. Updating the provider’s model list…'; update();
           const refreshSignal = AbortSignal.any([current.controller.signal, AbortSignal.timeout(15000)]);
           try {
@@ -78,9 +127,16 @@ export function createAuth({ models, changed, assertIdle, timeoutMs = 10 * 60 * 
           } catch { state.message = 'Signed in, but the model list could not be refreshed. A cached model is used until it can be.'; }
         }
       } catch (error) {
+        // A key Anthropic named as bad is the one failure worth repeating back,
+        // because the person can act on it. It never quotes the key itself, and
+        // the shared finally below still does the cleanup.
+        if (claude && error instanceof ClaudeKeyRejected) {
+          state.status = 'error';
+          state.message = error.message;
+        }
         // A cancellation racing the commit can leave saved credentials. Pi tells
         // us explicitly; don't misreport that as an unsaved/cancelled login.
-        if (error instanceof CredentialSynchronizationError) {
+        else if (error instanceof CredentialSynchronizationError) {
           state.status = 'warning';
           state.message = logout ? 'Credentials removed, but local model state could not be updated. Restart this console.' : 'Credentials saved, but local model state could not be updated. Restart this console; do not repeat sign-in blindly.';
         } else {
@@ -99,15 +155,37 @@ export function createAuth({ models, changed, assertIdle, timeoutMs = 10 * 60 * 
   }
   return {
     get busy() { return Boolean(flow); },
-    snapshot() { const available = models().getAvailableSnapshot(); return { ...state, busy: Boolean(flow), configured: providers().some(p => p.configured), availableModels: available.length }; },
+    // `configured` gates the welcome panel, and it stays a question about Pi.
+    // A machine holding only a Claude key still opens on a Pi tab that cannot
+    // run, so suppressing the sign-in there would hide the thing it needs.
+    // `claude` is reported beside it rather than folded into it.
+    snapshot() {
+      const available = models().getAvailableSnapshot();
+      return {
+        ...state, busy: Boolean(flow),
+        configured: providers().some(p => p.id !== CLAUDE_PROVIDER_ID && p.configured),
+        claude: Boolean(agentDir && claudeConfigured(agentDir)),
+        availableModels: available.length,
+      };
+    },
     providers,
     async accounts() {
       const runtime = models();
-      return (await runtime.listCredentials({ signal: AbortSignal.timeout(15000) })).map(c => ({ id: c.providerId, name: runtime.getProvider(c.providerId)?.name ?? c.providerId, type: c.type }));
+      const pi = (await runtime.listCredentials({ signal: AbortSignal.timeout(15000) })).map(c => ({ id: c.providerId, name: runtime.getProvider(c.providerId)?.name ?? c.providerId, type: c.type }));
+      // Only a key this console stored. An ambient one is not an account here;
+      // nothing in this panel put it there and logout could not remove it.
+      const claude = agentDir && readClaudeKey(agentDir)
+        ? [{ id: CLAUDE_PROVIDER_ID, name: CLAUDE_PROVIDER_NAME, type: 'api_key' }]
+        : [];
+      return [...pi, ...claude];
     },
     login: (providerId, method) => begin(providerId, method),
     async logout(providerId) {
       assertIdle();
+      if (providerId === CLAUDE_PROVIDER_ID) {
+        if (!agentDir || !readClaudeKey(agentDir)) throw new Error('No stored credential to remove; environment credentials are unchanged');
+        return begin(providerId, undefined, true);
+      }
       const stored = await models().listCredentials({ signal: AbortSignal.timeout(15000) });
       if (!stored.some(c => c.providerId === providerId)) throw new Error('No stored credential to remove; environment credentials are unchanged');
       return begin(providerId, undefined, true); // rechecks idle after enumeration

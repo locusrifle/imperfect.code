@@ -48,15 +48,17 @@ export function isApplePlatform() {
 export const ALT_LABEL = isApplePlatform() ? "OPT" : "ALT";
 
 // Alt+Y drops the harness. Alt+L remains so a recording that still names it is not a lie.
-export function bindHarnessKeys({ onHarness, onFullscreen } = {}) {
+// Alt+T drops it showing the tabs, which is the same panel with a different face.
+export function bindHarnessKeys({ onHarness, onFullscreen, onTabs } = {}) {
   addEventListener("keydown", event => {
     if (event.repeat || event.ctrlKey || event.metaKey || !event.altKey) return;
     const code = event.code;
-    if (!["KeyY", "KeyL", "KeyF"].includes(code)) return;
+    if (!["KeyY", "KeyL", "KeyF", "KeyT"].includes(code)) return;
     event.preventDefault();
     event.stopPropagation();
     if (code === "KeyY" || code === "KeyL") onHarness?.();
     if (code === "KeyF") onFullscreen?.();
+    if (code === "KeyT") onTabs?.();
   }, true);
 }
 
