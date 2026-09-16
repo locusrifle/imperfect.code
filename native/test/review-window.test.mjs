@@ -379,3 +379,31 @@ test("one frame saying it is running does not clear another window's card", asyn
   assert.ok(host.querySelector('.review-loading'));
   review.close();
 });
+
+test('a foreign page is refused, unless this one window was mounted to allow it', async () => {
+  const { host } = installDom();
+  const shut = mountReviewWindow();
+  await shut.show({ kind: 'page', title: 'screen', src: 'https://box.on.ascii.dev/vnc?token=secret' });
+  assert.equal(host.querySelector('.review-page-frame'), null, 'a window the agent opens frames nothing foreign');
+  assert.ok(host.querySelector('.review-blocked'));
+  assert.equal(shut.content().kind, 'blocked');
+  shut.close();
+
+  const open = mountReviewWindow({ allowExternal: true });
+  await open.show({ kind: 'page', title: 'desktop', src: 'https://box.on.ascii.dev/vnc?token=secret' });
+  const frame = host.querySelector('.review-page-frame');
+  assert.ok(frame, 'the machine\'s own screen is the one caller that may');
+  assert.equal(frame.src, 'https://box.on.ascii.dev/vnc?token=secret');
+  // No sandbox: the stream needs its own origin and its socket.
+  assert.equal(frame.attrs.sandbox, undefined);
+  open.close();
+});
+
+test('allowExternal is for the src, not for the page: a javascript: url is still refused', async () => {
+  const { host } = installDom();
+  const review = mountReviewWindow({ allowExternal: true });
+  await review.show({ kind: 'page', title: 'x', src: 'javascript:alert(1)' });
+  assert.equal(host.querySelector('.review-page-frame'), null);
+  assert.ok(host.querySelector('.review-blocked'));
+  review.close();
+});

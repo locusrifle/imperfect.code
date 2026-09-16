@@ -254,10 +254,16 @@ export function mountReviewWindow(options = {}) {
 		}
 		if (kind === 'page') {
 			const src = String(source.src || '/antiburn.html');
-			// The empty container: any page this application serves can be shown
-			// here. A foreign origin is still refused — the shell only manifests
-			// projects that live behind the same tailnet door.
-			if (!isInAppPath(src) || !/\.html$/.test(src.split('?')[0])) {
+			// The empty container: any page this application serves can be shown here. A foreign
+			// origin is refused unless this window was mounted with `allowExternal`, which is one
+			// caller: the machine's own screen, a supplier stream at an address the door mints per
+			// open. `mountWorldWindows` never passes it, so a page the AGENT opens is still
+			// same-origin only -- the model cannot frame a foreign site by naming one.
+			const foreign = !isInAppPath(src);
+			const allowed = foreign
+				? Boolean(options.allowExternal) && isAllowedSrc(src, { allowExternal: true })
+				: /\.html$/.test(src.split('?')[0]);
+			if (!allowed) {
 				paintMessage('blocked', 'blocked: not an in-app page');
 				current = { kind: 'blocked', name: source.name || '', title };
 				return;
@@ -265,7 +271,7 @@ export function mountReviewWindow(options = {}) {
 			clearStage();
 			panel.dataset.kind = 'page';
 			current = { kind: 'page', name: source.name || '', title, src };
-			const mount = MOUNTED_PAGES.get(src.split('?')[0]);
+			const mount = foreign ? null : MOUNTED_PAGES.get(src.split('?')[0]);
 			if (mount) {
 				const host = el('div', null, 'review-page');
 				stage.append(host);
@@ -278,7 +284,7 @@ export function mountReviewWindow(options = {}) {
 			frame.setAttribute('loading', 'eager');
 			// Workspace apps are not the product. Without same-origin they cannot
 			// reach the shell. Built-in pages keep the existing frame.
-			if (src.split('?')[0].startsWith('/apps/')) frame.setAttribute('sandbox', 'allow-scripts allow-forms');
+			if (!foreign && src.split('?')[0].startsWith('/apps/')) frame.setAttribute('sandbox', 'allow-scripts allow-forms');
 			awaitBoot(frame, title || 'this application', BOOTING_PAGES.has(src.split('?')[0]));
 			frame.src = src;
 			stage.append(frame);

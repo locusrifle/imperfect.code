@@ -6,6 +6,7 @@
 
 import { grid, bindHarnessKeys, ALT_LABEL } from "./pi-card.js";
 import { mountShell } from "./shell.js";
+import { mountReviewWindow } from "./review-window.js";
 import { mountGueyPi } from "./harness.js";
 import { mountKnowledgeGraph } from "./graph.js";
 
@@ -131,6 +132,61 @@ const builtInApps = () => APPS.map(app => ({
 	open: () => pi.openWindow({ ...app.window, id: app.id, title: app.title }),
 }));
 
+// The screen of this machine itself.
+//
+// It is the one application that is not a page this computer serves, so it is the one that does
+// not go through the agent's window list. The address is minted by the door at the moment it is
+// opened, is short-lived, and carries an access token -- a token nobody stores is a token nobody
+// leaks, and the server's window list is agent state that gets written down. So the desk mounts
+// this window itself, and the model never learns the address.
+//
+// The tile is drawn only where it can work. `/__machine` is answered by the door's proxy, not by
+// this computer, and it says whether this account's machine is a Box with a supplier screen. A
+// machine somebody already owns has none, and a dead tile is worse than no tile.
+let screen = null;
+let asked = null;
+
+// Asked once. What a machine is does not change between two presses of a key, and the drawer
+// already waits on one request the first time it opens.
+function askDesktop() {
+	asked ??= (async () => {
+		try {
+			const response = await fetch("/__machine", { headers: { accept: "application/json" } });
+			return response.ok && Boolean((await response.json())?.desktop);
+		} catch { return false; }
+	})();
+	return asked;
+}
+
+function desktopWindow() {
+	screen ??= mountReviewWindow({
+		id: "desktop",
+		allowExternal: true,
+		host: () => shell.slot("desktop", "desktop"),
+	});
+	return screen;
+}
+
+function closeDesktop() {
+	screen?.close();
+	shell.release("desktop");
+}
+
+async function openDesktop() {
+	const window = desktopWindow();
+	try {
+		const response = await fetch("/__desktop", { headers: { accept: "application/json" } });
+		if (!response.ok) throw new Error(String(response.status));
+		const { url } = await response.json();
+		if (!url) throw new Error("no address");
+		await window.show({ kind: "page", title: "desktop", src: url });
+	} catch {
+		// Say what happened in the window rather than leaving a blank frame, which is what a
+		// screen that failed to draw looks like.
+		await window.show({ kind: "text", title: "desktop", text: "This machine's screen could not be reached. It may still be starting." });
+	}
+}
+
 // What the agent has written into /apps changes when the agent writes an app, which is rare, and
 // never between two presses of the same key. So the answer is kept and the drawer opens out of it
 // at once; the fetch behind it only decides what the NEXT open shows. Asking the network every
@@ -138,6 +194,7 @@ const builtInApps = () => APPS.map(app => ({
 let appsKnown = null;
 async function refreshApps() {
 	const built = builtInApps();
+	if (await askDesktop()) built.push({ id: "desktop", title: "desktop", open: openDesktop });
 	try {
 		const response = await fetch("/apps/list");
 		if (!response.ok) return (appsKnown = built);
@@ -241,7 +298,10 @@ addEventListener("keydown", event => {
 		// not child processes, so there is no extra backend pid. Never the harness.
 		event.preventDefault();
 		const id = shell.active();
-		if (id) pi.closeWindow(id);
+		if (!id) return;
+		// The screen never entered the agent's window list, so nothing on the server can close it.
+		if (id === "desktop") { closeDesktop(); return; }
+		pi.closeWindow(id);
 		return;
 	}
 	if (event.altKey && event.code === "Space") {

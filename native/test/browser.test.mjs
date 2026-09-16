@@ -8,6 +8,7 @@ import { EventEmitter } from 'node:events';
 import { chromium } from 'playwright';
 import { WebSocket } from 'ws';
 import { createGueyServer } from '../../server.mjs';
+import { sanitizeWorldWindow } from '../world-windows.mjs';
 
 // A real browser against the real server, with a scripted runtime in place of a
 // model: the frontend contract, not the agent, is what this file proves.
@@ -1725,5 +1726,61 @@ test('the phone shell is the painting, a pager of viewports, and its own bar', a
 
 	} finally {
 		await browser.close(); await personal.close(); await rm(root, { recursive: true, force: true });
+	}
+});
+
+test('the machine\'s own screen is a tile the door grants, and its address is never written down', async (t) => {
+	const executablePath = browserPath();
+	if (executablePath === null) return t.skip('No chromium available; run `npx playwright install chromium`');
+	const root = await mkdtemp(join(tmpdir(), 'guey-browser-desktop-'));
+	const runtime = scriptedRuntime(root);
+	const app = await createGueyServer({ port: 0, host: '127.0.0.1', stateDir: root, runtime, product: 'imperfect' });
+	const address = await app.listen();
+	const base = `http://127.0.0.1:${address.port}`;
+	const browser = await chromium.launch({ executablePath, args: ['--no-sandbox'] });
+	try {
+		// A machine somebody already owns has no supplier screen, and a dead tile is worse than
+		// no tile: this computer answers nothing at /__machine, so the row is simply not drawn.
+		const plain = await browser.newPage();
+		await plain.goto(base);
+		await plain.waitForFunction(() => getComputedStyle(document.body).fontFamily.includes('Commit Mono'));
+		await plain.keyboard.press('Alt+ ');
+		await plain.waitForSelector('.om-sheet .om-app');
+		assert.deepEqual(await plain.$$eval('.om-sheet .om-app-name', n => n.map(x => x.textContent)),
+			['files', 'antiburn', 'Doom', 'Image Lab']);
+
+		// A Box has one. The door's proxy answers both of these in front of this computer.
+		const page = await browser.newPage();
+		let minted = 0;
+		await page.route('**/__machine', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ desktop: true }) }));
+		await page.route('**/__desktop', route => {
+			minted += 1;
+			return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ url: `https://box.on.ascii.dev/vnc?token=secret-${minted}` }) });
+		});
+		await page.route('https://box.on.ascii.dev/**', route => route.fulfill({ status: 200, contentType: 'text/html', body: '<p>screen</p>' }));
+		await page.goto(base);
+		await page.waitForFunction(() => getComputedStyle(document.body).fontFamily.includes('Commit Mono'));
+		await page.keyboard.press('Alt+ ');
+		await page.waitForSelector('.om-sheet .om-app-name:text-is("desktop")');
+		await page.click('.om-sheet .om-app:has-text("desktop")');
+		await page.waitForSelector('.om-slot[data-app="desktop"] .review-page-frame');
+		assert.match(await page.getAttribute('.om-slot[data-app="desktop"] .review-page-frame', 'src'), /^https:\/\/box\.on\.ascii\.dev\/vnc\?token=/);
+		assert.equal(minted, 1, 'the address is asked for at the moment it is opened');
+
+		// The point of mounting it here rather than through the agent: the token never reaches the
+		// server, so it is in no window list, no session file and no transcript.
+		assert.equal(runtime.sent.some(c => c.type === 'window-open'), false);
+		assert.equal(JSON.stringify(runtime.data.windows ?? []).includes('ascii.dev'), false);
+
+		// Alt+W closes it even though no server window matches it.
+		await page.keyboard.press('Alt+w');
+		await page.waitForSelector('.om-slot[data-app="desktop"]', { state: 'detached' });
+
+		// The permission belongs to this one window, not to the window kind. A foreign src cannot
+		// even be named through the agent -- the server refuses it before the page hears of it --
+		// and review-window.test.mjs proves the page refuses it too, without that allowance.
+		assert.throws(() => sanitizeWorldWindow({ kind: 'page', id: 'evil', title: 'evil', src: 'https://box.on.ascii.dev/vnc' }), /in-app/);
+	} finally {
+		await browser.close(); await app.close(); await rm(root, { recursive: true, force: true });
 	}
 });

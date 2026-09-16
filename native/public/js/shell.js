@@ -14,10 +14,12 @@
 const BAR_ID = 'om-bar';
 
 // An application is a picture before it is a word, and the truest picture is the one the
-// application already answers to. antiburn ships an icon with its desktop build; Doom's is
+// application already answers to. antiburn's is the icon in its own desktop build, lifted off the
+// rounded dark tile that build wraps it in -- the mark is a matrix of lit dots, and the tile was
+// a macOS convention that read as the one black square in a room made of daylight. Doom's is
 // M_DOOM, the title-screen lump inside the IWAD the port loads -- `tools/doom-logo.mjs` writes
-// it out beside the port, which is why it is a path and not a drawing. Neither is in git: see
-// docs/doom.md for the WAD, and neither logo is ours to relicense.
+// it out beside the port, which is why it is a path and not a drawing. Doom's is not in git: see
+// docs/doom.md for the WAD. Neither logo is ours to relicense; each names the thing it opens.
 //
 // The rest are this product's own applications, so they are drawn here on the 8x8 grid the whole
 // product stands on, in `currentColor` -- they follow the accent, cost no request, and cannot
@@ -34,6 +36,8 @@ const GLYPHS = {
 	antiburn: 'M2 9h3v5H2zM6.5 6h3v8h-3zM11 2h3v12h-3z',
 	// a sight: four arms and the shot between them
 	doom: 'M7 1h2v4H7zM7 11h2v4H7zM1 7h4v2H1zM11 7h4v2h-4zM6 6h4v4H6z',
+	// a screen on a stand: the machine itself, which is what the desktop window shows
+	desktop: 'M1 2h14v1H1zM1 10h14v1H1zM1 3h1v7H1zM14 3h1v7h-1zM7 11h2v2H7zM4 13h8v1H4z',
 	// a picture: a frame with a sun over a peak
 	'image-lab': 'M2 2h12v2H2zM2 12h12v2H2zM2 4h2v8H2zM12 4h2v8h-2zM5 5h2v2H5zM4 10h2v2H4zM6 8h2v4H6zM8 10h2v2H8z',
 };
