@@ -34,6 +34,7 @@ function scriptedRuntime(cwd) {
 	const data = {
 		sessionId: 'browser-test', sessionFile: join(cwd, 'session.jsonl'), cwd, name: 'browser',
 		model: { id: 'fixture-model', provider: 'fixture', name: 'Fixture', contextWindow: 1000 }, thinkingLevel: 'off',
+		permissionMode: 'default', effort: null,
 		busy: false, operation: null, failed: null, commands: [], messages: [], partial: null, runningTools: [],
 		queue: { steering: [], followUp: [] }, stats: { tokens: { total: 12, input: 1200, output: 300, cacheRead: 4000, cacheWrite: 0 }, cost: 0.5, contextUsage: { tokens: 80, contextWindow: 1000, percent: 8 } },
 		ui: { dialogs: [], statuses: {}, widgets: {}, notifications: [], editor: null },
@@ -77,7 +78,10 @@ function scriptedRuntime(cwd) {
 					{ id: 'own', path: join(cwd, 'own.jsonl'), cwd, name: 'Own session', modified: Date.now(), messageCount: 2, copyOnResume: false },
 					{ id: 'ext', path: '/elsewhere/live.jsonl', cwd: '/elsewhere', firstMessage: 'terminal session', modified: Date.now(), messageCount: 9, copyOnResume: true, liveOwner: { pid: 4242, startedAt: new Date().toISOString() } },
 				];
-				case 'models': return [{ provider: 'fixture', id: 'fixture-model', name: 'Fixture' }];
+				case 'models': return data.models ?? [{ provider: 'fixture', id: 'fixture-model', name: 'Fixture' }];
+				case 'model': data.model = (data.models ?? []).find(model => model.id === c.modelId) ?? { provider: 'fixture', id: c.modelId, name: c.modelId }; changed(); return { id: c.modelId };
+				case 'effort': data.effort = c.level; changed(); return { level: c.level };
+				case 'permission-mode': data.permissionMode = c.mode; changed(); return { mode: c.mode };
 				case 'name': data.name = c.name; changed(); return;
 				case 'attach': data.live = { pid: c.pid, connected: true, closed: false, waiting: null }; changed(); return { pid: c.pid };
 				case 'detach': delete data.live; changed(); return;
@@ -112,6 +116,15 @@ function scriptedRuntime(cwd) {
 					data.name = tab.name;
 					changed();
 					return { id: c.tabId, focused: true };
+				}
+				case 'tab-move': {
+					const index = (data.tabs ?? []).findIndex(item => item.id === c.tabId);
+					if (index < 0) throw new Error('Unknown tab');
+					const next = Math.max(0, Math.min(data.tabs.length - 1, index + (c.delta < 0 ? -1 : 1)));
+					const [tab] = data.tabs.splice(index, 1);
+					data.tabs.splice(next, 0, tab);
+					changed();
+					return { id: c.tabId };
 				}
 				case 'tab-close': {
 					const tabs = data.tabs ?? [];
@@ -644,15 +657,10 @@ test('steering and follow-up queues show in the editor chrome', async (t) => {
 		assert.equal(steered.text, 'steer this way');
 		await page.fill('#entry-input', 'after you finish');
 		await page.locator('#entry-input').focus();
-		await page.keyboard.press('Alt+Enter');
-		await page.waitForSelector('.entry-queue-line:has-text("Follow-up: after you finish")');
-		await page.waitForSelector('.entry-queue-hint:has-text("Alt+Up")');
-		const follow = runtime.sent.find(c => c.type === 'prompt' && c.behavior === 'followUp');
-		assert.equal(follow.text, 'after you finish');
-		await page.keyboard.press('Alt+ArrowUp');
-		await page.waitForFunction(() => document.getElementById('entry-queue')?.hidden);
-		assert.match(await page.inputValue('#entry-input'), /steer this way/);
-		assert.match(await page.inputValue('#entry-input'), /after you finish/);
+		await page.keyboard.press('Shift+Enter');
+		assert.match(await page.inputValue('#entry-input'), /after you finish\n$/);
+		await page.keyboard.press('Alt+c');
+		await waitForCommand(runtime, c => c.type === 'tab-new');
 	} finally {
 		await browser.close(); await app.close(); await rm(root, { recursive: true, force: true });
 	}
@@ -686,6 +694,100 @@ test('/guey-reload reloads the page instead of prompting', async (t) => {
 	}
 });
 
+test('quake and Herdr are two faces of one live harness', async (t) => {
+	const executablePath = browserPath();
+	if (executablePath === null) return t.skip('No chromium available; run `npx playwright install chromium`');
+	const root = await mkdtemp(join(tmpdir(), 'guey-browser-two-faces-'));
+	const runtime = scriptedRuntime(root);
+	const app = await createGueyServer({ port: 0, host: '127.0.0.1', stateDir: root, runtime });
+	const address = await app.listen();
+	const browser = await chromium.launch({ executablePath, args: ['--no-sandbox'] });
+	const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+	try {
+		await page.goto(`http://127.0.0.1:${address.port}`);
+		await page.waitForFunction(() => (document.getElementById('entry-pi-label')?.textContent || '').includes('fixture-model'));
+		await page.keyboard.press('Alt+y');
+		await page.waitForFunction(() => document.getElementById('terminal-entry').classList.contains('open'));
+		await page.fill('#entry-input', 'continue in the same place');
+		await page.press('#entry-input', 'Enter');
+		await page.waitForSelector('#entry-input-zone.working');
+		await page.fill('#entry-input', 'draft survives the face change');
+		const before = await page.evaluate(() => ({
+			terminal: document.getElementById('entry-terminal'),
+			session: document.getElementById('entry-session-name')?.textContent,
+			transcript: document.getElementById('entry-output')?.textContent,
+		}));
+
+		await page.locator('#entry-input').focus();
+		await page.keyboard.press('Alt+Enter');
+		await page.waitForSelector('#herdr-face');
+		await page.waitForFunction(() => document.querySelector('#herdr-face > #entry-terminal'));
+		const herdr = await page.evaluate(() => {
+			const face = document.getElementById('herdr-face');
+			const world = document.getElementById('imperfect-world');
+			const faceBox = face.getBoundingClientRect();
+			const worldBox = world.getBoundingClientRect();
+			return {
+				fullscreen: faceBox.width === worldBox.width && faceBox.height === worldBox.height,
+				terminalInHerdr: document.querySelector('#herdr-face > #entry-terminal') === document.getElementById('entry-terminal'),
+				quakeHasTerminal: Boolean(document.querySelector('#terminal-entry #entry-terminal')),
+				quakeHasRail: Boolean(document.querySelector('#terminal-entry #session-rail')),
+				session: document.getElementById('entry-session-name')?.textContent,
+				transcript: document.getElementById('entry-output')?.textContent,
+				draft: document.getElementById('entry-input')?.value,
+				working: document.getElementById('entry-input-zone')?.classList.contains('working'),
+				rail: document.querySelector('#herdr-face > #session-rail')?.textContent,
+			};
+		});
+		assert.equal(herdr.fullscreen, true);
+		assert.equal(herdr.terminalInHerdr, true);
+		assert.equal(herdr.quakeHasTerminal, false);
+		assert.equal(herdr.quakeHasRail, false);
+		assert.equal(herdr.session, before.session);
+		assert.match(herdr.transcript, /continue in the same place/);
+		assert.equal(herdr.draft, 'draft survives the face change');
+		assert.equal(herdr.working, true);
+		assert.match(herdr.rail, /browser/);
+		assert.equal(runtime.sent.some(command => command.type === 'tab-new'), false);
+		await page.keyboard.press('Alt+c');
+		await waitForCommand(runtime, command => command.type === 'tab-new');
+		await page.keyboard.press('Alt+1');
+		await waitForCommand(runtime, command => command.type === 'tab-focus' && command.tabId === 'browser-test');
+
+		await page.locator('#entry-input').focus();
+		await page.keyboard.press('Alt+Enter');
+		await page.waitForFunction(() => !document.getElementById('herdr-face'));
+		await page.keyboard.press('Alt+Enter');
+		await page.waitForSelector('#herdr-face');
+		await page.keyboard.press('Alt+w');
+		await page.waitForFunction(() => !document.getElementById('herdr-face'));
+		await page.keyboard.press('Alt+Enter');
+		await page.waitForSelector('#herdr-face');
+		await page.locator('#entry-input').press('Escape');
+		const afterEscape = await page.evaluate(() => ({
+			face: Boolean(document.getElementById('herdr-face')),
+			body: document.body.className,
+			terminalParent: document.getElementById('entry-terminal')?.parentElement?.id,
+		}));
+		assert.equal(afterEscape.face, false, JSON.stringify(afterEscape));
+		await page.keyboard.press('Alt+y');
+		await page.waitForFunction(() => document.querySelector('#terminal-entry #entry-terminal'));
+		assert.equal(await page.inputValue('#entry-input'), 'draft survives the face change');
+		assert.match(await page.textContent('#entry-output'), /continue in the same place/);
+		await page.setViewportSize({ width: 390, height: 844 });
+		await page.keyboard.press('Alt+Enter');
+		await page.waitForSelector('#herdr-face');
+		const mobile = await page.evaluate(() => {
+			const style = getComputedStyle(document.getElementById('herdr-face'));
+			return { columns: style.gridTemplateColumns, areas: style.gridTemplateAreas };
+		});
+		assert.match(mobile.areas, /sidebar.*main/);
+		assert.doesNotMatch(mobile.columns, /13rem/);
+	} finally {
+		await browser.close(); await app.close(); await rm(root, { recursive: true, force: true });
+	}
+});
+
 test('/tab opens the tabs window and can start a new one', async (t) => {
 	const executablePath = browserPath();
 	if (executablePath === null) return t.skip('No chromium available; run `npx playwright install chromium`');
@@ -700,10 +802,12 @@ test('/tab opens the tabs window and can start a new one', async (t) => {
 		await page.waitForFunction(() => (document.getElementById('entry-pi-label')?.textContent || '').includes('fixture-model'));
 		await page.keyboard.press('Alt+y');
 		await page.waitForFunction(() => document.getElementById('terminal-entry').classList.contains('open'));
-		await page.waitForSelector('#session-rail', { state: 'attached' });
+		assert.equal(await page.locator('#terminal-entry #session-rail').count(), 0, 'Herdr sidebar is not in the quake drop');
 		await page.fill('#entry-input', '/tab');
 		await page.press('#entry-input', 'Enter');
-		await page.waitForFunction(() => document.getElementById('session-rail')?.classList.contains('open'));
+		await page.waitForSelector('.session-rail-heading');
+		assert.equal(await page.locator('#session-rail').evaluate(node => node.parentElement.id), 'entry-terminal');
+		assert.equal(await page.locator('.session-rail-heading').count(), 1);
 		const rail = await page.textContent('#session-rail');
 		assert.match(rail, /tabs/);
 		assert.match(rail, /browser/);
@@ -912,10 +1016,10 @@ test('arrow keys switch tabs without opening the list', async (t) => {
 	try {
 		await page.goto(`http://127.0.0.1:${address.port}`);
 		await page.waitForFunction(() => (document.getElementById('entry-pi-label')?.textContent || '').includes('fixture-model'));
-		await page.keyboard.press('Alt+y');
-		await page.waitForFunction(() => document.getElementById('terminal-entry').classList.contains('open'));
+		await page.keyboard.press('Alt+Enter');
+		await page.waitForSelector('#herdr-face');
 		await page.locator('#entry-input').click();
-		assert.equal(await page.evaluate(() => document.getElementById('session-rail')?.classList.contains('open')), false);
+		assert.equal(await page.evaluate(() => document.getElementById('session-rail')?.classList.contains('open')), true, 'the sidebar stays present while the composer cycles tabs');
 		const focused = waitForCommand(runtime, c => c.type === 'tab-focus');
 		await page.keyboard.press('ArrowRight');
 		assert.equal((await focused).tabId, 't2');
@@ -1309,7 +1413,7 @@ test('clipboard image paste attaches; imperfect composer grows with lines', asyn
 	}
 });
 
-test('/graph opens personal map on grid; read/back/close; phone; failed load; stock has no graph', async (t) => {
+test('Alt+G opens personal map on grid; read/back/close; phone; failed load; stock has no graph', async (t) => {
 	const executablePath = browserPath();
 	if (executablePath === null) return t.skip('No chromium available; run `npx playwright install chromium`');
 	const root = await mkdtemp(join(tmpdir(), 'guey-browser-graph-'));
@@ -1332,8 +1436,7 @@ test('/graph opens personal map on grid; read/back/close; phone; failed load; st
 		await page.keyboard.press('Alt+y');
 		await page.waitForFunction(() => document.getElementById('terminal-entry').classList.contains('open'));
 		await page.fill('#entry-input', 'keep this draft');
-		await page.fill('#entry-input', '/graph');
-		await page.press('#entry-input', 'Enter');
+		await page.keyboard.press('Alt+g');
 		await page.waitForSelector('#knowledge-graph-host.open .node');
 		await page.waitForFunction(() => document.querySelectorAll('#knowledge-cards .node').length >= 2);
 		assert.equal(runtime.sent.some(c => c.type === 'prompt' && String(c.text || '').includes('/graph')), false);
@@ -1441,8 +1544,7 @@ test('/graph opens personal map on grid; read/back/close; phone; failed load; st
 		}
 		const graphOpen = await page.locator('#knowledge-graph-host').evaluate(el => el.classList.contains('open') && !el.hidden);
 		if (!graphOpen) {
-			await page.fill('#entry-input', '/graph');
-			await page.press('#entry-input', 'Enter');
+			await page.keyboard.press('Alt+g');
 			await page.waitForSelector('#knowledge-graph-host.open .node');
 		}
 		const phoneBoxes = await page.evaluate(() => {
@@ -1480,15 +1582,18 @@ test('/graph opens personal map on grid; read/back/close; phone; failed load; st
 		await page.screenshot({ path: '/tmp/imperfect-graph-desktop.png', fullPage: true });
 		await page.evaluate(() => document.getElementById('knowledge-graph-close').click());
 
-		await page.route('**/graph/page**', route => route.fulfill({ status: 500, body: 'nope' }));
-		if (!await page.locator('#terminal-entry').evaluate(el => el.classList.contains('open'))) await page.keyboard.press('Alt+y');
-		await page.waitForFunction(() => document.getElementById('terminal-entry').classList.contains('open'));
-		await page.evaluate(() => document.getElementById('knowledge-graph-host').classList.contains('open') || null);
-		await page.fill('#entry-input', '/graph');
-		await page.press('#entry-input', 'Enter');
-		await page.waitForSelector('#knowledge-graph-host.open .node');
-		await page.locator('#knowledge-cards .node').first().click({ force: true });
-		await page.waitForSelector('.knowledge-error');
+		// Use a fresh page for the failed document request. The main page has just exercised the
+		// close/reopen path several times, so its old graph cards should not be mistaken for the
+		// newly failed request.
+		const errorPage = await browser.newPage();
+		await errorPage.goto(`http://127.0.0.1:${pAddr.port}`);
+		await errorPage.waitForFunction(() => document.querySelector('#entry-pi-label')?.textContent.includes('fixture-model'));
+		await errorPage.keyboard.press('Alt+g');
+		await errorPage.waitForSelector('#knowledge-graph-host.open .node');
+		await errorPage.route('**/graph/page?id=agents', route => route.fulfill({ status: 500, body: 'nope' }));
+		await errorPage.evaluate(async () => { await document.getElementById('knowledge-graph-host').openKnowledgePage('agents'); });
+		await errorPage.waitForSelector('.knowledge-error');
+		await errorPage.close();
 
 		await page.goto(`http://127.0.0.1:${sAddr.port}`);
 		await page.waitForFunction(() => (document.getElementById('entry-pi-label')?.textContent || '').includes('fixture-model'));
@@ -1498,6 +1603,7 @@ test('/graph opens personal map on grid; read/back/close; phone; failed load; st
 		await page.waitForSelector('#slash-menu:not([hidden])');
 		const slash = await page.locator('#slash-menu').textContent();
 		assert.equal(/\bgraph\b/i.test(slash || ''), false);
+		assert.equal(/\bantiburn\b/i.test(slash || ''), false);
 	} finally {
 		await browser.close(); await personal.close(); await stock.close(); await rm(root, { recursive: true, force: true });
 	}
@@ -1574,8 +1680,7 @@ test('knowledge tree grows upwards symmetrically through seven pages, including 
 		await page.goto(`http://127.0.0.1:${addr.port}`);
 		await page.waitForFunction(() => document.querySelector('#entry-pi-label')?.textContent.includes('fixture-model'));
 		await page.keyboard.press('Alt+y');
-		await page.fill('#entry-input', '/graph');
-		await page.press('#entry-input', 'Enter');
+		await page.keyboard.press('Alt+g');
 		await page.waitForSelector('#knowledge-cards [data-node="practice"]');
 		assert.equal(await page.locator('#terminal-entry').evaluate(el => el.classList.contains('open')), true, 'graph must not close the harness');
 		check(await geometry());
@@ -1603,13 +1708,18 @@ test('knowledge tree grows upwards symmetrically through seven pages, including 
 	}
 });
 
-test('the phone shell is the painting, a pager of viewports, and its own bar', async (t) => {
+test('the phone shell is the painting and a single-column layout', async (t) => {
 	const executablePath = browserPath();
 	if (executablePath === null) return t.skip('No chromium available; run `npx playwright install chromium`');
 	const root = await mkdtemp(join(tmpdir(), 'guey-browser-scene-'));
 	const runtime = scriptedRuntime(root);
+	const wallpapersRoot = join(root, 'omarchy', 'themes');
+	await mkdir(join(wallpapersRoot, 'garden', 'backgrounds'), { recursive: true });
+	await writeFile(join(wallpapersRoot, 'garden', 'backgrounds', '01-morning.jpg'), 'fixture wallpaper');
+	await writeFile(join(wallpapersRoot, 'garden', 'backgrounds', '02-evening.png'), 'fixture wallpaper');
 	const personal = await createGueyServer({
 		port: 0, host: '127.0.0.1', stateDir: root, runtime, product: 'imperfect',
+		wallpapersRoot,
 	});
 	const browser = await chromium.launch({ executablePath, args: ['--no-sandbox'] });
 	try {
@@ -1619,9 +1729,9 @@ test('the phone shell is the painting, a pager of viewports, and its own bar', a
 
 		assert.equal(await page.locator('#imperfect-scene').count(), 0);
 		// The ground is the painting the door is set in, on its own fixed layer so `cover` re-fits
-		// on rotation with no script. Omarchy supplied a wallpaper here until 2026-09-14 and this
-		// test still asked for it; a hosted machine has no Omarchy to ask. A phone is taller than
-		// it is wide, so it gets the portrait crop.
+		// on rotation with no script. The server inventory is the source, so a theme can add a
+		// wallpaper without a frontend edit.
+		await page.waitForFunction(() => getComputedStyle(document.getElementById('om-wall')).backgroundImage.includes('/wallpapers/'));
 		const wall = await page.evaluate(() => {
 			const node = document.getElementById('om-wall');
 			if (!node) return null;
@@ -1630,13 +1740,26 @@ test('the phone shell is the painting, a pager of viewports, and its own bar', a
 			return { image: style.backgroundImage, size: style.backgroundSize, w: Math.round(box.width), h: Math.round(box.height) };
 		});
 		assert.ok(wall, 'the wallpaper layer exists');
-		assert.match(wall.image, /\/media\/ground\/temple-tall\.webp/);
+		assert.match(wall.image, /\/wallpapers\/garden\/01-morning\.jpg/);
 		assert.equal(wall.size, 'cover');
 		assert.equal(wall.w, 390);
 		assert.equal(wall.h, 844);
-		assert.equal((await page.request.get(`http://127.0.0.1:${addr.port}/media/ground/temple-tall.webp`)).status(), 200);
+		assert.equal((await page.request.get(`http://127.0.0.1:${addr.port}/wallpapers/garden/01-morning.jpg`)).status(), 200);
+		await page.keyboard.press('Alt+Shift+ ');
+		await page.waitForSelector('.wallpaper-selector');
+		assert.equal(await page.locator('.wallpaper-thumb').count(), 2);
+		assert.match(await page.getAttribute('.wallpaper-preview', 'src'), /01-morning\.jpg/);
+		await page.locator('.wallpaper-thumb').nth(1).click();
+		await page.keyboard.press('Enter');
+		await page.waitForSelector('.om-wall-incoming');
+		await page.waitForTimeout(500);
+		assert.match(await page.evaluate(() => getComputedStyle(document.getElementById('om-wall')).backgroundImage), /02-evening\.png/);
+		assert.equal(await page.evaluate(() => localStorage.getItem('imperfect-wallpaper')), 'garden/02-evening.png');
+		await page.reload();
+		await page.waitForFunction(() => getComputedStyle(document.getElementById('om-wall')).backgroundImage.includes('02-evening.png'));
 
-		// The pager fills the viewport above the bar, and scrolls one axis only.
+		// The default dwindle layout fills the phone as one column. Alt+L changes
+		// the same shell surface to the side-scrolling mode.
 		const world = await page.evaluate(() => {
 			const node = document.getElementById('imperfect-world');
 			const box = node.getBoundingClientRect();
@@ -1653,36 +1776,35 @@ test('the phone shell is the painting, a pager of viewports, and its own bar', a
 		assert.equal(world.w, 390);
 		assert.equal(world.h, 844);
 		assert.ok(world.pager);
-		assert.match(world.snap, /x mandatory/);
-		assert.equal(world.overflowX, 'auto');
-		assert.equal(world.overflowY, 'hidden');
+		assert.equal(world.snap, 'none');
+		assert.equal(world.overflowX, 'hidden');
+		assert.equal(world.overflowY, 'auto');
+		assert.equal(await page.getAttribute('#imperfect-world', 'data-layout'), 'dwindle');
+		await page.keyboard.press('Alt+l');
+		await page.waitForFunction(() => document.getElementById('imperfect-world')?.dataset.layout === 'scrolling');
+		assert.equal(await page.evaluate(() => localStorage.getItem('imperfect-shell-layout')), 'scrolling');
+		await page.reload();
+		await page.waitForFunction(() => document.getElementById('imperfect-world')?.dataset.layout === 'scrolling');
+		await page.keyboard.press('Alt+l');
+		await page.waitForFunction(() => document.getElementById('imperfect-world')?.dataset.layout === 'dwindle');
 
-		// The bar is this shell's own: its position, its widgets, its clock format. Nothing open is
-		// the painting, and the menu is the way in.
-		const bar = await page.evaluate(() => {
-			const node = document.getElementById('om-bar');
-			if (!node) return null;
-			return {
-				position: node.dataset.position,
-				menu: Boolean(node.querySelector('.om-menu')),
-				workspaces: Boolean(node.querySelector('.om-workspaces')),
-				clock: node.querySelector('.om-clock')?.textContent ?? '',
-				dots: node.querySelectorAll('.om-ws').length,
-			};
-		});
-		assert.ok(bar, 'the bar mounted');
-		assert.equal(bar.position, 'bottom');
-		assert.ok(bar.menu);
-		assert.match(bar.clock, /\d\d:\d\d/);
-		// The bar carries the menu and the clock. It had a workspace indicator while its
-		// arrangement came from Omarchy's shell.json; that went with shell.json, and the pager has
-		// had no indicator since -- open two applications and nothing says which one is showing.
-		assert.equal(bar.workspaces, false);
-		assert.equal(bar.dots, 0);
+		assert.equal(await page.locator('#om-bar').count(), 0, 'the removed bar must not mount');
 		assert.ok(await page.evaluate(() => document.body.classList.contains('shell-empty')));
+		await page.keyboard.press('Alt+k');
+		await page.waitForSelector('#key-guide');
+		const guide = await page.textContent('#key-guide');
+		assert.match(guide, /Alt\+A/);
+		assert.match(guide, /Alt\+G/);
+		assert.match(guide, /Alt\+Shift\+Space/);
+		assert.match(guide, /Alt\+1/);
+		assert.match(guide, /Alt\+Enter/);
+		assert.match(guide, /Alt\+C/);
+		assert.match(guide, /Alt\+L/);
+		await page.keyboard.press('Escape');
+		await page.waitForSelector('#key-guide', { state: 'detached' });
 
 		// The menu lists the applications, and opening one gives it a viewport.
-		await page.click('.om-menu');
+		await page.keyboard.press('Alt+ ');
 		await page.waitForSelector('.om-sheet .om-app');
 		const apps = await page.$$eval('.om-sheet .om-app-name', nodes => nodes.map(n => n.textContent));
 		assert.deepEqual(apps, ['files', 'antiburn', 'Doom', 'Image Lab']);
@@ -1796,6 +1918,13 @@ test('a Claude tab introduces itself as Claude, in a real browser', async (t) =>
 	const runtime = scriptedRuntime(root);
 	// The tab host stamps this onto every snapshot; here the fixture is the host.
 	runtime.data.agent = 'claude';
+	runtime.data.models = [
+		{ provider: 'claude-agent', id: 'opus', name: 'Opus', description: 'strongest', supportsEffort: true, supportedEffortLevels: ['low', 'medium', 'high'] },
+		{ provider: 'claude-agent', id: 'sonnet', name: 'Sonnet', description: 'balanced' },
+		{ provider: 'claude-agent', id: 'haiku', name: 'Haiku', description: 'fast' },
+		{ provider: 'claude-agent', id: 'opus-legacy', name: 'Opus Legacy', description: 'legacy' },
+		{ provider: 'claude-agent', id: 'sonnet-legacy', name: 'Sonnet Legacy', description: 'legacy' },
+	];
 	runtime.data.startup = {
 		version: 'claude 2.1.273', quiet: false, update: null,
 		sections: [{ name: 'Context', compact: 'AGENTS.md', expanded: '/tmp/AGENTS.md' }],
@@ -1848,6 +1977,22 @@ test('a Claude tab introduces itself as Claude, in a real browser', async (t) =>
 		for (const dead of ['/tree', '/fork', '/compact', '/thinking', '/reload', '/new', '/resume']) {
 			assert.ok(!names.includes(dead), `Claude must not list ${dead}`);
 		}
+		assert.ok(!names.includes('/effort'), 'effort stays hidden until a model is selected');
+
+		await page.fill('#entry-input', '');
+		await page.locator('#entry-pi-label').click();
+		await page.waitForSelector('.entry-dialog-option-label');
+		assert.deepEqual(await page.$$eval('.entry-dialog-option-label', els => els.map(el => el.textContent)), ['claude-agent/opus', 'claude-agent/sonnet', 'claude-agent/haiku', 'claude-agent/opus-legacy', 'claude-agent/sonnet-legacy']);
+		await page.locator('.entry-dialog-option').first().click();
+		await page.waitForFunction(() => document.getElementById('entry-pi-label')?.textContent === 'opus');
+		await page.locator('#entry-input').fill('/');
+		await page.waitForFunction(() => !document.getElementById('slash-menu')?.hidden);
+		assert.ok((await page.$$eval('.slash-item', els => els.map(e => e.dataset.command))).includes('/effort'), 'Claude offers effort on an effort-capable model');
+		await page.locator('#entry-input').fill('');
+		await page.keyboard.press('Escape');
+		await page.locator('#entry-input').press('Shift+Tab');
+		await page.waitForFunction(() => document.getElementById('entry-permission')?.textContent.includes('accept edits'));
+		assert.equal(runtime.data.permissionMode, 'acceptEdits');
 
 		assert.deepEqual(crashes, []);
 	} finally {

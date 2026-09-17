@@ -46,10 +46,11 @@ const PI_EXPANDED = [
 
 // Verified against harness.js: Escape interrupts, ctrl+c aborts a running
 // turn, `/` opens the slash menu, ctrl+o expands, Enter sends and
-// alt+Enter opens a line. Nothing else is claimed.
+// shift+Enter opens a line. Nothing else is claimed.
 const CLAUDE_COMPACT = [
 	['escape', 'interrupt'],
 	['/', 'commands'],
+	['shift+tab', 'cycle permission mode'],
 	['ctrl+o', 'more'],
 ];
 
@@ -57,9 +58,10 @@ const CLAUDE_EXPANDED = [
 	['escape', 'to interrupt'],
 	['ctrl+c', 'to interrupt a running turn'],
 	['/', 'for commands'],
+	['shift+tab', 'to cycle permission mode'],
 	['ctrl+o', 'to expand tools'],
 	['enter', 'to send'],
-	['alt+enter', 'for a new line'],
+	['shift+enter', 'for a new line'],
 ];
 
 // A runtime may hand over a version that already carries its own name
@@ -71,12 +73,12 @@ const CLAUDE_EXPANDED = [
 // commands — /scoped-models, /export, /share, /changelog, /hotkeys, /fork,
 // /clone, /trust, /thinking, /tree, /compact, /reload — most of which have no
 // implementation for Claude at all and were rendered only to throw "not
-// available in Guey yet" when pressed. Claude's own commands, the ones the SDK
-// reports in its init frame, were appended underneath that wall.
+// available in Guey yet" when pressed. The SDK's init names are considered
+// only after a matching Claude runtime case exists.
 //
 // So a face names the commands it actually answers, in the order it wants
-// them, and the agent's own reported commands are added to that rather than
-// buried after somebody else's.
+// them. A runtime-reported name is admitted only when its own switch has a
+// matching case; an init frame is not permission to advertise a dead command.
 
 const PI_SLASH_VIEW = {
 	'/settings': ['settings', 'Open settings menu'],
@@ -109,9 +111,12 @@ const PI_SLASH_VIEW = {
 // that a Claude tab cannot run: /tree, /fork, /clone, /compact, /thinking,
 // /reload, /scoped-models, /export, /import, /share, /changelog, /hotkeys,
 // /trust — and also /new and /resume, which the switch does not implement
-// either, so offering them would be offering a thrown error.
+// either, so offering them would be offering a thrown error. The native TUI's
+// /effort is different: the SDK exposes it for models that advertise effort,
+// so the harness keeps the row but filters it until such a model is selected.
 const CLAUDE_SLASH_VIEW = {
 	'/model': ['model', 'Select the model this session runs on'],
+	'/effort': ['effort', 'Set effort for the current Claude model'],
 	'/name': ['name', 'Set session display name'],
 	'/copy': ['copy', 'Copy last agent message to clipboard'],
 	'/session': ['session', 'Show session info and stats'],

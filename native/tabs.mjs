@@ -1,4 +1,5 @@
 import { EventEmitter } from 'node:events';
+import { basename } from 'node:path';
 import { createRuntime } from './runtime.mjs';
 import { createClaudeRuntime } from './claude-runtime.mjs';
 import { answerEvidence } from './public/js/session-logic.js';
@@ -42,12 +43,35 @@ function summary(tab, focused) {
     busy: snap.busy,
     streaming: Boolean(snap.streaming),
     failed: snap.failed ?? null,
+    status: agentStatus(tab, snap),
+    // Herdr's workspace token is the only real place value this machine has:
+    // the runtime's current directory. There is no second workspace layer to
+    // manufacture here.
+    workspace: workspaceLabel(snap.cwd),
     // The rail is the one place a person can see which agent a tab is, so it
     // travels with every summary rather than being asked for separately.
     agent: tab.agent,
     focused,
   };
 }
+
+export function workspaceLabel(cwd) {
+  const value = String(cwd ?? '').replace(/[\\/]+$/, '');
+  return value ? basename(value) || value : '';
+}
+
+// Herdr calls a settled background turn `done`, but only until its tab is seen
+// again. The host remembers that one fact; every other state remains a direct
+// reading of the runtime rather than a second lifecycle machine.
+export function agentStatus(tab, snap = tab.runtime.snapshot()) {
+  if (snap?.ui?.dialogs?.length || snap?.live?.waiting) return 'blocked';
+  if (snap?.failed || snap?.live?.closed) return 'unknown';
+  if (snap?.busy || snap?.streaming || snap?.operation) return 'working';
+  if (tab.unseenSettled) return 'done';
+  return tab.agent ? 'idle' : 'unknown';
+}
+
+export const STATUS_PRIORITY = Object.freeze({ blocked: 0, working: 1, done: 2, unknown: 3, idle: 4 });
 
 // One machine, two harnesses. The choice lives here and nowhere else: both
 // runtimes answer the same four members, so every surface above this point —
@@ -68,7 +92,7 @@ export async function createTabHost(options = {}) {
   // must not meet a dead tab on their first sight of the console.
   const first = await make({ persistPointer: true });
   let seq = 1;
-  const tabs = [{ id: 't1', runtime: first, agent: 'pi', wasTurn: turnActive(first.snapshot()) }];
+  const tabs = [{ id: 't1', runtime: first, agent: 'pi', wasTurn: turnActive(first.snapshot()), unseenSettled: false }];
   let focused = 't1';
   const current = () => tabs.find(tab => tab.id === focused) ?? tabs[0];
 
@@ -77,6 +101,7 @@ export async function createTabHost(options = {}) {
       const snap = tab.runtime.snapshot();
       const next = turnActive(snap);
       if (tab.wasTurn && !next) {
+        tab.unseenSettled = tab.id !== focused;
         events.emit('settled', {
           id: tab.id,
           sessionId: snap.sessionId ?? null,
@@ -103,6 +128,7 @@ export async function createTabHost(options = {}) {
       const tab = tabs.find(item => item.id === c.tabId);
       if (!tab) throw new Error('Unknown tab');
       focused = tab.id;
+      tab.unseenSettled = false;
       events.emit('change');
       return summary(tab, true);
     }
@@ -111,7 +137,7 @@ export async function createTabHost(options = {}) {
       // A Claude tab with no key throws before it is ever pushed, so a refused
       // new tab leaves the rail exactly as it was rather than half-open.
       const runtime = await make({ fresh: true, persistPointer: false }, agent);
-      const tab = { id: `t${++seq}`, runtime, agent, wasTurn: false };
+      const tab = { id: `t${++seq}`, runtime, agent, wasTurn: false, unseenSettled: false };
       tabs.push(tab);
       bind(tab);
       focused = tab.id;
@@ -123,6 +149,7 @@ export async function createTabHost(options = {}) {
       const already = tabs.find(item => item.runtime.snapshot().sessionFile === path);
       if (already) {
         focused = already.id;
+        already.unseenSettled = false;
         events.emit('change');
         return summary(already, true);
       }
@@ -130,7 +157,7 @@ export async function createTabHost(options = {}) {
       // other harness would hand it a transcript it cannot continue.
       const agent = c.agent === 'claude' ? 'claude' : 'pi';
       const runtime = await make({ sessionPath: path, persistPointer: false }, agent);
-      const tab = { id: `t${++seq}`, runtime, agent, wasTurn: turnActive(runtime.snapshot()) };
+      const tab = { id: `t${++seq}`, runtime, agent, wasTurn: turnActive(runtime.snapshot()), unseenSettled: false };
       tabs.push(tab);
       bind(tab);
       focused = tab.id;
@@ -146,6 +173,18 @@ export async function createTabHost(options = {}) {
       events.emit('change');
       await tab.runtime.close();
       return { ok: true, focused };
+    }
+    if (c.type === 'tab-move') {
+      const index = tabs.findIndex(item => item.id === c.tabId);
+      if (index < 0) throw new Error('Unknown tab');
+      const delta = c.delta < 0 ? -1 : c.delta > 0 ? 1 : 0;
+      const next = Math.max(0, Math.min(tabs.length - 1, index + delta));
+      if (next !== index) {
+        const [tab] = tabs.splice(index, 1);
+        tabs.splice(next, 0, tab);
+        events.emit('change');
+      }
+      return summary(tabs[next], tabs[next].id === focused);
     }
     return current().runtime.command(c);
   }

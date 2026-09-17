@@ -1,7 +1,7 @@
 import { createServer } from 'node:http';
 import { watch } from 'node:fs';
 import { readFile, mkdir, open, readFile as read, readdir, stat, unlink, writeFile } from 'node:fs/promises';
-import { join, resolve, sep, extname } from 'node:path';
+import { join, resolve, sep, extname, basename } from 'node:path';
 import { homedir } from 'node:os';
 import { pathToFileURL } from 'node:url';
 import { WebSocketServer } from 'ws';
@@ -24,6 +24,7 @@ import { createLabRoutes } from './native/lab-routes.mjs';
 import { resolveAppFile } from './native/apps.mjs';
 import { listRegisteredApps, loadOverlayCss } from './native/customization.mjs';
 import { buildIdentity } from './machine.mjs';
+import { listWallpapers, resolveWallpaper } from './native/wallpapers.mjs';
 
 export function privateHost(host) {
   if (['127.0.0.1', '::1'].includes(host)) return true;
@@ -77,6 +78,7 @@ export async function createGueyServer(options = {}) {
   const controls = personal ? CONTROLS : CONTROLS.filter(c => !PERSONAL_CONTROL_IDS.has(c.id));
   const stateDir = resolve(options.stateDir ?? process.env.GUEY_STATE_DIR ?? join(homedir(), personal ? '.local/state/guey-pi' : '.local/state/guey-desktop'));
   const publicDir = resolve(import.meta.dirname, 'native/public');
+  const wallpapersRoot = resolve(options.wallpapersRoot ?? join(homedir(), '.local/share/omarchy/themes'));
   await mkdir(stateDir, { recursive: true, mode: 0o700 });
   // One owner per GUEY store. Never share this store with another GUEY instance.
   const lockPath = join(stateDir, 'owner.pid');
@@ -275,6 +277,26 @@ export async function createGueyServer(options = {}) {
       } catch { res.writeHead(404).end('Not found'); }
       return;
     }
+    if (personal && path === '/wallpapers') {
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.end(JSON.stringify((await listWallpapers(wallpapersRoot)).map(row => ({ ...row, src: `/wallpapers/${encodeURIComponent(row.theme)}/${encodeURIComponent(row.name)}` }))));
+      return;
+    }
+    if (personal && path.startsWith('/wallpapers/')) {
+      const parts = path.slice('/wallpapers/'.length).split('/');
+      if (parts.length !== 2) { res.writeHead(404).end('Not found'); return; }
+      const full = await resolveWallpaper(wallpapersRoot, parts[0], parts[1]);
+      if (!full) { res.writeHead(404).end('Not found'); return; }
+      try {
+        res.setHeader('Content-Type', TYPES[extname(full).toLowerCase()] || 'application/octet-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        const stamp = (await stat(full)).mtime.toUTCString();
+        res.setHeader('Last-Modified', stamp);
+        if (req.headers['if-modified-since'] === stamp) { res.writeHead(304).end(); return; }
+        res.end(await readFile(full));
+      } catch { res.writeHead(404).end(); }
+      return;
+    }
     if (path === '/theme.css') {
       try {
         const fromDoor = launchThemeFromCookie(req.headers.cookie);
@@ -403,12 +425,16 @@ export async function createGueyServer(options = {}) {
         tabs: data.tabs.map(tab => ({
           ...tab,
           name: tab.name || tabLabel({ name: tab.name, sessionId: tab.sessionId, messages: tab.messages }),
+          status: tab.status ?? ((tab.focused ? data.busy : tab.busy) ? 'working' : 'idle'),
+          workspace: tab.workspace ?? basename(String(tab.cwd ?? data.cwd ?? '').replace(/[\\/]+$/, '')),
         })),
       };
     }
     return {
       ...data,
-      tabs: [{ id: data.sessionId, sessionId: data.sessionId, name: tabLabel(data), busy: data.busy, focused: true }],
+      tabs: [{ id: data.sessionId, sessionId: data.sessionId, name: tabLabel(data), busy: data.busy,
+        status: data.ui?.dialogs?.length ? 'blocked' : data.busy ? 'working' : 'idle',
+        workspace: basename(String(data.cwd ?? '').replace(/[\\/]+$/, '')), focused: true }],
     };
   };
   const view = data => ({ ...withTabs(data), product, brand, controls, clients: listed(), theme: themeName, themeRev, windows: personal ? worldWindows : [] });

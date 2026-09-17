@@ -23,12 +23,15 @@ test('launch cookie names only garden or night', () => {
 });
 
 test('cookie sets startup theme when none is saved; wallpaper and doom serve', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'ic-launch-'));
-  const agent = join(root, 'agent');
-  await mkdir(agent, { recursive: true });
-  const app = await createGueyServer({
-    port: 0, host: '127.0.0.1', stateDir: join(root, 's'), runtime: stubRuntime(),
-    product: 'imperfect', agentDir: agent, cwd: root, filesRoot: root,
+	const root = await mkdtemp(join(tmpdir(), 'ic-launch-'));
+	const agent = join(root, 'agent');
+	await mkdir(agent, { recursive: true });
+	const wallpapersRoot = join(root, 'omarchy', 'themes');
+	await mkdir(join(wallpapersRoot, 'garden', 'backgrounds'), { recursive: true });
+	await writeFile(join(wallpapersRoot, 'garden', 'backgrounds', '01-morning.jpg'), 'fixture wallpaper');
+	const app = await createGueyServer({
+		port: 0, host: '127.0.0.1', stateDir: join(root, 's'), runtime: stubRuntime(),
+		product: 'imperfect', agentDir: agent, cwd: root, filesRoot: root, wallpapersRoot,
   });
   try {
     const { port } = await app.listen();
@@ -37,10 +40,14 @@ test('cookie sets startup theme when none is saved; wallpaper and doom serve', a
     assert.equal(css.status, 200);
     assert.match(await css.text(), /--tui-pageBg: #1a1410/);
     const saved = JSON.parse(await readFile(join(agent, 'settings.json'), 'utf8'));
-    assert.equal(saved.theme, 'night');
-    const wall = await fetch(`${origin}/media/ground/temple-wide.webp`);
-    assert.equal(wall.status, 200);
-    assert.match(wall.headers.get('content-type'), /webp/);
+		assert.equal(saved.theme, 'night');
+		const wallpapers = await fetch(`${origin}/wallpapers`);
+		assert.deepEqual(await wallpapers.json(), [{ id: 'garden/01-morning.jpg', theme: 'garden', name: '01-morning.jpg', label: 'Morning', src: '/wallpapers/garden/01-morning.jpg' }]);
+		assert.equal((await fetch(`${origin}/wallpapers/garden/01-morning.jpg`)).status, 200);
+		assert.equal((await fetch(`${origin}/wallpapers/../agent/settings.json`)).status, 404);
+		const wall = await fetch(`${origin}/wallpapers/garden/01-morning.jpg`);
+		assert.equal(wall.status, 200);
+		assert.match(wall.headers.get('content-type'), /jpeg/);
     const doom = await fetch(`${origin}/doom/index.html`);
     assert.equal(doom.status, 200);
     const doomHtml = await doom.text();

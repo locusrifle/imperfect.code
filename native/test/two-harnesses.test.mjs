@@ -38,7 +38,9 @@ function fakeQuery(script = []) {
       [Symbol.asyncIterator]() { return this; },
       interrupt: async () => {},
       setModel: async () => {},
-      supportedModels: async () => [{ id: 'claude-opus-5', displayName: 'Claude Opus 5' }],
+      supportedModels: async () => [{ value: 'claude-opus-5', displayName: 'Claude Opus 5', description: 'The strongest fixture model', supportsEffort: true, supportedEffortLevels: ['low', 'high'] }],
+      setPermissionMode: async mode => { iterator.permissionMode = mode; },
+      applyFlagSettings: async settings => { iterator.effort = settings.effortLevel; },
     };
     impl.options = options;
     return iterator;
@@ -107,6 +109,10 @@ test('a Claude tab renders in Pi’s message shape and shares the dialog channel
     assert.deepEqual(snap.runningTools, [], 'a finished tool stops running');
 
     assert.equal(snap.model.id, 'claude-opus-5');
+    assert.equal(snap.model.name, 'Claude Opus 5');
+    assert.equal(snap.model.description, 'The strongest fixture model');
+    assert.deepEqual(snap.model.supportedEffortLevels, ['low', 'high']);
+    assert.equal(snap.permissionMode, 'default');
     assert.deepEqual(snap.resources.tools, ['Read', 'Bash']);
     assert.equal(snap.stats.tokens.output, 4);
     assert.ok(snap.startup.sections.some(s => s.compact === 'AGENTS.md'), 'the shared context file is named at startup');
@@ -121,6 +127,10 @@ test('a Claude tab renders in Pi’s message shape and shares the dialog channel
     assert.deepEqual(await runtime.command({ type: 'live' }), []);
 
     assert.equal(await runtime.command({ type: 'copy' }), 'hello');
+    await runtime.command({ type: 'effort', level: 'high' });
+    assert.equal(runtime.snapshot().effort, 'high');
+    await runtime.command({ type: 'permission-mode', mode: 'acceptEdits' });
+    assert.equal(runtime.snapshot().permissionMode, 'acceptEdits');
   } finally { await runtime.close(); await rm(root, { recursive: true, force: true }); }
 });
 

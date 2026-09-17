@@ -4,7 +4,7 @@
 // iOS already ship a keyboard people know, and rebuilding one was the imitation
 // this shell otherwise refuses.
 
-import { grid, bindHarnessKeys, ALT_LABEL } from "./pi-card.js";
+import { grid, bindHarnessKeys, ALT_LABEL, registerKeyBinding, activeKeyBindings } from "./pi-card.js";
 import { mountShell } from "./shell.js";
 import { mountReviewWindow } from "./review-window.js";
 import { mountGueyPi } from "./harness.js";
@@ -25,21 +25,63 @@ measureGrid();
 const entry = el("terminal-entry");
 const input = el("entry-input");
 const reach = el("harness-reach");
+const terminal = el("entry-terminal");
+const quakeHome = entry;
+const herdrFace = document.createElement("section");
+herdrFace.id = "herdr-face";
+herdrFace.className = "herdr-face";
+herdrFace.setAttribute("aria-label", "Herdr");
+let herdrOpen = false;
+let shell = null;
+let pi = null;
 
-const isHarnessOpen = () => entry.classList.contains("open");
+const isQuakeOpen = () => entry.classList.contains("open");
+const isHarnessOpen = () => herdrOpen || isQuakeOpen();
 
 function openHarness() {
+	if (herdrOpen) closeHerdr();
 	entry.classList.add("open");
 	if (reach) reach.hidden = true;
 	// The OS keyboard is summoned by focus, so on a phone that is the whole reveal.
 	input.focus();
 }
 function closeHarness() {
+	if (herdrOpen) { closeHerdr(); return; }
 	entry.classList.remove("open");
 	input.blur();
 	if (reach) reach.hidden = false;
 }
-function toggleHarness() { isHarnessOpen() ? closeHarness() : openHarness(); }
+function toggleHarness() {
+	if (herdrOpen) { closeHerdr(); openHarness(); return; }
+	isQuakeOpen() ? closeHarness() : openHarness();
+}
+
+function openHerdr() {
+	if (herdrOpen || !shell || !terminal || !quakeHome) return;
+	closeHarness();
+	shell.closeSheet();
+	const frame = shell.slot("herdr", "Herdr", { fullscreen: true });
+	herdrFace.append(terminal);
+	frame.append(herdrFace);
+	herdrOpen = true;
+	document.body.classList.add("herdr-open");
+	pi?.setHerdrFace(true);
+	input.focus();
+}
+
+function closeHerdr() {
+	if (!herdrOpen || !terminal || !quakeHome) return;
+	herdrOpen = false;
+	pi?.setHerdrFace(false);
+	quakeHome.append(terminal);
+	herdrFace.remove();
+	shell?.release("herdr");
+	document.body.classList.remove("herdr-open");
+	input.blur();
+	if (reach) reach.hidden = false;
+}
+
+function toggleHerdr() { herdrOpen ? closeHerdr() : openHerdr(); }
 
 let desk = null;
 const SWIPE_MIN = 56;
@@ -258,7 +300,7 @@ function listedApps() {
 	return refreshApps();
 }
 
-const shell = desk = mountShell({
+shell = desk = mountShell({
 	world: el("imperfect-world"),
 	apps: listedApps,
 	onReveal: () => closeHarness(),
@@ -269,7 +311,7 @@ const knowledge = mountKnowledgeGraph({
 	world: el("imperfect-world"),
 });
 
-const pi = mountGueyPi({
+pi = mountGueyPi({
 	elements: {
 		output: el("entry-output"),
 		input,
@@ -279,7 +321,8 @@ const pi = mountGueyPi({
 		modelStatus: el("entry-model-status"),
 		modelName: el("entry-pi-label"),
 		spend: el("entry-spend"),
-		thinking: el("entry-thinking"),
+			thinking: el("entry-thinking"),
+			permission: el("entry-permission"),
 		sessionTitle: el("entry-session-name"),
 		sessionSource: el("entry-source"),
 		sessionCwd: el("entry-cwd"),
@@ -292,6 +335,8 @@ const pi = mountGueyPi({
 		onReveal: openHarness,
 		canFocus: () => isHarnessOpen() && !isPhone(),
 		onEscapeIdle: closeHarness,
+		isHerdrOpen: () => herdrOpen,
+		sessionRailHost: herdrFace,
 		onGraph: () => { knowledge.open(); },
 		onWindowOpen: closeHarness,
 		slot: (id, title) => shell.slot(id, title),
@@ -299,7 +344,60 @@ const pi = mountGueyPi({
 	},
 });
 
-// Omarchy's theme reaches the phone through the server's revision, not a poll.
+function openAppById(id) {
+	const app = APPS.find(item => item.id === id);
+	if (!app) return;
+	shell.closeSheet();
+	closeHarness();
+	return pi.openWindow({ ...app.window, id: app.id, title: app.title });
+}
+
+function closeShowingWindow() {
+	if (herdrOpen || shell.active() === "herdr") { closeHerdr(); return; }
+	const id = shell.active();
+	if (!id) return;
+	if (id === "desktop") { closeDesktop(); return; }
+	pi.closeWindow(id).catch(error => console.warn("application did not close", error));
+}
+
+function openKeyGuide() {
+	const make = (tag, text, className) => {
+		const node = document.createElement(tag);
+		if (text != null) node.textContent = text;
+		if (className) node.className = className;
+		return node;
+	};
+	const old = document.getElementById("key-guide");
+	if (old) { old.remove(); return; }
+	shell.closeSheet();
+	closeHarness();
+	const frame = document.createElement("div");
+	frame.id = "key-guide";
+	frame.className = "key-guide";
+	frame.setAttribute("role", "dialog");
+	frame.setAttribute("aria-label", "key bindings");
+	const back = document.createElement("div");
+	back.className = "key-guide-back";
+	back.onclick = () => frame.remove();
+	const card = document.createElement("div");
+	card.className = "key-guide-card";
+	card.append(make("p", "key bindings", "key-guide-title"));
+	for (const binding of activeKeyBindings()) {
+		const row = make("p", null, "key-guide-row");
+		row.append(make("kbd", binding.label), make("span", binding.description));
+		card.append(row);
+	}
+	card.append(make("p", "esc closes", "key-guide-hint"));
+	frame.append(back, card);
+	frame.tabIndex = 0;
+	frame.onkeydown = event => {
+		if (event.key !== "Escape") return;
+		event.preventDefault();
+		frame.remove();
+	};
+	document.body.append(frame);
+	frame.focus();
+}
 
 
 reach?.addEventListener("click", openHarness);
@@ -333,41 +431,73 @@ visualViewport?.addEventListener("resize", () => {
 // inside the rail steps back to the conversation, so this reach is only ever
 // one press from either direction.
 function openTabs() {
-	if (!isHarnessOpen()) openHarness();
+	if (herdrOpen) return;
+	if (!isQuakeOpen()) openHarness();
 	pi.openTabs();
 }
 function toggleTabs() {
-	if (isHarnessOpen() && pi.tabsOpen()) { pi.closeTabs(); closeHarness(); return; }
+	if (herdrOpen) return;
+	if (isQuakeOpen() && pi.tabsOpen()) { pi.closeTabs(); closeHarness(); return; }
 	openTabs();
 }
 
 bindHarnessKeys({ onHarness: toggleHarness, onTabs: toggleTabs });
-addEventListener("keydown", event => {
-	if (event.repeat || event.ctrlKey || event.metaKey) return;
-	if (event.altKey && event.code === "KeyW") {
-		// Closes the showing in-platform window: server list + iframe. Apps here are pages,
-		// not child processes, so there is no extra backend pid. Never the harness.
-		event.preventDefault();
-		const id = shell.active();
-		if (!id) return;
-		// The screen never entered the agent's window list, so nothing on the server can close it.
-		if (id === "desktop") { closeDesktop(); return; }
-		pi.closeWindow(id);
-		return;
-	}
-	if (event.altKey && event.code === "Space") {
-		event.preventDefault();
-		shell.openSheet();
-	}
-	// A panel in the middle of the screen reads as a dialog, and a dialog a keyboard cannot
-	// dismiss is a trap. The backdrop closes it for a pointer; this is the same way out.
-	// Only when the drawer is showing, so Escape still belongs to the harness the rest of the time.
-	if (event.code === "Escape" && !event.altKey && shell.sheetOpen()) {
-		event.preventDefault();
-		event.stopPropagation();
-		shell.closeSheet();
-	}
-}, true);
+// Herdr's tab chords live in the same registry as the rest of the shell. Both
+// faces call the same tab host, so switching a face never changes the session.
+for (let index = 0; index < 9; index++) {
+	registerKeyBinding({
+		label: `Alt+${index + 1}`,
+		description: `switch to tab ${index + 1}`,
+		code: `Digit${index + 1}`,
+		alt: true,
+		when: () => pi.hasTab(index),
+		handler: () => pi.focusTabIndex(index).catch(error => console.warn('tab focus failed', error)),
+	});
+}
+registerKeyBinding({
+	label: 'Alt+←', description: 'previous tab', code: 'ArrowLeft', alt: true,
+	when: () => (pi.guiSnapshot().tabs ?? []).length > 1,
+	handler: () => pi.cycleTab(-1),
+});
+registerKeyBinding({
+	label: 'Alt+→', description: 'next tab', code: 'ArrowRight', alt: true,
+	when: () => (pi.guiSnapshot().tabs ?? []).length > 1,
+	handler: () => pi.cycleTab(1),
+});
+registerKeyBinding({
+	label: 'Alt+Shift+←', description: 'move tab previous', code: 'ArrowLeft', alt: true, shift: true,
+	when: () => (pi.guiSnapshot().tabs ?? []).length > 1,
+	handler: () => pi.moveTab(-1),
+});
+registerKeyBinding({
+	label: 'Alt+Shift+→', description: 'move tab next', code: 'ArrowRight', alt: true, shift: true,
+	when: () => (pi.guiSnapshot().tabs ?? []).length > 1,
+	handler: () => pi.moveTab(1),
+});
+registerKeyBinding({
+	label: 'Alt+Enter', description: 'toggle Herdr fullscreen window', code: 'Enter', alt: true,
+	handler: toggleHerdr,
+});
+registerKeyBinding({
+	label: 'Alt+C', description: 'new agent tab', code: 'KeyC', alt: true,
+	handler: () => pi.newTab().catch(error => console.warn('new tab failed', error)),
+});
+registerKeyBinding({
+	label: 'Alt+L', description: 'toggle shell layout', code: 'KeyL', alt: true,
+	handler: () => shell.toggleLayout(),
+});
+// Alt+A and Alt+G are free exact bindings in the current Hyprland map; keeping them in this
+// registry makes the same shortcuts exist for a phone browser and for the laptop window.
+registerKeyBinding({ label: "Alt+W", description: "close showing app", code: "KeyW", alt: true, handler: closeShowingWindow });
+registerKeyBinding({ label: "Alt+Space", description: "open application drawer", code: "Space", alt: true, handler: () => shell.openSheet() });
+registerKeyBinding({ label: "Alt+Shift+Space", description: "choose wallpaper", code: "Space", alt: true, shift: true, handler: () => shell.openWallpaperSelector() });
+registerKeyBinding({ label: "Alt+K", description: "open key guide", code: "KeyK", alt: true, handler: openKeyGuide });
+registerKeyBinding({ label: "Alt+A", description: "open antiburn", code: "KeyA", alt: true, handler: () => openAppById("antiburn") });
+registerKeyBinding({ label: "Alt+G", description: "open knowledge graph", code: "KeyG", alt: true, handler: () => knowledge.open() });
+registerKeyBinding({ label: "Esc", description: "close Herdr fullscreen window", code: "Escape", when: () => herdrOpen, target: input, handler: closeHerdr });
+// Escape belongs to the nearest open surface. Registering only the drawer case leaves the
+// harness, wallpaper picker, and application windows to keep their own escape handling.
+registerKeyBinding({ label: "Esc", description: "close application drawer", code: "Escape", when: () => shell.sheetOpen(), handler: () => shell.closeSheet() });
 
 function paintIntro() {
 	const box = document.getElementById("startup-intro");

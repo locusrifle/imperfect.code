@@ -74,6 +74,119 @@ body.imperfect .session-rail-close {
 body.imperfect .drop-handle { cursor: grab; }
 body.imperfect #entry-spend { display: none; }
 body.imperfect .entry-status { display: none; }
+
+/* Herdr is a fullscreen shell window. It borrows the live terminal and live
+   session rail; the quake selectors remain responsible for their old
+   half-height face. */
+body.imperfect .herdr-face {
+  --tui-pageBg: #000; --tui-bg: #000; --pi-bg: #000;
+  --tui-text: #ddd; --pi-text: #ddd; --tui-muted: #888; --pi-muted: #888;
+  --tui-dim: #555; --pi-dim: #555; --tui-accent: #4f8cff; --pi-accent: #4f8cff;
+  --tui-selectedBg: #17243d; --tui-border: #333; --pi-rule: #333;
+  --tui-error: #e06c75; --tui-success: #98c379;
+  display: grid;
+  grid-template-columns: minmax(13rem, 17rem) minmax(0, 1fr);
+  grid-template-areas: "sidebar main";
+  overflow: hidden;
+  background: #000;
+  color: var(--tui-text);
+}
+body.imperfect .herdr-face > #entry-terminal {
+  position: relative; inset: auto; grid-area: main; width: auto; height: auto;
+  max-height: none; min-width: 0; min-height: 0; transform: none; box-shadow: none;
+  background: #000;
+}
+body.imperfect .herdr-face .drop-handle { display: none; }
+body.imperfect .herdr-face > #session-rail {
+  position: relative; inset: auto; grid-area: sidebar; z-index: 1; box-sizing: border-box;
+  min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 0.55em;
+  padding: 0.7em 0.6em; overflow: auto; transform: none;
+  border-right: 1px solid var(--tui-border); background: #000; color: var(--tui-text);
+}
+body.imperfect .herdr-face > #session-rail.open { width: auto; }
+body.imperfect .herdr-face > #session-rail:not(.open) {
+  width: 2.75rem; align-items: center; padding-inline: 0.35rem; overflow-x: hidden;
+}
+body.imperfect .herdr-face > #session-rail:not(.open) .session-rail-spaces,
+body.imperfect .herdr-face > #session-rail:not(.open) .session-rail-group-title,
+body.imperfect .herdr-face > #session-rail:not(.open) .session-rail-new,
+body.imperfect .herdr-face > #session-rail:not(.open) .session-rail-agent,
+body.imperfect .herdr-face > #session-rail:not(.open) .session-rail-state,
+body.imperfect .herdr-face > #session-rail:not(.open) .session-rail-workspace,
+body.imperfect .herdr-face > #session-rail:not(.open) .session-rail-title,
+body.imperfect .herdr-face > #session-rail:not(.open) .session-rail-close { display: none; }
+body.imperfect .herdr-face > #session-rail:not(.open) .session-rail-agents { display: contents; }
+body.imperfect .herdr-face > #session-rail:not(.open) .session-rail-item,
+body.imperfect .herdr-face > #session-rail:not(.open) .session-rail-open { width: 100%; }
+body.imperfect .herdr-face > #session-rail:not(.open) .session-rail-open { padding: 0.35em; }
+body.imperfect .herdr-face > #session-rail:not(.open) .session-rail-row { justify-content: center; }
+body.imperfect .herdr-face .session-rail-toggle {
+  align-self: flex-start; appearance: none; border: 0; padding: 0.1em 0.35em;
+  background: transparent; color: var(--tui-muted); font: inherit; cursor: pointer;
+}
+body.imperfect .herdr-face .session-rail-group { display: grid; gap: 0.25em; }
+body.imperfect .herdr-face .session-rail-group-title {
+  margin: 0; color: var(--tui-accent); font-size: 0.78em; letter-spacing: 0.08em; text-transform: uppercase;
+}
+body.imperfect .herdr-face .session-rail-space,
+body.imperfect .herdr-face .session-rail-row {
+  display: flex; align-items: center; min-width: 0; gap: 0.55em;
+}
+body.imperfect .herdr-face .session-rail-space { padding: 0.35em 0.4em; }
+body.imperfect .herdr-face .session-rail-workspace,
+body.imperfect .herdr-face .session-rail-title {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+body.imperfect .herdr-face .session-rail-workspace { color: var(--tui-muted); }
+body.imperfect .herdr-face .session-rail-list { display: contents; }
+body.imperfect .herdr-face .session-rail-item {
+  display: flex; align-items: flex-start; min-width: 0; gap: 0.3em; border: 0;
+}
+body.imperfect .herdr-face .session-rail-item.cursor,
+body.imperfect .herdr-face .session-rail-item.active { background: var(--tui-selectedBg); }
+body.imperfect .herdr-face .session-rail-open {
+  flex: 1; min-width: 0; padding: 0.38em 0.4em; text-align: left;
+}
+body.imperfect .herdr-face .session-rail-item.active .session-rail-title { color: var(--tui-accent); }
+body.imperfect .herdr-face .session-rail-agent { display: block; color: var(--tui-text); font-size: 0.92em; }
+body.imperfect .herdr-face .session-rail-state {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);
+  clip-path: inset(50%); white-space: nowrap;
+}
+body.imperfect .herdr-face .session-rail-new {
+  display: block; width: 100%; padding: 0.38em 0.4em; border: 0; background: transparent;
+  color: var(--tui-accent); font: inherit; text-align: left; cursor: pointer;
+}
+body.imperfect .herdr-face .session-rail-close {
+  flex: none; width: 2em; min-height: 2em; padding: 0.35em 0; border: 0;
+  background: transparent; color: var(--tui-muted); font: inherit; cursor: pointer;
+}
+body.imperfect .herdr-face .session-rail-close:disabled { opacity: 0.35; cursor: default; }
+body.imperfect .herdr-face .session-rail-dot {
+  display: inline-block; flex: 0 0 0.62em; width: 0.62em; height: 0.62em;
+  border-radius: 50%; background: var(--tui-muted);
+}
+body.imperfect .herdr-face .session-rail-dot[data-state="working"] { background: var(--tui-accent); }
+body.imperfect .herdr-face .session-rail-dot[data-state="blocked"] { background: var(--tui-error); }
+body.imperfect .herdr-face .session-rail-dot[data-state="done"] { background: var(--tui-success); }
+body.imperfect .herdr-face .session-rail-dot[data-state="unknown"] { background: var(--tui-dim); }
+@media (max-width: 700px) {
+  body.imperfect .herdr-face {
+    grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, auto) minmax(0, 1fr);
+    grid-template-areas: "sidebar" "main";
+  }
+  body.imperfect .herdr-face > #session-rail {
+    width: auto; max-height: min(38%, 13rem); border-right: 0; border-bottom: 1px solid var(--tui-border);
+  }
+  body.imperfect .herdr-face > #session-rail:not(.open) {
+    width: auto; min-height: 2.75rem; max-height: 2.75rem; flex-direction: row;
+    align-items: center; overflow-x: auto; overflow-y: hidden;
+  }
+  body.imperfect .herdr-face > #session-rail:not(.open) .session-rail-agents { display: flex; flex-direction: row; }
+  body.imperfect .herdr-face > #session-rail:not(.open) .session-rail-item { width: auto; }
+  body.imperfect .herdr-face > #session-rail:not(.open) .session-rail-open { width: auto; }
+}
+
 body.imperfect #entry-input-zone {
   min-height: 0;
   margin: 0;
@@ -115,6 +228,7 @@ body.imperfect #entry-work .entry-spinner,
 body.imperfect #entry-work .entry-work-status,
 body.imperfect #entry-work #entry-pi-label,
 body.imperfect #entry-work #entry-thinking,
+body.imperfect #entry-work #entry-permission,
 body.imperfect #entry-work #entry-context {
   position: relative;
   z-index: 1;
@@ -132,6 +246,7 @@ body.imperfect #entry-work .entry-spinner {
 }
 body.imperfect #entry-work #entry-pi-label,
 body.imperfect #entry-work #entry-thinking,
+body.imperfect #entry-work #entry-permission,
 body.imperfect #entry-work #entry-context {
   display: block;
   appearance: none;
@@ -146,6 +261,7 @@ body.imperfect #entry-work #entry-context {
 }
 body.imperfect #entry-work #entry-pi-label { margin-left: -1ch; padding: 0 0.4em 0 1ch; }
 body.imperfect #entry-work #entry-thinking { padding: 0 0.4em; }
+body.imperfect #entry-work #entry-permission { padding: 0 0.4em; }
 body.imperfect #entry-work #entry-context { margin-left: auto; margin-right: -1ch; padding: 0 1ch 0 0.4em; }
 body.imperfect #entry-work .entry-work-gap {
   flex: 1 1 auto;
@@ -154,10 +270,12 @@ body.imperfect #entry-work .entry-work-gap {
   align-self: center;
 }
 body.imperfect #entry-thinking:empty,
+body.imperfect #entry-permission:empty,
 body.imperfect #entry-context:empty { display: none; }
 body.imperfect #entry-input-zone.working #entry-work,
 body.imperfect #entry-input-zone.working #entry-pi-label,
 body.imperfect #entry-input-zone.working #entry-thinking,
+body.imperfect #entry-input-zone.working #entry-permission,
 body.imperfect #entry-input-zone.working #entry-context,
 body.imperfect #entry-input-zone.working .entry-work-status {
   color: var(--tui-accent, var(--pi-accent));
@@ -376,19 +494,13 @@ body.watching #entry-source { color: var(--pi-accent); }
   text-overflow: ellipsis;
 }
 
-/* The graph is another surface that owns the viewport, so it stops above the
-   bar exactly as the pager does — otherwise the bar covers its lowest nodes and
-   they cannot be tapped. */
+/* The graph is another surface that owns the viewport, so it fills the same
+   screen as the pager and its lowest nodes remain tappable. */
 #knowledge-graph-host {
   position: fixed;
   inset: 0;
-  bottom: calc(var(--om-bar-h, 44px) + env(safe-area-inset-bottom, 0px));
   z-index: 8;
   pointer-events: none;
-}
-body[data-bar="top"] #knowledge-graph-host {
-  top: calc(var(--om-bar-h, 44px) + env(safe-area-inset-top, 0px));
-  bottom: 0;
 }
 #knowledge-graph {
   width: 100%;
@@ -504,4 +616,3 @@ body[data-bar="top"] #knowledge-graph-host {
 .knowledge-error { color: var(--tui-error, var(--pi-error)); }
 
 /* The drop and the phone keys sit on the painting. */
-

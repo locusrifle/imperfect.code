@@ -47,19 +47,43 @@ export function isApplePlatform() {
 
 export const ALT_LABEL = isApplePlatform() ? "OPT" : "ALT";
 
-// Alt+Y drops the harness. Alt+L remains so a recording that still names it is not a lie.
-// Alt+T drops it showing the tabs, which is the same panel with a different face.
-export function bindHarnessKeys({ onHarness, onFullscreen, onTabs } = {}) {
-  addEventListener("keydown", event => {
-    if (event.repeat || event.ctrlKey || event.metaKey || !event.altKey) return;
-    const code = event.code;
-    if (!["KeyY", "KeyL", "KeyF", "KeyT"].includes(code)) return;
+const KEY_BINDINGS = [];
+
+function matches(binding, event) {
+  return event.code === binding.code && event.altKey === binding.alt && event.ctrlKey === binding.ctrl &&
+    event.metaKey === binding.meta && event.shiftKey === binding.shift;
+}
+
+// A binding is both the handler and the description used by the guide. Keeping
+// those together prevents the guide from teaching a key that the surface does
+// not actually answer.
+export function registerKeyBinding({ label, description, code, alt = false, ctrl = false, meta = false, shift = false, when, handler, target = window }) {
+  const binding = { label, description, code, alt, ctrl, meta, shift, when: when ?? (() => true), handler };
+  KEY_BINDINGS.push(binding);
+  target.addEventListener("keydown", event => {
+		if (event.repeat || !matches(binding, event) || !binding.when(event)) return;
     event.preventDefault();
     event.stopPropagation();
-    if (code === "KeyY" || code === "KeyL") onHarness?.();
-    if (code === "KeyF") onFullscreen?.();
-    if (code === "KeyT") onTabs?.();
+    binding.handler?.(event);
   }, true);
+  return binding;
+}
+
+export function activeKeyBindings() {
+  return KEY_BINDINGS.filter(binding => {
+    try { return binding.when(); } catch { return false; }
+  }).map(({ label, description }) => ({ label, description }));
+}
+
+// Alt+Y drops the harness. Alt+T drops it showing the tabs, which is the same
+// panel with a different face. The shell owns Alt+L now, so this registry does
+// not leave two surfaces competing for it.
+export function bindHarnessKeys({ onHarness, onFullscreen, onTabs } = {}) {
+  if (onHarness) {
+    registerKeyBinding({ label: "Alt+Y", description: "open the agent", code: "KeyY", alt: true, handler: onHarness });
+  }
+  if (onFullscreen) registerKeyBinding({ label: "Alt+F", description: "toggle full width", code: "KeyF", alt: true, handler: onFullscreen });
+  if (onTabs) registerKeyBinding({ label: "Alt+T", description: "open sessions", code: "KeyT", alt: true, handler: onTabs });
 }
 
 layoutPiCard();

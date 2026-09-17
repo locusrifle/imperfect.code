@@ -14,16 +14,6 @@
    they are decided, and these track it. */
 * { box-sizing: border-box; }
 html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: var(--garden); color: var(--ink); }
-/* The ground under the whole environment is the painting from the door, without the wordmark --
-   the name belongs on the way in, not on the desk you work at. Fixed and cropped to cover, so it
-   is the surface the application stands on rather than content that moves with it. Tall screens
-   get the portrait crop; the landscape one would put the machine off the edge.
-   z-index -1 keeps it above the page's own background colour and behind everything in the flow:
-   an opaque ground painted in the positioned layer, as the ruling used to be, would cover the
-   application instead of sitting under it. */
-body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
-  background: var(--paper) center / cover no-repeat url("../media/ground/temple-wide.webp"); }
-@media (max-aspect-ratio: 1/1) { body::before { background-image: url("../media/ground/temple-tall.webp"); } }
 #startup-intro {
   position: fixed; z-index: 40; left: 16px; right: 16px; top: 16px;
   max-width: 28rem; margin: 0 auto; padding: 16px 18px;

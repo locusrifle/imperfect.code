@@ -48,9 +48,10 @@ test('Claude’s hints only name keys this GUI actually answers', async () => {
 
 	// Every key Claude does name has a handler in the shared renderer.
 	assert.match(source, /event\.key === 'Escape'/, 'escape');
-	assert.match(source, /event\.key === 'c' && event\.ctrlKey/, 'ctrl+c');
-	assert.match(source, /event\.key === 'o' && event\.ctrlKey/, 'ctrl+o');
-	assert.ok(keys.includes('escape') && keys.includes('/') && keys.includes('ctrl+o'));
+	assert.match(source, /label: 'Ctrl\+C'.*interrupt a running turn/s, 'ctrl+c');
+	assert.match(source, /label: 'Ctrl\+O'.*expand tool output/s, 'ctrl+o');
+	assert.match(source, /permission-mode/, 'Claude permission mode command');
+	assert.ok(keys.includes('escape') && keys.includes('/') && keys.includes('ctrl+o') && keys.includes('shift+tab'));
 });
 
 test('the shared header no longer hardcodes one agent’s name', async () => {

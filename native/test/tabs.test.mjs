@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { EventEmitter } from 'node:events';
-import { tabLabel, createTabHost, turnActive, firstUserLine } from '../tabs.mjs';
+import { agentStatus, tabLabel, createTabHost, turnActive, firstUserLine } from '../tabs.mjs';
 
 test('turnActive follows a model run, not composer busy from preflight', () => {
   assert.equal(turnActive({ busy: true, streaming: false }), false);
@@ -43,6 +43,37 @@ test('settled fires when a model turn ends, not when a prompt is merely accepted
   assert.equal(settled[1].failed, 'boom');
   assert.equal(settled[1].sessionId, 'x');
   await host.close();
+});
+
+test('Herdr status is derived from runtime facts and unseen settlement', async () => {
+  const first = fakeRuntime({ cwd: '/work/imperfect.os', ui: { dialogs: [], }, agent: 'pi' });
+  const second = fakeRuntime({ cwd: '/work/imperfect.os', ui: { dialogs: [], }, agent: 'pi' });
+  let made = 0;
+  const host = await createTabHost({ createRuntime: () => made++ ? second : first });
+  try {
+    assert.equal(host.snapshot().tabs[0].status, 'idle');
+    first.set({ busy: true, streaming: true });
+    assert.equal(host.snapshot().tabs[0].status, 'working');
+    first.set({ busy: false, streaming: false });
+    await host.command({ type: 'tab-new' });
+    first.set({ busy: true, streaming: true });
+    first.set({ busy: false, streaming: false });
+    assert.equal(host.snapshot().tabs.find(tab => tab.id === 't1').status, 'done');
+    await host.command({ type: 'tab-focus', tabId: 't1' });
+    assert.equal(host.snapshot().tabs.find(tab => tab.id === 't1').status, 'idle');
+    second.set({ ui: { dialogs: [{ id: 'permission', method: 'confirm' }] } });
+    assert.equal(host.snapshot().tabs.find(tab => tab.id === 't2').status, 'blocked');
+    await host.command({ type: 'tab-move', tabId: 't1', delta: 1 });
+    assert.deepEqual(host.snapshot().tabs.map(tab => tab.id), ['t2', 't1']);
+  } finally {
+    await host.close();
+  }
+});
+
+test('agentStatus does not call a failed runtime idle', () => {
+  const tab = { agent: 'pi', unseenSettled: false, runtime: { snapshot: () => ({}) } };
+  assert.equal(agentStatus(tab, { failed: 'runtime ended', busy: false, streaming: false }), 'unknown');
+  assert.equal(agentStatus(tab, { live: { waiting: { title: 'answer' } }, busy: false }), 'blocked');
 });
 
 test('tab labels prefer a real name, then the first prompt, never the session id', () => {

@@ -88,12 +88,44 @@ export async function createClaudeRuntime({
   let claudeVersion = null;
   let availableTools = [];
   let commands = [];
+  let supportedModelInfo = [];
   let streaming = false;
   let failed = null;
   let closed = false;
+  let permissionMode = 'default';
+  let effort = null;
   let lastResult = null;
   let stats = { tokens: { input: 0, output: 0 }, cost: 0 };
   let sessionName = '';
+
+  function modelView(info) {
+    if (!info?.value) return null;
+    return {
+      provider: 'claude-agent',
+      id: info.value,
+      name: info.displayName || info.value,
+      description: info.description || '',
+      resolvedModel: info.resolvedModel,
+      supportsEffort: info.supportsEffort === true,
+      supportedEffortLevels: Array.isArray(info.supportedEffortLevels) ? [...info.supportedEffortLevels] : [],
+      supportsAdaptiveThinking: info.supportsAdaptiveThinking === true,
+      supportsFastMode: info.supportsFastMode === true,
+      supportsAutoMode: info.supportsAutoMode === true,
+    };
+  }
+
+  async function loadSupportedModels() {
+    supportedModelInfo = await q.supportedModels();
+    return supportedModelInfo;
+  }
+
+  async function refreshCurrentModel(wireId) {
+    try {
+      const rows = await loadSupportedModels();
+      const info = rows.find(row => row.value === wireId || row.resolvedModel === wireId);
+      if (info) { model = modelView(info); changed(); }
+    } catch { /* init still has a usable wire id if model metadata is unavailable */ }
+  }
 
   const pointer = stateDir ? join(stateDir, 'active-claude-session') : null;
   const savePointer = () => {
@@ -128,7 +160,7 @@ export async function createClaudeRuntime({
     // the AGENTS.md pointer above mean anything.
     settingSources: ['project', 'user'],
     includePartialMessages: true,
-    permissionMode: 'default',
+    permissionMode,
     ...(sessionId && !fresh ? { resume: sessionId } : {}),
     // Pi asks the person before a tool runs, through dialogs the GUI already
     // draws. Claude asks through canUseTool; same dialog, same adapter.
@@ -176,6 +208,9 @@ export async function createClaudeRuntime({
           // say so rather than leaving a person to guess what is being billed.
           if (msg.apiKeySource) keySource = msg.apiKeySource;
           model = msg.model ? { id: msg.model, provider: 'claude-agent', name: msg.model, contextWindow: null } : model;
+          permissionMode = msg.permissionMode ?? permissionMode;
+          effort = msg.effort ?? effort;
+          if (msg.model) void refreshCurrentModel(msg.model);
           availableTools = Array.isArray(msg.tools) ? msg.tools : availableTools;
           if (Array.isArray(msg.slash_commands)) commands = msg.slash_commands.map(name => ({ name: `/${String(name).replace(/^\//, '')}`, description: '' }));
         }
@@ -259,6 +294,8 @@ export async function createClaudeRuntime({
       sessionId, sessionFile: sessionId, cwd,
       name: sessionName,
       model, thinkingLevel: null,
+      permissionMode,
+      effort,
       busy: streaming || adapter.state.dialogs.length > 0,
       streaming,
       operation: null, failed,
@@ -336,15 +373,35 @@ export async function createClaudeRuntime({
         return queued;
       }
       case 'models': {
-        try { return (await q.supportedModels()).map(m => ({ provider: 'claude-agent', id: m.id ?? m.model, name: m.displayName ?? m.name ?? m.id })); }
-        catch { return model ? [{ provider: 'claude-agent', id: model.id, name: model.name }] : []; }
+        try {
+          const rows = await loadSupportedModels();
+          return rows.map(modelView).filter(Boolean);
+        } catch { return model ? [model] : []; }
       }
       case 'model': {
         if (streaming) throw new Error('Claude is still working; abort or wait');
         await q.setModel(c.modelId);
-        model = { id: c.modelId, provider: 'claude-agent', name: c.modelId, contextWindow: null };
+        const info = supportedModelInfo.find(row => row.value === c.modelId || row.resolvedModel === c.modelId);
+        model = modelView(info) ?? { id: c.modelId, provider: 'claude-agent', name: c.modelId, contextWindow: null };
         changed();
         return { id: c.modelId };
+      }
+      case 'effort': {
+        if (streaming) throw new Error('Claude is still working; abort or wait');
+        const levels = model?.supportedEffortLevels ?? [];
+        if (!model?.supportsEffort || !levels.includes(c.level)) throw new Error('This Claude model does not support that effort level');
+        await q.applyFlagSettings({ effortLevel: c.level });
+        effort = c.level;
+        changed();
+        return { level: c.level };
+      }
+      case 'permission-mode': {
+        const modes = ['default', 'acceptEdits', 'plan'];
+        if (!modes.includes(c.mode)) throw new Error('Unsupported Claude permission mode');
+        await q.setPermissionMode(c.mode);
+        permissionMode = c.mode;
+        changed();
+        return { mode: permissionMode };
       }
       case 'name': {
         if (typeof c.name !== 'string') throw new Error('Name must be text');
