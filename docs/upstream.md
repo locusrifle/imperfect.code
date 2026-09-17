@@ -6,6 +6,6 @@ Pi 0.85.1 owns agent behaviour (sessions, tools, compaction, provider auth). Thi
 
 Future upstream: if Guey is published separately, this repository should consume it as a dependency instead of remaining the only copy. That is not done today. Changes still belong in one place until a real second consumer exists.
 
-The public account/control-plane source stays on vaita at `/home/dacre/imperfect-door`. This repository never duplicates it.
+The account/control-plane source is `locusrifle/imperfect.computer` (private), checked out on vaita at `/home/dacre/imperfect-door`. This repository never duplicates it.
 
 The laptop console (`imperfect.service` on Noah's machine) is not this product's install target.

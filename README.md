@@ -1,6 +1,6 @@
-# imperfect.computer
+# imperfect.os
 
-Source for the imperfect computer machine app — the computer a person is given. People reach it as **imperfect computers** at **imperfect.computer**. This is not the account door (`vaita:/home/dacre/imperfect-door`, private) and not Noah's laptop console.
+Source for the imperfect computer machine app — the computer a person is given. People reach it as **imperfect computers** at **imperfect.computer**; that domain, and the repository of the same name, are the account door and the business around this machine. This is not that door (`locusrifle/imperfect.computer`, private, checked out at `vaita:/home/dacre/imperfect-door`).
 
 Pi 0.85.1 under a graphical Guey shell. Users can later rearrange UI and add apps; this tree does not redesign that today.
 

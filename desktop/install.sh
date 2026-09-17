@@ -55,7 +55,7 @@ if [[ "$node_major" -lt 22 ]]; then
 fi
 
 if [[ ! -f "$ROOT/start.mjs" || ! -f "$ROOT/desktop/src-tauri/Cargo.toml" ]]; then
-  echo "run this from an imperfect.computer checkout" >&2
+  echo "run this from an imperfect.os checkout" >&2
   exit 1
 fi
 
