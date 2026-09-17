@@ -1,13 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, rm, stat } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { ModelRuntime } from '@earendil-works/pi-coding-agent';
 import { createAuth } from '../auth.mjs';
 import {
-  CLAUDE_PROVIDER_ID, ClaudeKeyRejected, claudeKeyPath, readClaudeKey,
-  resolveClaudeKey, verifyClaudeKey, writeClaudeKey,
+  CLAUDE_PROVIDER_ID, ClaudeKeyRejected, claudeCliLogin, claudeKeyPath, readClaudeKey,
+  resolveClaudeAuth, resolveClaudeKey, verifyClaudeKey, writeClaudeKey,
 } from '../claude-credentials.mjs';
 
 const wait = async predicate => {
@@ -16,6 +16,9 @@ const wait = async predicate => {
 };
 
 async function fixture(root) {
+  // This machine's own Claude login is a real credential now, so a test that
+  // means "nothing is configured" has to say where Claude's config lives.
+  process.env.CLAUDE_CONFIG_DIR = join(root, 'no-claude-config');
   const agentDir = join(root, 'agent');
   await mkdir(agentDir, { recursive: true });
   const models = await ModelRuntime.create({
@@ -97,7 +100,46 @@ test('the merged panel routes Claude to its own store and leaves Pi alone', asyn
     assert.equal(f.auth.snapshot().status, 'success');
     assert.match(f.auth.snapshot().message, /could not be reached/);
     assert.equal(readClaudeKey(f.agentDir), 'sk-ant-offline');
-  } finally { await rm(root, { recursive: true, force: true }); }
+  } finally {
+    delete process.env.CLAUDE_CONFIG_DIR;
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('a machine already signed in to Claude needs nothing from this panel', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'claude-login-'));
+  delete process.env.ANTHROPIC_API_KEY;
+  const f = await fixture(root);
+  try {
+    assert.equal(claudeCliLogin(), null, 'no login where no config dir exists');
+    assert.equal(f.auth.providers().find(p => p.id === CLAUDE_PROVIDER_ID).configured, false);
+
+    // The person signed their own machine in with Claude's own CLI. Nothing
+    // here put it there and nothing here reads it — only its existence counts.
+    const config = join(root, 'signed-in');
+    await mkdir(config, { recursive: true });
+    await writeFile(join(config, '.credentials.json'), '{"claudeAiOauth":{"accessToken":"NOT-READ"}}');
+    process.env.CLAUDE_CONFIG_DIR = config;
+
+    assert.equal(claudeCliLogin(), 'login');
+    assert.deepEqual(resolveClaudeAuth(f.agentDir), { key: null, source: 'login' });
+    const claude = f.auth.providers().find(p => p.id === CLAUDE_PROVIDER_ID);
+    assert.equal(claude.configured, true, 'this machine can run a Claude tab');
+    assert.equal(claude.credential, 'login');
+    assert.equal(f.auth.snapshot().claude, true);
+
+    // It is still not an account this console holds: it cannot be removed here.
+    assert.deepEqual(await f.auth.accounts(), []);
+    await assert.rejects(f.auth.logout(CLAUDE_PROVIDER_ID), /No stored/);
+    assert.ok(!JSON.stringify(f.auth.snapshot()).includes('NOT-READ'));
+
+    // A key stored here still wins, because someone who typed one meant it.
+    writeClaudeKey(f.agentDir, 'sk-ant-explicit');
+    assert.deepEqual(resolveClaudeAuth(f.agentDir), { key: 'sk-ant-explicit', source: 'stored' });
+  } finally {
+    delete process.env.CLAUDE_CONFIG_DIR;
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test('an ambient key is honoured but is not this console’s account', async () => {
@@ -120,6 +162,7 @@ test('an ambient key is honoured but is not this console’s account', async () 
     assert.equal(f.auth.providers().find(p => p.id === CLAUDE_PROVIDER_ID).methods[0].ambient, false);
   } finally {
     delete process.env.ANTHROPIC_API_KEY;
+    delete process.env.CLAUDE_CONFIG_DIR;
     await rm(root, { recursive: true, force: true });
   }
 });

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { CredentialSynchronizationError } from '@earendil-works/pi-coding-agent';
 import {
   CLAUDE_PROVIDER_ID, CLAUDE_PROVIDER_NAME, ClaudeKeyRejected,
-  ambientClaudeKey, claudeConfigured, readClaudeKey, removeClaudeKey,
+  ambientClaudeKey, claudeConfigured, readClaudeKey, removeClaudeKey, resolveClaudeAuth,
   verifyClaudeKey, writeClaudeKey,
 } from './claude-credentials.mjs';
 
@@ -22,12 +22,17 @@ export function createAuth({ models, changed, assertIdle, timeoutMs = 10 * 60 * 
   function claudeProvider() {
     if (!agentDir) return null;
     const ambient = Boolean(ambientClaudeKey());
+    // Says which credential this machine would run on, so the panel can tell a
+    // person who is already signed in that they need nothing from this screen.
+    const credential = resolveClaudeAuth(agentDir).source;
     return {
       id: CLAUDE_PROVIDER_ID, name: CLAUDE_PROVIDER_NAME,
-      configured: claudeConfigured(agentDir),
-      // No oauth shape exists here at all. Anthropic does not permit a third
-      // party to offer claude.ai login for its own product, so the subscription
-      // is not filtered out downstream — it is never constructed.
+      configured: claudeConfigured(agentDir), credential,
+      // No oauth shape exists here at all, and this is the reason: signing a
+      // person into a claude.ai account is not a thing this console may do on
+      // Anthropic's behalf. It is not a statement about subscriptions — a
+      // machine already signed in through Claude's own CLI runs on that, and
+      // `credential` above reports it. What is withheld is the login flow.
       methods: [{ type: 'api_key', name: 'Anthropic API key', label: 'Use an API key', ambient: ambient && !readClaudeKey(agentDir) }],
     };
   }

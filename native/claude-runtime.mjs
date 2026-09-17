@@ -3,7 +3,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync, renameSync, unlinkS
 import { join } from 'node:path';
 import { query as sdkQuery, listSessions as sdkListSessions } from '@anthropic-ai/claude-agent-sdk';
 import { createExtensionUI } from './extension-ui.mjs';
-import { resolveClaudeKey } from './claude-credentials.mjs';
+import { resolveClaudeAuth } from './claude-credentials.mjs';
 
 // The second harness, behind the same four members the tab host already asks
 // for: events, snapshot, command, close. Everything a person sees — the desk,
@@ -66,14 +66,19 @@ export async function createClaudeRuntime({
   const changed = () => events.emit('change');
   const adapter = createExtensionUI(changed);
 
-  const key = resolveClaudeKey(agentDir);
-  if (!key) {
+  // A key is one way in, not the way in. If this machine is already signed in to
+  // Claude — the person's own login, in their own home directory — that is the
+  // credential, and the SDK finds it without anything from us. We only refuse
+  // when there is no credential of any kind.
+  const { key, source: credential } = resolveClaudeAuth(agentDir);
+  if (!credential) {
     // The same honesty the provider list owes: a tab that cannot run says so
-    // before it takes a prompt, naming the one thing that would fix it.
-    throw new Error('This machine has no Anthropic API key. Sign in to Claude Agent first.');
+    // before it takes a prompt, naming both things that would fix it.
+    throw new Error('This machine has no Claude credential. Sign in to Claude Agent with an API key, or run `claude` in a terminal here and sign in once.');
   }
   const context = shareContextFile(cwd);
 
+  let keySource = null;
   let messages = [];
   let partial = null;
   let runningTools = {};
@@ -114,9 +119,11 @@ export async function createClaudeRuntime({
 
   const options = {
     cwd,
-    // The key never reaches the machine's own environment: it is handed to this
-    // subprocess only. An ambient key still works, because it is what we read.
-    env: { ...process.env, ANTHROPIC_API_KEY: key },
+    // A key is handed to this subprocess only, never set on the machine's own
+    // environment. With no key we pass the environment through untouched and
+    // let the SDK resolve the existing login itself — setting an empty
+    // ANTHROPIC_API_KEY here would override the very credential we mean to use.
+    env: key ? { ...process.env, ANTHROPIC_API_KEY: key } : { ...process.env },
     // 'project' is required for CLAUDE.md to load at all, which is what makes
     // the AGENTS.md pointer above mean anything.
     settingSources: ['project', 'user'],
@@ -152,6 +159,10 @@ export async function createClaudeRuntime({
       case 'system':
         if (msg.subtype === 'init') {
           claudeVersion = msg.claude_code_version ?? claudeVersion;
+          // Which credential the session actually used, in the SDK's own words.
+          // 'none' here is the subscription login, and the tab should be able to
+          // say so rather than leaving a person to guess what is being billed.
+          if (msg.apiKeySource) keySource = msg.apiKeySource;
           model = msg.model ? { id: msg.model, provider: 'claude-agent', name: msg.model, contextWindow: null } : model;
           availableTools = Array.isArray(msg.tools) ? msg.tools : availableTools;
           if (Array.isArray(msg.slash_commands)) commands = msg.slash_commands.map(name => ({ name: `/${String(name).replace(/^\//, '')}`, description: '' }));
@@ -232,6 +243,7 @@ export async function createClaudeRuntime({
   function snapshot() {
     return {
       agent: 'claude',
+      credential, keySource,
       sessionId, sessionFile: sessionId, cwd,
       name: sessionName,
       model, thinkingLevel: null,

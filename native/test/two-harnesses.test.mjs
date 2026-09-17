@@ -124,17 +124,40 @@ test('a Claude tab renders in Pi’s message shape and shares the dialog channel
   } finally { await runtime.close(); await rm(root, { recursive: true, force: true }); }
 });
 
-test('a Claude tab with no key is refused before the rail changes', async () => {
+test('a Claude tab runs on this machine’s own login, and is refused only with no credential at all', async () => {
   const { root, cwd } = await workspace();
   const agentDir = join(root, 'empty-agent');
   await mkdir(agentDir, { recursive: true });
   delete process.env.ANTHROPIC_API_KEY;
+  const config = join(root, 'claude-config');
+  await mkdir(config, { recursive: true });
+  process.env.CLAUDE_CONFIG_DIR = join(root, 'nothing-here');
   try {
+    // No key, no login: the tab says so before it can take a prompt, and names
+    // both doors rather than insisting on the one this console happens to sell.
     await assert.rejects(
       createClaudeRuntime({ cwd, agentDir, queryImpl: fakeQuery() }),
-      /no Anthropic API key/,
+      /no Claude credential.*API key.*terminal/s,
     );
-  } finally { await rm(root, { recursive: true, force: true }); }
+
+    // The person signed their own machine in. That is a credential, and a key
+    // this console never saw is none of its business — it passes the
+    // environment through untouched rather than overriding what Claude finds.
+    await writeFile(join(config, '.credentials.json'), '{"claudeAiOauth":{"accessToken":"NOT-READ"}}');
+    process.env.CLAUDE_CONFIG_DIR = config;
+    const seen = [];
+    const spy = options => { seen.push(options); return fakeQuery()(options); };
+    const runtime = await createClaudeRuntime({ cwd, agentDir, queryImpl: spy });
+    try {
+      await runtime.command({ type: 'prompt', text: 'hello' });
+      assert.equal('ANTHROPIC_API_KEY' in seen[0].options.env, false, 'nothing overrides the existing login');
+      assert.equal(runtime.snapshot().credential, 'login');
+      assert.ok(!JSON.stringify(runtime.snapshot()).includes('NOT-READ'));
+    } finally { await runtime.close(); }
+  } finally {
+    delete process.env.CLAUDE_CONFIG_DIR;
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test('the tab host runs both harnesses at once and says which is which', async () => {

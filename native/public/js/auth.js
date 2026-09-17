@@ -25,17 +25,26 @@ function loginMethods(options) {
 const UNLICENSED_SUBSCRIPTION = new Set(['anthropic']);
 const offeredMethods = provider => provider.methods.filter(m => !(m.type === 'oauth' && UNLICENSED_SUBSCRIPTION.has(provider.id)));
 
+// The one row in this list that is not Pi's. It takes an API key and nothing else,
+// which meant it lived behind the second door and a person looking for Claude on
+// the first one found a list without it. It gets its own way in.
+const CLAUDE_ID = 'claude-agent';
+
 const BRAND = (typeof window !== 'undefined' && window.GUEY_BRAND) || 'Guey';
 
 export function mountAuth({ command, chooseModel }) {
   const panel = node('dialog', null, 'guey-auth'); panel.id = 'guey-auth';
   panel.setAttribute('aria-labelledby', 'guey-auth-title');
   const title = node('h1', `Welcome to ${BRAND}`); title.id = 'guey-auth-title';
-  const subtitle = node('p', 'Your Pi agent. Your account. Credentials stay in this machine’s own profile.', 'auth-subtitle');
+  const subtitle = node('p', 'Your agents. Your account. Credentials stay in this machine’s own profile.', 'auth-subtitle');
   const body = node('div', null, 'auth-body');
   const feedback = node('p', '', 'auth-feedback'); feedback.setAttribute('role', 'status');
   const actions = node('div', null, 'auth-actions');
-  panel.append(node('span', `${BRAND.toUpperCase()} / PI SDK`, 'auth-eyebrow'), title, subtitle, body, feedback, actions);
+  // Two harnesses sign in through one panel, so the eyebrow says which one you
+  // are talking to rather than naming Pi over a Claude flow.
+  const eyebrow = node('span', `${BRAND.toUpperCase()} / PI SDK`, 'auth-eyebrow');
+  const setEyebrow = claude => { eyebrow.textContent = `${BRAND.toUpperCase()} / ${claude ? 'CLAUDE AGENT SDK' : 'PI SDK'}`; };
+  panel.append(eyebrow, title, subtitle, body, feedback, actions);
   document.body.append(panel);
   const dismissed = new Set();
   let state = null, view = '', first = true, promptId = null;
@@ -86,12 +95,13 @@ export function mountAuth({ command, chooseModel }) {
     first = false; feedback.textContent = ''; open();
     if (state.busy) { renderFlow(); return; }
     if (state.id) dismissed.add(state.id);
-    view = 'picker'; title.textContent = 'Sign in to Pi';
+    view = 'picker'; title.textContent = 'Sign in';
     body.replaceChildren(node('p', 'Loading providers…')); actions.replaceChildren(button('Not now', close));
     await send('auth_dismiss');
     const providers = await command('auth_providers');
     if (state.busy || view !== 'picker') return;
     const begin = (p, method) => {
+      setEyebrow(p.id === CLAUDE_ID);
       if (method.ambient) { feedback.textContent = `${method.name} is configured outside ${BRAND} (environment or cloud credentials).`; return; }
       // This click is the consent boundary. Merely opening the picker never
       // starts a provider flow, callback listener, authorization or network request.
@@ -100,8 +110,14 @@ export function mountAuth({ command, chooseModel }) {
     function showMethods(p) {
       const methods = offeredMethods(p);
       if (!methods.length) { feedback.textContent = `${p.name} cannot be connected from here.`; return; }
+      const claude = p.id === CLAUDE_ID;
+      setEyebrow(claude);
       picker(methods.map(m => ({ label: m.label, note: m.name, action: () => begin(p, m) })), p.name,
-        `Pi handles sign-in; ${BRAND} does not receive your account password.`);
+        claude
+          ? (['login', 'token'].includes(p.credential)
+            ? 'This machine is already signed in to Claude, and a tab will use that. A key here is optional and would take precedence.'
+            : `The key is stored in this machine’s own profile and goes only to Anthropic. ${BRAND} never sees a Claude account password.`)
+          : `Pi handles sign-in; ${BRAND} does not receive your account password.`);
       actions.replaceChildren(button('Back', () => showType()), button('Not now', close));
     }
     function showProviders(type) {
@@ -114,12 +130,30 @@ export function mountAuth({ command, chooseModel }) {
         const method = offeredMethods(p).find(m => m.type === type);
         return method ? [{ label: p.name, note: method.name + (p.configured ? ' · configured' : ''), action: () => begin(p, method) }] : [];
       });
-      picker(rows, type === 'oauth' ? 'Use a subscription / sign in' : 'Use an API key');
+      setEyebrow(false);
+      // On the subscription door Claude is absent for a reason, and saying so
+      // beats leaving someone to read a list for a name that cannot be there.
+      const claudeElsewhere = type === 'oauth' && providers.some(p => p.id === CLAUDE_ID);
+      picker(rows, type === 'oauth' ? 'Use a subscription / sign in' : 'Use an API key',
+        claudeElsewhere
+          ? 'Choose a provider to continue. Claude Agent signs in with an API key — it is on the previous screen.'
+          : 'Choose a provider to continue.');
       actions.replaceChildren(button('Back', showType), button('Not now', close));
     }
     function showType() {
-      title.textContent = `Welcome to ${BRAND}`; feedback.textContent = 'Choose how you want to connect, just like /login in terminal Pi.';
-      body.replaceChildren(button('Use a subscription / sign in', () => showProviders('oauth')), button('Use an API key', () => showProviders('api_key')));
+      setEyebrow(false);
+      title.textContent = `Welcome to ${BRAND}`;
+      // Claude has exactly one method, so it never appears on a screen that asks
+      // which method you want. This machine runs it beside Pi; it gets a door.
+      const claude = providers.find(p => p.id === CLAUDE_ID && offeredMethods(p).length);
+      feedback.textContent = claude
+        ? 'Choose how you want to connect. The first two doors are Pi’s providers; Claude Agent is the other harness on this machine.'
+        : 'Choose how you want to connect, just like /login in terminal Pi.';
+      body.replaceChildren(
+        button('Use a subscription / sign in', () => showProviders('oauth')),
+        button('Use an API key', () => showProviders('api_key')),
+        ...(claude ? [button(['login', 'token'].includes(claude.credential) ? 'Claude Agent (already signed in)' : 'Sign in to Claude Agent', () => showMethods(claude))] : []),
+      );
       actions.replaceChildren(button('Not now', close));
     }
     if (providerId) { const p = providers.find(p => p.id === providerId); if (!p) throw new Error('Unknown provider'); showMethods(p); }

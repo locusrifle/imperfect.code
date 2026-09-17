@@ -1,4 +1,5 @@
 import { mkdirSync, readFileSync, writeFileSync, renameSync, unlinkSync, existsSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 
 // The second harness keeps its own credential. Pi's ModelRuntime owns every
@@ -7,10 +8,15 @@ import { join } from 'node:path';
 // account, and storing its key in Pi's auth.json would make one account look
 // like two, or two like one. It lives beside Pi's profile, never inside it.
 //
-// Only an API key. Anthropic's terms do not permit a third party to offer
-// claude.ai login or subscription limits in its own product, so there is no
-// oauth shape here to accidentally expose — the same line the provider list
-// already draws for Pi's `anthropic` subscription.
+// Two ways in, and only one of them is ours to offer. This console never asks
+// anyone for a claude.ai password and never runs an OAuth flow: Anthropic does
+// not permit a third-party product to sign its users into claude.ai accounts,
+// so no oauth shape exists here to expose. But a person who has already signed
+// their own machine in — `claude /login` in a terminal, their subscription,
+// their credential, sitting in their own home directory — is not a third party
+// to themselves, and the SDK reads that credential on its own. Refusing to
+// start on it would be this console inventing a restriction Anthropic did not
+// write. So: we offer the key, and we get out of the way of the login.
 export const CLAUDE_PROVIDER_ID = 'claude-agent';
 export const CLAUDE_PROVIDER_NAME = 'Claude Agent';
 
@@ -42,8 +48,35 @@ export function resolveClaudeKey(agentDir) {
   return readClaudeKey(agentDir) ?? ambientClaudeKey();
 }
 
+// Claude Code's own config directory — the same override the CLI reads, which
+// is also the knob a test uses to keep the developer's real login out of it.
+export function claudeConfigDir() {
+  const override = process.env.CLAUDE_CONFIG_DIR;
+  return override?.trim() ? override.trim() : join(homedir(), '.claude');
+}
+
+// Not read, not parsed, never copied. Whether this machine's own Claude login
+// exists is the only question asked; the credential itself is the CLI's, and
+// this console has no business opening it.
+export function claudeCliLogin() {
+  if (process.env.CLAUDE_CODE_OAUTH_TOKEN?.trim()) return 'token';
+  return existsSync(join(claudeConfigDir(), '.credentials.json')) ? 'login' : null;
+}
+
+// What this machine would actually run a Claude tab on, in the order the SDK
+// resolves it. A `key` of null with a source is the subscription path: there is
+// nothing for us to pass, because the credential is already where Claude looks.
+export function resolveClaudeAuth(agentDir) {
+  const stored = readClaudeKey(agentDir);
+  if (stored) return { key: stored, source: 'stored' };
+  const ambient = ambientClaudeKey();
+  if (ambient) return { key: ambient, source: 'ambient' };
+  const cli = claudeCliLogin();
+  return { key: null, source: cli };
+}
+
 export function claudeConfigured(agentDir) {
-  return Boolean(resolveClaudeKey(agentDir));
+  return Boolean(resolveClaudeAuth(agentDir).source);
 }
 
 // A key is a secret, so it never lands in a world-readable file and never goes
