@@ -201,3 +201,50 @@ test('the tab host runs both harnesses at once and says which is which', async (
     assert.equal(host.snapshot().tabs[2].agent, 'pi');
   } finally { await host.close(); await rm(root, { recursive: true, force: true }); }
 });
+
+// The SDK calls canUseTool(toolName, input, options) — three positional
+// arguments. Reading a `request` object off the first one is what put
+// "Run a tool?" and an empty {} in front of a person about to approve a
+// command, and took the abort signal away from the dialog at the same time.
+test('the permission dialog names the tool and shows what it would run', async () => {
+  const { root, cwd } = await workspace();
+  const agentDir = join(root, 'agent');
+  await mkdir(agentDir, { recursive: true });
+  await writeClaudeKey(agentDir, 'sk-ant-test');
+  const queryImpl = fakeQuery();
+  const runtime = await createClaudeRuntime({
+    cwd, agentDir, stateDir: join(root, 'state'), queryImpl, listSessionsImpl: async () => [],
+  });
+  try {
+    const { canUseTool } = queryImpl.options;
+
+    // No bridge sentence: the heading is built from the tool's own name.
+    const plain = canUseTool('Bash', { command: 'rm -rf /tmp/x' }, { signal: new AbortController().signal });
+    await wait(async () => runtime.snapshot().ui.dialogs.length > 0);
+    let dialog = runtime.snapshot().ui.dialogs[0];
+    assert.equal(dialog.title, 'Run Bash?', 'the tool is named, not "a tool"');
+    assert.match(dialog.message, /rm -rf \/tmp\/x/, 'the person can see what would run');
+    runtime.command({ type: 'dialog', dialogId: dialog.id, confirmed: true });
+    assert.deepEqual(await plain, { behavior: 'allow', updatedInput: { command: 'rm -rf /tmp/x' } });
+
+    // When the bridge writes the sentence, that sentence is what is shown.
+    const bridged = canUseTool('Read', { file_path: '/etc/hostname' }, {
+      signal: new AbortController().signal,
+      title: 'Claude wants to read hostname',
+      description: 'Claude will read one file.',
+    });
+    await wait(async () => runtime.snapshot().ui.dialogs.length > 0);
+    dialog = runtime.snapshot().ui.dialogs[0];
+    assert.equal(dialog.title, 'Claude wants to read hostname');
+    assert.match(dialog.message, /Claude will read one file\./);
+    runtime.command({ type: 'dialog', dialogId: dialog.id, confirmed: false });
+    assert.equal((await bridged).behavior, 'deny');
+
+    // The signal reaches the dialog, so an interrupted turn stops asking.
+    const ac = new AbortController();
+    const aborted = canUseTool('Bash', { command: 'sleep 1' }, { signal: ac.signal });
+    await wait(async () => runtime.snapshot().ui.dialogs.length > 0);
+    ac.abort();
+    assert.equal((await aborted).behavior, 'deny', 'an aborted request is not left hanging');
+  } finally { await runtime.close(); await rm(root, { recursive: true, force: true }); }
+});

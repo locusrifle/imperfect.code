@@ -132,11 +132,23 @@ export async function createClaudeRuntime({
     ...(sessionId && !fresh ? { resume: sessionId } : {}),
     // Pi asks the person before a tool runs, through dialogs the GUI already
     // draws. Claude asks through canUseTool; same dialog, same adapter.
-    canUseTool: async (request, { signal }) => {
-      const name = request?.tool_name ?? request?.name ?? 'a tool';
-      const allowed = await adapter.ui.confirm(`Run ${name}?`, describeToolRequest(request), { signal });
+    //
+    // The SDK calls this with three positional arguments — (toolName, input,
+    // options) — not one request object. Reading `request.tool_name` off a
+    // string yielded undefined, so every prompt read "Run a tool?" over an
+    // empty `{}`, and `signal` was destructured out of the input object, so
+    // the abort never arrived. A person was approving tool calls blind.
+    //
+    // The bridge already writes the sentence it wants shown ("Claude wants to
+    // read foo.txt"), so prefer that over anything reconstructed here.
+    canUseTool: async (toolName, input, options = {}) => {
+      const { signal, title, displayName, description } = options;
+      const heading = title || `Run ${displayName || toolName || 'a tool'}?`;
+      const detail = describeToolInput(input);
+      const body = description ? (detail ? `${description}\n\n${detail}` : description) : detail;
+      const allowed = await adapter.ui.confirm(heading, body, { signal });
       return allowed
-        ? { behavior: 'allow', updatedInput: request?.input ?? request?.tool_input ?? {} }
+        ? { behavior: 'allow', updatedInput: input ?? {} }
         : { behavior: 'deny', message: 'The person declined this tool call.' };
     },
   };
@@ -144,8 +156,8 @@ export async function createClaudeRuntime({
   let q = null;
   let pumping = null;
 
-  function describeToolRequest(request) {
-    const input = request?.input ?? request?.tool_input ?? {};
+  function describeToolInput(input) {
+    if (!input || typeof input !== 'object' || !Object.keys(input).length) return '';
     try {
       const text = JSON.stringify(input, null, 2);
       return text.length > 2000 ? `${text.slice(0, 2000)}…` : text;
