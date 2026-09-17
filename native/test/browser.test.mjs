@@ -1800,6 +1800,10 @@ test('a Claude tab introduces itself as Claude, in a real browser', async (t) =>
 		version: 'claude 2.1.273', quiet: false, update: null,
 		sections: [{ name: 'Context', compact: 'AGENTS.md', expanded: '/tmp/AGENTS.md' }],
 	};
+	// A tab that has taken no prompt yet has no session, so the SDK has reported
+	// neither a model nor a version. That is the state a person actually opens
+	// on, and it is where the wrong agent's name used to stand.
+	runtime.data.model = null;
 	const app = await createGueyServer({ port: 0, host: '127.0.0.1', stateDir: root, runtime });
 	const address = await app.listen();
 	const browser = await chromium.launch({ executablePath, args: ['--no-sandbox'] });
@@ -1820,6 +1824,13 @@ test('a Claude tab introduces itself as Claude, in a real browser', async (t) =>
 		assert.match(header, /escape interrupt/);
 		assert.doesNotMatch(header, /!/, 'bang-bash has no handler in this GUI');
 		assert.doesNotMatch(header, /ctrl\+d/, 'ctrl+d has no handler in this GUI');
+
+		// The line under the hints is this GUI's, not Claude's; the real TUI has none.
+		assert.doesNotMatch(header, /CLAUDE\.md/, 'no sentence the native TUI never says');
+
+		// With no model yet, the composer names the harness — not the other one.
+		await page.waitForFunction(() => (document.getElementById('entry-pi-label')?.textContent || '').trim().length > 0);
+		assert.equal((await page.textContent('#entry-pi-label')).trim(), 'claude');
 
 		// The agent still supplies its own sections, and the shared chrome still works.
 		assert.match(await page.textContent('.entry-startup-section'), /\[Context\]/);

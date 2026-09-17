@@ -20,8 +20,14 @@ test('a harness introduces itself in its own name, not the other one’s', async
 	assert.equal(claude.versionLabel('claude 2.1.273'), '2.1.273');
 	assert.doesNotMatch(claude.versionLabel('claude 2.1.273'), /claude/i, 'the name is not printed twice');
 
-	assert.notEqual(pi.note, claude.note);
-	assert.doesNotMatch(claude.note, /\bPi\b/, 'Claude’s own line does not explain Pi');
+	// Before the SDK's init frame there is no version at all, and the runtime
+	// sends the bare word. "claude claude" is what a person saw while waiting
+	// for their first prompt.
+	assert.equal(claude.versionLabel('claude'), '', 'no version yet means no version shown');
+
+	// The native Claude TUI carries no explanatory line under its hints.
+	assert.equal(claude.note, null, 'Claude says nothing the real TUI does not say');
+	assert.equal(typeof pi.note, 'string', 'Pi keeps the line it already had');
 });
 
 test('an unknown or missing agent falls back to pi rather than to nothing', () => {

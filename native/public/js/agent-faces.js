@@ -75,9 +75,16 @@ const FACES = {
 	},
 	claude: {
 		name: 'claude',
-		// "claude 2.1.273" from the runtime becomes "2.1.273" beside the name.
-		versionLabel: version => String(version).replace(/^claude\s+/i, ''),
-		note: 'Claude reads CLAUDE.md, which points at AGENTS.md so both harnesses share one set of instructions.',
+		// The runtime sends "claude 2.1.273" once a session has started, and the
+		// bare word "claude" before one has — there is no version to report until
+		// the SDK's init frame arrives. Stripping the name off the first gives
+		// "2.1.273"; the second must come back empty, or the header reads
+		// "claude claude" while a person waits for their first prompt.
+		versionLabel: version => String(version).replace(/^claude\s*/i, ''),
+		// The native Claude TUI has no explanatory line under its hints, so this
+		// face has none either. A sentence about CLAUDE.md is a thing this GUI
+		// wanted to say, not a thing Claude says.
+		note: null,
 		compactHints: CLAUDE_COMPACT,
 		expandedHints: CLAUDE_EXPANDED,
 	},

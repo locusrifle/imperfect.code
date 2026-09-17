@@ -810,12 +810,12 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 		const header = el('div', null, 'entry-startup');
 		const logo = el('div', null, 'entry-startup-logo');
 		logo.append(el('span', face.name, 'entry-startup-name'));
-		const version = startup?.version;
-		if (version) logo.append(el('span', ` ${face.versionLabel(version)}`, 'entry-startup-ver'));
+		const version = startup?.version ? face.versionLabel(startup.version) : '';
+		if (version) logo.append(el('span', ` ${version}`, 'entry-startup-ver'));
 		header.append(logo);
 		header.append(hintBlock(expanded ? face.expandedHints : face.compactHints, !expanded));
 		if (!expanded) header.append(el('div', 'Press ctrl+o to show full startup help and loaded resources.', 'entry-startup-note'));
-		header.append(el('div', face.note, 'entry-startup-note'));
+		if (face.note) header.append(el('div', face.note, 'entry-startup-note'));
 		into.append(header);
 		const sections = startup?.sections ?? derivedStartupSections(state.resources);
 		for (const section of sections) {
@@ -885,7 +885,10 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 			}
 			spinner = null;
 			if (modelName) {
-				modelName.textContent = state?.model?.id ?? 'pi';
+				// Until the agent's first frame arrives there is no model to name,
+				// and the standing label is the harness. Naming Pi there put the
+				// wrong agent on the bar of every Claude tab before its first prompt.
+				modelName.textContent = state?.model?.id ?? faceFor(state?.agent).name;
 				work.append(modelName);
 			}
 			if (thinking) {
@@ -922,7 +925,7 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 		sessionCwd.textContent = '';
 		const provider = state.model?.provider;
 		if (personal) {
-			modelName.textContent = state.model?.id ?? 'pi';
+			modelName.textContent = state.model?.id ?? faceFor(state.agent).name;
 			thinking.textContent = state.thinkingLevel && state.thinkingLevel !== 'off' ? state.thinkingLevel : '';
 			context.textContent = contextChip(state.stats ?? {});
 		} else {
