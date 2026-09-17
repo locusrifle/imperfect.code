@@ -1784,3 +1784,54 @@ test('the machine\'s own screen is a tile the door grants, and its address is ne
 		await browser.close(); await app.close(); await rm(root, { recursive: true, force: true });
 	}
 });
+
+// The startup header is the first surface an agent owns rather than borrows.
+// Before this, a Claude session opened under "pi vclaude 2.1.273" — Pi's name
+// with Claude's version worn as a version number — above Pi's key hints, two
+// of which this window does not even implement.
+test('a Claude tab introduces itself as Claude, in a real browser', async (t) => {
+	const executablePath = browserPath();
+	if (executablePath === null) return t.skip('No chromium available; run `npx playwright install chromium`');
+	const root = await mkdtemp(join(tmpdir(), 'guey-claude-face-'));
+	const runtime = scriptedRuntime(root);
+	// The tab host stamps this onto every snapshot; here the fixture is the host.
+	runtime.data.agent = 'claude';
+	runtime.data.startup = {
+		version: 'claude 2.1.273', quiet: false, update: null,
+		sections: [{ name: 'Context', compact: 'AGENTS.md', expanded: '/tmp/AGENTS.md' }],
+	};
+	const app = await createGueyServer({ port: 0, host: '127.0.0.1', stateDir: root, runtime });
+	const address = await app.listen();
+	const browser = await chromium.launch({ executablePath, args: ['--no-sandbox'] });
+	const page = await browser.newPage();
+	const crashes = [];
+	page.on('pageerror', e => crashes.push(e.message));
+	try {
+		await page.goto(`http://127.0.0.1:${address.port}`);
+		await page.keyboard.press('Alt+y');
+		await page.waitForSelector('.entry-startup');
+		const header = await page.textContent('.entry-startup');
+
+		assert.match(header, /claude 2\.1\.273/, 'Claude names itself and its own version');
+		assert.doesNotMatch(header, /\bpi\b/i, 'the other harness is not named here');
+		assert.doesNotMatch(header, /vclaude/, 'the version is not worn as a version number');
+
+		// Only keys this window answers.
+		assert.match(header, /escape interrupt/);
+		assert.doesNotMatch(header, /!/, 'bang-bash has no handler in this GUI');
+		assert.doesNotMatch(header, /ctrl\+d/, 'ctrl+d has no handler in this GUI');
+
+		// The agent still supplies its own sections, and the shared chrome still works.
+		assert.match(await page.textContent('.entry-startup-section'), /\[Context\]/);
+		await page.locator('#entry-input').click();
+		await page.locator('#entry-input').press('Control+o');
+		await page.waitForFunction(() => (document.querySelector('.entry-startup')?.textContent || '').includes('to interrupt'));
+		assert.match(await page.textContent('.entry-startup-section'), /AGENTS\.md/);
+
+		assert.deepEqual(crashes, []);
+	} finally {
+		await browser.close();
+		await app.close?.();
+		await rm(root, { recursive: true, force: true });
+	}
+});

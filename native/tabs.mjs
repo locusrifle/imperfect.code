@@ -92,7 +92,10 @@ export async function createTabHost(options = {}) {
 
   function snapshot() {
     const tab = current();
-    return { ...tab.runtime.snapshot(), tabs: tabs.map(item => summary(item, item.id === focused)) };
+    // The host is the authority on which agent a tab is, not the runtime: a
+    // face is chosen from this, so it must be right even for a runtime that
+    // never says what it is.
+    return { ...tab.runtime.snapshot(), agent: tab.agent, tabs: tabs.map(item => summary(item, item.id === focused)) };
   }
 
   async function command(c) {

@@ -17,6 +17,7 @@ import { assistantTextFromMessage, composerBlockReason, latestCompletedAssistant
 import { postUpload, uploadPercent, MAX_UPLOAD_BYTES } from './uploads.js';
 import { takeSharedFiles, clearSharedFiles } from './share-target.js';
 import { meterBar, percentLabel, readingAge, resetText } from './usage.js';
+import { faceFor } from './agent-faces.js';
 
 const el = (tag, text, className) => {
 	const node = document.createElement(tag);
@@ -119,34 +120,6 @@ const STOCK_SLASH_VISIBLE = 5;
 const TOOL_PREVIEW_LINES = 8;
 const BASH_PREVIEW_LINES = 5;
 const COMPACT_RESOURCE_FILE_NAMES = new Set(['AGENTS.override.md', 'AGENTS.md', 'AGENTS.MD', 'CLAUDE.md', 'CLAUDE.MD']);
-const STARTUP_COMPACT_HINTS = [
-	['escape', 'interrupt'],
-	['ctrl+c/ctrl+d', 'clear/exit'],
-	['/', 'commands'],
-	['!', 'bash'],
-	['ctrl+o', 'more'],
-];
-const STARTUP_EXPANDED_HINTS = [
-	['escape', 'to interrupt'],
-	['ctrl+c', 'to clear'],
-	['ctrl+c twice', 'to exit'],
-	['ctrl+d', 'to exit (empty)'],
-	['ctrl+z', 'to suspend'],
-	['ctrl+k', 'to delete to end'],
-	['shift+tab', 'to cycle thinking level'],
-	['ctrl+p/shift+ctrl+p', 'to cycle models'],
-	['ctrl+l', 'to select model'],
-	['ctrl+o', 'to expand tools'],
-	['ctrl+t', 'to expand thinking'],
-	['ctrl+g', 'for external editor'],
-	['/', 'for commands'],
-	['!', 'to run bash'],
-	['!!', 'to run bash (no context)'],
-	['alt+enter', 'to queue follow-up'],
-	['alt+up', 'to edit all queued messages'],
-	['ctrl+v', 'to paste image (with text fallback)'],
-	['drop files', 'to attach'],
-];
 
 function boundText(text, max = TOOL_PREVIEW_LINES, hint = '+ to expand') {
 	const raw = String(text ?? '');
@@ -831,15 +804,18 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 		if (startup?.quiet) return;
 		if (!startup && ((state.messages ?? []).length || state.partial)) return;
 		const expanded = expandAll;
+		// The harness introduces itself in its own words. Everything below this
+		// header is shared; this is the one place the agent is not.
+		const face = faceFor(state.agent);
 		const header = el('div', null, 'entry-startup');
 		const logo = el('div', null, 'entry-startup-logo');
-		logo.append(el('span', 'pi', 'entry-startup-name'));
+		logo.append(el('span', face.name, 'entry-startup-name'));
 		const version = startup?.version;
-		if (version) logo.append(el('span', ` v${version}`, 'entry-startup-ver'));
+		if (version) logo.append(el('span', ` ${face.versionLabel(version)}`, 'entry-startup-ver'));
 		header.append(logo);
-		header.append(hintBlock(expanded ? STARTUP_EXPANDED_HINTS : STARTUP_COMPACT_HINTS, !expanded));
+		header.append(hintBlock(expanded ? face.expandedHints : face.compactHints, !expanded));
 		if (!expanded) header.append(el('div', 'Press ctrl+o to show full startup help and loaded resources.', 'entry-startup-note'));
-		header.append(el('div', 'Pi can explain its own features and look up its docs. Ask it how to use or extend Pi.', 'entry-startup-note'));
+		header.append(el('div', face.note, 'entry-startup-note'));
 		into.append(header);
 		const sections = startup?.sections ?? derivedStartupSections(state.resources);
 		for (const section of sections) {
