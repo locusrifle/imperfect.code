@@ -60,3 +60,33 @@ test('the shared header no longer hardcodes one agent’s name', async () => {
 	assert.ok(!source.includes('Ask it how to use or extend Pi.'), 'the note comes from the face');
 	assert.ok(!source.includes('STARTUP_COMPACT_HINTS'), 'the old shared constants are gone, not shadowed');
 });
+
+test('the slash catalogue belongs to the agent, and names nothing it cannot run', async () => {
+	const pi = faceFor('pi').slashView;
+	const claude = faceFor('claude').slashView;
+	const runtime = await readFile(new URL('../claude-runtime.mjs', import.meta.url), 'utf8');
+
+	// Pi's catalogue is untouched by this change.
+	assert.equal(Object.keys(pi).length, 23);
+	for (const name of ['/tree', '/fork', '/compact', '/thinking', '/reload', '/share']) {
+		assert.ok(name in pi, `${name} is still Pi's`);
+	}
+
+	// Claude's names only verbs its own runtime answers. Its command switch
+	// ends in `default: throw`, so anything absent there is a thrown error.
+	assert.ok(Object.keys(claude).length < Object.keys(pi).length);
+	for (const name of Object.keys(claude)) {
+		if (name === '/quit') continue; // handled by the window, not the runtime
+		const verb = name.slice(1);
+		assert.match(runtime, new RegExp(`case '${verb}'`), `/${verb} must exist in claude-runtime`);
+	}
+
+	// The ones that would have thrown are gone, including the two that look
+	// harmless — the runtime implements neither.
+	for (const dead of ['/tree', '/fork', '/clone', '/compact', '/thinking', '/reload', '/new', '/resume', '/scoped-models', '/export', '/import', '/share', '/changelog', '/hotkeys', '/trust']) {
+		assert.ok(!(dead in claude), `Claude must not offer ${dead}`);
+		if (['/new', '/resume'].includes(dead)) {
+			assert.doesNotMatch(runtime, new RegExp(`case '${dead.slice(1)}'`), `${dead} really is unimplemented`);
+		}
+	}
+});

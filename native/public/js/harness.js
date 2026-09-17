@@ -90,32 +90,6 @@ function formatInto(node, text) {
 
 const SPIN = ['·', '✢', '✦', '✳', '✦', '✢'];
 const WORK_SPIN = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-const SLASH_VIEW = {
-	'/settings': ['settings', 'Open settings menu'],
-	'/model': ['model', '<provider/model> – Select model (opens selector UI)'],
-	'/tree': ['tree', 'Navigate session tree (switch branches)'],
-	'/thinking': ['thinking', '<level> – Set thinking level'],
-	'/scoped-models': ['scoped-models', 'Enable/disable models for Ctrl+P cycling'],
-	'/export': ['export', 'Export session (HTML default, or specify path: .html/.jsonl)'],
-	'/import': ['import', 'Import and resume a session from a JSONL file'],
-	'/share': ['share', 'Share session as a secret GitHub gist'],
-	'/copy': ['copy', 'Copy last agent message to clipboard'],
-	'/name': ['name', 'Set session display name'],
-	'/session': ['session', 'Show session info and stats'],
-	'/changelog': ['changelog', 'Show changelog entries'],
-	'/hotkeys': ['hotkeys', 'Show all keyboard shortcuts'],
-	'/fork': ['fork', 'Create a new fork from a previous user message'],
-	'/clone': ['clone', 'Duplicate the current session at the current position'],
-	'/trust': ['trust', 'Save project trust decision for future sessions'],
-	'/login': ['login', '<provider> – Configure provider authentication'],
-	'/logout': ['logout', 'Remove provider authentication'],
-	'/new': ['new', 'Start a new session'],
-	'/compact': ['compact', 'Manually compact the session context'],
-	'/resume': ['resume', 'Resume a different session'],
-	'/reload': ['reload', 'Reload keybindings, extensions, skills, prompts, themes, and context files'],
-	'/quit': ['quit', 'Quit Guey'],
-};
-const STOCK_SLASH_ORDER = Object.keys(SLASH_VIEW);
 const STOCK_SLASH_VISIBLE = 5;
 const TOOL_PREVIEW_LINES = 8;
 const BASH_PREVIEW_LINES = 5;
@@ -1439,6 +1413,8 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 		}],
 	];
 
+	const slashView = () => faceFor(state?.agent).slashView;
+
 	function catalog() {
 		const extra = (state?.commands ?? []).map(item => {
 			const name = item.name.startsWith('/') ? item.name : `/${item.name}`;
@@ -1446,10 +1422,14 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 		});
 		const rows = [...COMMANDS, ...extra.filter(([name]) => !COMMANDS.some(row => row[0] === name))];
 		const byName = new Map(rows.map(row => [row[0], row]));
-		const missing = name => [name, SLASH_VIEW[name]?.[1] ?? '', () => { throw new Error(`${name} is not available in Guey yet`); }];
+		// The catalogue belongs to the agent. Walking Pi's twenty-three stock
+		// names in a Claude tab listed commands Claude cannot run, most of them
+		// rendered only to throw when pressed, with Claude's own underneath.
+		const view = slashView();
+		const missing = name => [name, view[name]?.[1] ?? '', () => { throw new Error(`${name} is not available in Guey yet`); }];
 		const ordered = [];
-		for (const name of STOCK_SLASH_ORDER) {
-			if (name === '/quit') ordered.push([name, SLASH_VIEW[name][1], () => { window.close(); }]);
+		for (const name of Object.keys(view)) {
+			if (name === '/quit') ordered.push([name, view[name][1], () => { window.close(); }]);
 			else ordered.push(byName.get(name) ?? missing(name));
 		}
 		for (const row of extra) {
@@ -1485,7 +1465,7 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 			const item = el('button', null, `slash-item${index === slashIndex ? ' active' : ''}`);
 			item.type = 'button';
 			item.dataset.command = name;
-			const view = SLASH_VIEW[name];
+			const view = slashView()[name];
 			item.append(
 				el('span', index === slashIndex ? '→' : ' ', 'slash-marker'),
 				el('span', view?.[0] ?? name.replace(/^\//, ''), 'slash-name'),

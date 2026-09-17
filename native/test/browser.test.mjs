@@ -1839,6 +1839,16 @@ test('a Claude tab introduces itself as Claude, in a real browser', async (t) =>
 		await page.waitForFunction(() => (document.querySelector('.entry-startup')?.textContent || '').includes('to interrupt'));
 		assert.match(await page.textContent('.entry-startup-section'), /AGENTS\.md/);
 
+		// The slash menu is Claude's catalogue, not Pi's wall of dead verbs.
+		await page.locator('#entry-input').click();
+		await page.locator('#entry-input').fill('/');
+		await page.waitForFunction(() => !document.getElementById('slash-menu')?.hidden);
+		const names = await page.$$eval('.slash-item', els => els.map(e => e.dataset.command));
+		assert.ok(names.includes('/model'), 'Claude offers the verbs it answers');
+		for (const dead of ['/tree', '/fork', '/compact', '/thinking', '/reload', '/new', '/resume']) {
+			assert.ok(!names.includes(dead), `Claude must not list ${dead}`);
+		}
+
 		assert.deepEqual(crashes, []);
 	} finally {
 		await browser.close();

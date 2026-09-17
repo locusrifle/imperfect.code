@@ -65,6 +65,60 @@ const CLAUDE_EXPANDED = [
 // A runtime may hand over a version that already carries its own name
 // ("claude 2.1.273"). Printing that after the name gives the doubled line this
 // file exists to remove, so a face says how its own version reads.
+
+// The slash catalogue is the second slot, and it was the same mistake as the
+// header wearing a different hat: a Claude tab listed Pi's twenty-three stock
+// commands — /scoped-models, /export, /share, /changelog, /hotkeys, /fork,
+// /clone, /trust, /thinking, /tree, /compact, /reload — most of which have no
+// implementation for Claude at all and were rendered only to throw "not
+// available in Guey yet" when pressed. Claude's own commands, the ones the SDK
+// reports in its init frame, were appended underneath that wall.
+//
+// So a face names the commands it actually answers, in the order it wants
+// them, and the agent's own reported commands are added to that rather than
+// buried after somebody else's.
+
+const PI_SLASH_VIEW = {
+	'/settings': ['settings', 'Open settings menu'],
+	'/model': ['model', '<provider/model> – Select model (opens selector UI)'],
+	'/tree': ['tree', 'Navigate session tree (switch branches)'],
+	'/thinking': ['thinking', '<level> – Set thinking level'],
+	'/scoped-models': ['scoped-models', 'Enable/disable models for Ctrl+P cycling'],
+	'/export': ['export', 'Export session (HTML default, or specify path: .html/.jsonl)'],
+	'/import': ['import', 'Import and resume a session from a JSONL file'],
+	'/share': ['share', 'Share session as a secret GitHub gist'],
+	'/copy': ['copy', 'Copy last agent message to clipboard'],
+	'/name': ['name', 'Set session display name'],
+	'/session': ['session', 'Show session info and stats'],
+	'/changelog': ['changelog', 'Show changelog entries'],
+	'/hotkeys': ['hotkeys', 'Show all keyboard shortcuts'],
+	'/fork': ['fork', 'Create a new fork from a previous user message'],
+	'/clone': ['clone', 'Duplicate the current session at the current position'],
+	'/trust': ['trust', 'Save project trust decision for future sessions'],
+	'/login': ['login', '<provider> – Configure provider authentication'],
+	'/logout': ['logout', 'Remove provider authentication'],
+	'/new': ['new', 'Start a new session'],
+	'/compact': ['compact', 'Manually compact the session context'],
+	'/resume': ['resume', 'Resume a different session'],
+	'/reload': ['reload', 'Reload keybindings, extensions, skills, prompts, themes, and context files'],
+	'/quit': ['quit', 'Quit Guey'],
+};
+
+// Every row below was checked against claude-runtime.mjs's own command switch,
+// whose default case throws. Deliberately absent, because they are Pi verbs
+// that a Claude tab cannot run: /tree, /fork, /clone, /compact, /thinking,
+// /reload, /scoped-models, /export, /import, /share, /changelog, /hotkeys,
+// /trust — and also /new and /resume, which the switch does not implement
+// either, so offering them would be offering a thrown error.
+const CLAUDE_SLASH_VIEW = {
+	'/model': ['model', 'Select the model this session runs on'],
+	'/name': ['name', 'Set session display name'],
+	'/copy': ['copy', 'Copy last agent message to clipboard'],
+	'/session': ['session', 'Show session info and stats'],
+	'/settings': ['settings', 'Claude reads its settings from .claude/, not from this panel'],
+	'/quit': ['quit', 'Quit Guey'],
+};
+
 const FACES = {
 	pi: {
 		name: 'pi',
@@ -72,6 +126,7 @@ const FACES = {
 		note: 'Pi can explain its own features and look up its docs. Ask it how to use or extend Pi.',
 		compactHints: PI_COMPACT,
 		expandedHints: PI_EXPANDED,
+		slashView: PI_SLASH_VIEW,
 	},
 	claude: {
 		name: 'claude',
@@ -87,6 +142,7 @@ const FACES = {
 		note: null,
 		compactHints: CLAUDE_COMPACT,
 		expandedHints: CLAUDE_EXPANDED,
+		slashView: CLAUDE_SLASH_VIEW,
 	},
 };
 
