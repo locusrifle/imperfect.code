@@ -296,10 +296,10 @@ export async function createGueyServer(options = {}) {
       res.setHeader('Cache-Control', 'no-store');
       res.end(JSON.stringify({
         license: 'AGPL-3.0-only',
-        repository: 'https://github.com/locusrifle/imperfect.computer',
+        repository: 'https://github.com/locusrifle/imperfect.os',
         release: BUILD.release,
         version: BUILD.version,
-        notices: 'https://github.com/locusrifle/imperfect.computer/blob/master/THIRD_PARTY_NOTICES.md',
+        notices: 'https://github.com/locusrifle/imperfect.os/blob/master/THIRD_PARTY_NOTICES.md',
         // Both files are also in this release on disk, beside start.mjs.
       }, null, 2));
       return;

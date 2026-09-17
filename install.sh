@@ -2,8 +2,8 @@
 # Easy clone → window. Hosted Box install is install/imperfect.mjs, not this.
 set -euo pipefail
 
-REPO="${IMPERFECT_REPO:-https://github.com/imperfect/imperfect.computer.git}"
-DEST="${IMPERFECT_HOME:-$HOME/imperfect.computer}"
+REPO="${IMPERFECT_REPO:-https://github.com/locusrifle/imperfect.os.git}"
+DEST="${IMPERFECT_HOME:-$HOME/imperfect.os}"
 
 if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
   cat <<EOF
@@ -13,7 +13,7 @@ Clone the machine (if needed) and open it in a Tauri window.
 
   git clone $REPO && ./desktop/install.sh
 
-  IMPERFECT_HOME     checkout path (default: ~/imperfect.computer)
+  IMPERFECT_HOME     checkout path (default: ~/imperfect.os)
   IMPERFECT_PREFIX   data dir (default: ~/.imperfect)
   IMPERFECT_REPO     git URL
 EOF

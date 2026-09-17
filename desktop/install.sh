@@ -6,7 +6,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PREFIX="${IMPERFECT_PREFIX:-$HOME/.imperfect}"
 PORT="${IMPERFECT_PORT:-5067}"
-REPO="${IMPERFECT_REPO:-https://github.com/imperfect/imperfect.computer.git}"
+REPO="${IMPERFECT_REPO:-https://github.com/locusrifle/imperfect.os.git}"
 
 usage() {
   cat <<EOF

@@ -3,8 +3,8 @@
 Same machine as the hosted computer. This is a window around `node start.mjs`, not a second app and not the imperfect.computer door.
 
 ```sh
-git clone https://github.com/imperfect/imperfect.computer.git
-cd imperfect.computer
+git clone https://github.com/locusrifle/imperfect.os.git
+cd imperfect.os
 ./desktop/install.sh
 ```
 

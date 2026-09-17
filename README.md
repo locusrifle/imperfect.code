@@ -18,8 +18,8 @@ Write `machine.json` in that prefix first, or copy the defaults from `machine.mj
 Same machine, no browser chrome. Needs Node 22+ and Rust.
 
 ```sh
-git clone https://github.com/imperfect/imperfect.computer.git
-cd imperfect.computer
+git clone https://github.com/locusrifle/imperfect.os.git
+cd imperfect.os
 ./desktop/install.sh
 ```
 
