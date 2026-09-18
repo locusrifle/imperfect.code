@@ -38,7 +38,6 @@ export const SETTING_DEFS = [
 	{ key: 'fullscreenExitOutput', label: 'Fullscreen exit output', description: 'Print the transcript or only a session resume hint when exiting fullscreen mode', kind: 'enum', values: ['transcript', 'resume-hint'], path: ['fullscreenExitOutput'], def: 'transcript' },
 	{ key: 'fullscreenScrollbar', label: 'Fullscreen scrollbar', description: 'Scrollbar behavior in fullscreen mode; has no effect in regular mode', kind: 'enum', values: ['auto', 'always', 'hidden'], path: ['fullscreenScrollbar'], def: 'auto' },
 	{ key: 'fullscreenCopyOnSelect', label: 'Fullscreen copy on select', description: 'Automatically copy selected text in fullscreen mode; disable to copy selections with Ctrl+X', kind: 'bool', path: ['fullscreenCopyOnSelect'], def: false },
-	{ key: 'theme', label: 'Theme', description: 'Color theme for the interface', kind: 'theme', path: ['theme'], def: 'garden' },
 ];
 
 function getPath(object, path, fallback) {
@@ -69,7 +68,6 @@ export function displayValue(def, raw, extra = {}) {
 		const count = Object.keys(extra.modelThinkingLevels ?? raw ?? {}).length;
 		return count ? `${count} configured` : 'none';
 	}
-	if (def.kind === 'theme') return String(raw ?? def.def);
 	return String(raw ?? def.def);
 }
 
@@ -80,7 +78,6 @@ export function settingsView(file = {}) {
 	}
 	out.warnings = getPath(file, ['warnings'], { anthropicExtraUsage: true });
 	out.modelThinkingLevels = getPath(file, ['modelThinkingLevels'], {});
-	out.theme = getPath(file, ['theme'], 'garden');
 	return out;
 }
 
@@ -97,7 +94,7 @@ export function applySetting(file, key, value) {
 	}
 	const def = SETTING_DEFS.find(item => item.key === key);
 	if (!def) throw new Error(`Unknown setting: ${key}`);
-	if (def.kind === 'theme' || def.kind === 'submenu') throw new Error(`Use the ${def.key} submenu`);
+	if (def.kind === 'submenu') throw new Error(`Use the ${def.key} submenu`);
 	const next = structuredClone(file);
 	let stored = value;
 	if (def.kind === 'bool') stored = value === true || value === 'true';

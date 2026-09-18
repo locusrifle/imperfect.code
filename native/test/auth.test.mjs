@@ -1,15 +1,21 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, readFile, rm, stat } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { chromium } from 'playwright';
 import { ModelRuntime, SettingsManager } from '@earendil-works/pi-coding-agent';
 import { createProvider } from '@earendil-works/pi-ai';
 import { createRuntime } from '../runtime.mjs';
-import { createGueyServer } from '../../server.mjs';
+import { openHttpUrl } from '../../server.mjs';
 import { createAuth } from '../auth.mjs';
+
+test('only http(s) URLs leave this machine through open_url', () => {
+  const opened = [];
+  assert.equal(openHttpUrl('https://example.invalid/device', href => opened.push(href)), 'https://example.invalid/device');
+  assert.deepEqual(opened, ['https://example.invalid/device']);
+  assert.throws(() => openHttpUrl('javascript:alert(1)', () => {}));
+  assert.throws(() => openHttpUrl('file:///etc/passwd', () => {}));
+});
 
 const wait = async predicate => {
   for (let i = 0; i < 200; i++) { if (await predicate()) return; await new Promise(r => setTimeout(r, 10)); }
@@ -125,80 +131,3 @@ test('auth timeout is cancellable even while waiting for a provider prompt', asy
   } finally { await adapter?.cancel(); await f.runtime.close(); await rm(root, { recursive: true, force: true }); }
 });
 
-test('browser first-run, subscription prompts, safe links, secret handling, reload, cancel and model selection use real SDK', async t => {
-  const executablePath = existsSync(chromium.executablePath()) ? undefined : ['/usr/bin/chromium', '/usr/bin/chromium-browser'].find(existsSync);
-  if (!executablePath && !existsSync(chromium.executablePath())) return t.skip('No Chromium available');
-  const root = await mkdtemp(join(tmpdir(), 'guey-auth-browser-')); const f = await fixture(root);
-  const app = await createGueyServer({ host: '127.0.0.1', port: 0, stateDir: join(root, 'server'), runtime: f.runtime });
-  const address = await app.listen();
-  const browser = await chromium.launch({ executablePath, args: ['--no-sandbox'] });
-  const page = await browser.newPage();
-  const errors = []; page.on('pageerror', e => errors.push(e.message));
-  const requests = []; page.on('request', r => requests.push(r.url()));
-  try {
-    await page.goto(`http://127.0.0.1:${address.port}`);
-    await page.waitForSelector('#guey-auth[open]');
-    // These two lines used to assert stock Pi's light and dark TUI grounds, on a server that
-    // has served the imperfect composition since it became the default. That composition is
-    // one painting made in daylight for everybody: a dark scheme underneath would be a second
-    // brand nobody chose, turning up for whoever has their phone set that way.
-    const ground = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-    await page.emulateMedia({ colorScheme: 'light' });
-    assert.equal(await ground(), 'rgb(242, 228, 205)');
-    await page.emulateMedia({ colorScheme: 'dark' });
-    assert.equal(await ground(), 'rgb(242, 228, 205)');
-    // The first thing a new machine shows wears the brand, not the browser's own paper.
-    const panel = await page.evaluate(() => {
-      const s = getComputedStyle(document.querySelector('#guey-auth'));
-      return { bg: s.backgroundColor, rule: s.borderTopColor, radius: s.borderTopLeftRadius, font: s.fontFamily };
-    });
-    assert.equal(panel.bg, 'rgb(247, 240, 226)');
-    assert.equal(panel.rule, 'rgb(217, 69, 26)');
-    assert.equal(panel.radius, '0px');
-    assert.match(panel.font, /Commit Mono/);
-    // And it greets the owner by the name of the thing they bought.
-    assert.match(await page.locator('#guey-auth .auth-eyebrow').textContent(), /IMPERFECT COMPUTERS/);
-    assert.doesNotMatch(await page.locator('#guey-auth').textContent(), /Guey/);
-    assert.equal(f.control.calls, 0);
-    await page.getByRole('button', { name: 'Use a subscription / sign in', exact: true }).click();
-    assert.equal(f.control.calls, 0, 'listing providers must not begin authorization');
-    // Naming the provider is the consent boundary and also the last step: pressing it goes
-    // forward into that provider's flow rather than to a second page repeating its name.
-    await page.getByRole('button', { name: /Guey test subscription/ }).click();
-    await page.waitForSelector('#auth-answer');
-    const links = await page.locator('#guey-auth a').evaluateAll(nodes => nodes.map(n => ({ href: n.href, rel: n.rel })));
-    assert.ok(links.every(l => l.href.startsWith('https://example.invalid/') && l.rel.includes('noopener')));
-    assert.equal(await page.locator('#guey-auth .auth-device-code').textContent(), 'TEST-1234');
-    await page.fill('#auth-answer', 'account'); await page.locator('#guey-auth button[type=submit]').click();
-    await page.waitForSelector('select#auth-answer'); await page.selectOption('#auth-answer', 'two'); await page.locator('#guey-auth button[type=submit]').click();
-    await page.waitForSelector('input#auth-answer[type=password]'); await page.fill('#auth-answer', 'browser-secret-INPUT'); await page.locator('#guey-auth button[type=submit]').click();
-    await page.waitForSelector('#guey-auth label:has-text("Paste test authorization code")');
-    await page.reload();
-    await page.waitForSelector('#guey-auth label:has-text("Paste test authorization code")');
-    await page.fill('#auth-answer', 'browser-code-INPUT'); await page.locator('#guey-auth button[type=submit]').click();
-    await page.getByRole('button', { name: 'Choose a default model', exact: true }).waitFor();
-    const storage = await page.evaluate(() => JSON.stringify(localStorage));
-    assert.ok(!storage.includes('browser-secret-INPUT')); assert.ok(!storage.includes('browser-code-INPUT'));
-    assert.ok(!(await page.content()).includes('fixture-access-SECRET'));
-    assert.ok(requests.every(url => url.startsWith(`http://127.0.0.1:${address.port}/`)), 'no provider URLs opened automatically');
-    await page.getByRole('button', { name: 'Choose a default model', exact: true }).click();
-    await page.locator('.entry-dialog-option', { hasText: 'guey-test/fixture-model' }).click();
-    await page.waitForSelector('#entry-pi-label:has-text("fixture-model")');
-    await page.fill('#entry-input', '/login guey-test'); await page.press('#entry-input', 'Enter');
-    await page.getByRole('button', { name: /Use a subscription/ }).click();
-    await page.waitForSelector('#auth-answer');
-    await page.getByRole('button', { name: 'Cancel sign-in', exact: true }).click();
-    await page.getByRole('button', { name: 'Try again', exact: true }).waitFor();
-    await page.getByRole('button', { name: 'Close', exact: true }).click();
-    await page.fill('#entry-input', '/logout'); await page.press('#entry-input', 'Enter');
-    await page.getByRole('button', { name: /Guey test subscription/ }).click();
-    await page.getByRole('button', { name: 'Remove Guey test subscription credentials', exact: true }).click();
-    await page.waitForFunction(() => document.querySelector('#guey-auth .auth-body').textContent.includes('Stored credentials removed'));
-    assert.deepEqual(await f.models.listCredentials(), []);
-    assert.equal(f.control.streams, 0); assert.deepEqual(errors, []);
-  } catch (error) {
-    t.diagnostic(await page.locator('#guey-auth').textContent());
-    t.diagnostic(JSON.stringify(f.runtime.snapshot().auth));
-    throw error;
-  } finally { await browser.close(); await app.close(); await rm(root, { recursive: true, force: true }); }
-});

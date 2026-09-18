@@ -2,62 +2,38 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
-<meta name="theme-color" content="#f7f0e2">
-<title>imperfect computers</title>
-<link rel="manifest" href="/manifest.webmanifest">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>imperfect</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/theme.css" id="tui-theme">
-<link rel="stylesheet" href="/css/guey.css">
 <link rel="stylesheet" href="/css/garden.css">
 <link rel="stylesheet" href="/css/pi-theme.css">
+<link rel="stylesheet" href="/css/guey.css">
 <link rel="stylesheet" href="/css/entry-terminal.css">
 <link rel="stylesheet" href="/css/imperfect.css">
-<link rel="stylesheet" href="/css/review-window.css">
-<link rel="stylesheet" href="/css/antiburn.css">
-<link rel="stylesheet" href="/css/shell.css">
-<link rel="stylesheet" href="/custom/ui.css">
 </head>
 <body class="imperfect guey-tui" data-seat="operator">
-
-<div id="imperfect-world" aria-label="canvas"></div>
-<aside id="startup-intro" hidden></aside>
-<div id="knowledge-graph-anchor" hidden></div>
-<button type="button" id="harness-reach" aria-label="Open the pi harness"></button>
-
-
-<section id="terminal-entry" class="harness" aria-label="pi harness">
-	<figure id="entry-terminal">
-		<div class="entry-screen">
-			<div id="entry-output" aria-live="polite"></div>
-			<div id="entry-widgets" class="entry-widgets" hidden></div>
-			<div id="entry-pending" class="entry-pending" hidden></div>
-			<div id="entry-input-zone">
-				<span class="entry-model-line"><button type="button" id="entry-pi-label" title="pick the model">pi</button><span id="entry-thinking"></span><span id="entry-permission"></span></span>
-				<span class="entry-input-stack"><span class="entry-prompt" aria-hidden="true">&rsaquo;</span><textarea id="entry-input" rows="1" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ask pi" aria-label="Prompt pi"></textarea><span class="entry-plus"><button type="button" id="entry-plus" class="entry-attach" title="attach"><span aria-hidden="true">+</span></button><input id="entry-files" type="file" multiple hidden accept="audio/*,image/*,.m4a,.mp3,.wav,.ogg,.opus,.aac,.mp4,.mov,.webm,.txt,.md,.json,.csv,.pdf,text/plain"></span></span>
-			</div>
-			<section id="entry-dialog" hidden></section>
-			<div id="slash-menu" hidden></div>
-			<div class="entry-status">
-				<div class="entry-status-line">
-					<span id="entry-spend">$0.000</span>
-					<span id="entry-source"></span>
-					<span id="entry-session-name"></span>
-					<span id="entry-cwd"></span>
-					<span id="entry-context"></span>
-					<span id="entry-model-status">stopped</span>
-				</div>
-			</div>
-		</div>
-		<i class="drop-handle" aria-hidden="true"></i>
-	</figure>
+<button type="button" id="harness-reach" aria-label="Open the harness"></button>
+<section id="terminal-entry" class="harness" aria-label="agent harness">
+  <figure id="entry-terminal">
+    <div class="entry-screen">
+      <div id="entry-output" aria-live="polite"></div>
+      <div id="entry-widgets" class="entry-widgets" hidden></div>
+      <div id="entry-pending" class="entry-pending" hidden></div>
+      <div id="entry-input-zone">
+        <span class="entry-model-line"><button type="button" id="entry-pi-label" title="pick the model">agent</button><span id="entry-thinking"></span><span id="entry-permission"></span></span>
+        <span class="entry-input-stack"><span class="entry-prompt" aria-hidden="true">›</span><textarea id="entry-input" rows="1" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ask" aria-label="Prompt"></textarea><span class="entry-plus"><button type="button" id="entry-plus" class="entry-attach" title="attach"><span aria-hidden="true">+</span></button><input id="entry-files" type="file" multiple hidden accept="audio/*,image/*,.m4a,.mp3,.wav,.ogg,.opus,.aac,.mp4,.mov,.webm,.txt,.md,.json,.csv,.pdf,text/plain"></span></span>
+      </div>
+      <section id="entry-dialog" hidden></section>
+      <div id="slash-menu" hidden></div>
+      <div class="entry-status">
+        <div class="entry-status-line">
+          <span id="entry-spend"></span><span id="entry-source"></span><span id="entry-session-name"></span><span id="entry-cwd"></span><span id="entry-context"></span><span id="entry-model-status">stopped</span>
+        </div>
+      </div>
+    </div>
+    <i class="drop-handle" aria-hidden="true"></i>
+  </figure>
 </section>
-
-
-<!-- A classic script runs before any module, so the deployment's name is on the window
-     before auth.js reads it. Without this the sign-in dialog fell back to "Guey" -- the
-     foundation's name -- on a machine whose own tab already said imperfect computers. -->
-<script src="/brand.js"></script>
 <script type="module" src="/js/site.js"></script>
 </body>
 </html>

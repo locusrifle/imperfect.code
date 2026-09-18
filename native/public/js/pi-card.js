@@ -48,6 +48,13 @@ export function isApplePlatform() {
 export const ALT_LABEL = isApplePlatform() ? "OPT" : "ALT";
 
 const KEY_BINDINGS = [];
+const HELD_KEYS = new WeakMap();
+
+function heldKeys(target) {
+  let keys = HELD_KEYS.get(target);
+  if (!keys) { keys = new Set(); HELD_KEYS.set(target, keys); }
+  return keys;
+}
 
 function matches(binding, event) {
   return event.code === binding.code && event.altKey === binding.alt && event.ctrlKey === binding.ctrl &&
@@ -60,12 +67,16 @@ function matches(binding, event) {
 export function registerKeyBinding({ label, description, code, alt = false, ctrl = false, meta = false, shift = false, when, handler, target = window }) {
   const binding = { label, description, code, alt, ctrl, meta, shift, when: when ?? (() => true), handler };
   KEY_BINDINGS.push(binding);
+  const keys = heldKeys(target);
   target.addEventListener("keydown", event => {
-		if (event.repeat || !matches(binding, event) || !binding.when(event)) return;
+		if (!matches(binding, event) || !binding.when(event) || keys.has(event.code)) return;
+		keys.add(event.code);
     event.preventDefault();
     event.stopPropagation();
     binding.handler?.(event);
   }, true);
+  target.addEventListener("keyup", event => keys.delete(event.code), true);
+  target.addEventListener("blur", () => keys.clear(), true);
   return binding;
 }
 

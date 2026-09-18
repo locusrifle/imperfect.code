@@ -8,8 +8,6 @@ import {
   SessionManager, getAgentDir, VERSION,
 } from '@earendil-works/pi-coding-agent';
 import { createExtensionUI } from './extension-ui.mjs';
-import { listLiveSessions, liveOwnsSession, publicLiveSession } from './live-sessions.mjs';
-import { connectLive } from './live-client.mjs';
 import { createAuth } from './auth.mjs';
 import { absorbUploads } from './uploads.mjs';
 
@@ -135,7 +133,7 @@ function startupFromLoader(loader, session, cwd) {
   };
 }
 
-export async function createRuntime({ cwd = process.cwd(), agentDir = getAgentDir(), stateDir, sessionDir, runtimeDir, liveSessions = true, authentication = false, ownArchive = false, serviceOptions = {}, sessionPath = null, fresh = false, persistPointer = true } = {}) {
+export async function createRuntime({ cwd = process.cwd(), agentDir = getAgentDir(), stateDir, sessionDir, authentication = false, ownArchive = false, serviceOptions = {}, sessionPath = null, fresh = false, persistPointer = true } = {}) {
   const events = new EventEmitter();
   if (sessionDir) mkdirSync(sessionDir, { recursive: true, mode: 0o700 });
   const roots = ownArchive && sessionDir
@@ -143,20 +141,12 @@ export async function createRuntime({ cwd = process.cwd(), agentDir = getAgentDi
     : [join(agentDir, 'sessions'), ...(sessionDir ? [resolve(sessionDir)] : [])];
   const pointer = join(stateDir, 'active-session');
   let runtime, unsubscribe, partial = null, runningTools = {}, operation = null, failed = null, preflights = 0;
-  let attached = null; // set when watching a terminal's live session; see attach()
   let updateRelease = null;
   const versionCheck = new AbortController();
   const changed = () => events.emit('change');
   const adapter = createExtensionUI(changed);
   const inside = path => roots.some(root => { try { return realpathSync(path).startsWith(realpathSync(root) + sep); } catch { return false; } });
-  // A running TUI advertises the session file it owns. Writing to a file another
-  // Pi process holds interleaves two transcripts, so we fork instead.
-  const live = () => { if (!liveSessions) return []; try { return listLiveSessions(runtimeDir ? { runtimeDir } : {}); } catch { return []; } };
-  const owner = (path, sessions = live()) => sessions.find(item => liveOwnsSession(path, [item])) ?? null;
-  // Resume the newest session for this cwd if nothing else holds it. If the
-  // newest is a live TUI, start fresh — do not fall back to an older fork.
-  // ownArchive (stock Guey): only this process's sessionDir. Never auto-open
-  // ~/.pi/agent/sessions, including an unadvertised imperfect writer.
+  // A local imperfect session archive is the only automatic resume source.
   let sm = SessionManager.create(cwd, sessionDir);
   if (sessionPath) sm = SessionManager.open(sessionPath, sessionDir);
   else if (!fresh) try {
@@ -172,7 +162,7 @@ export async function createRuntime({ cwd = process.cwd(), agentDir = getAgentDi
     const newest = rows
       .filter(s => s.cwd === cwd && s.path && inside(s.path) && existsSync(s.path))
       .sort((a, b) => new Date(b.modified) - new Date(a.modified))[0];
-    if (newest && !owner(newest.path)) sm = SessionManager.open(newest.path, sessionDir);
+    if (newest) sm = SessionManager.open(newest.path, sessionDir);
   } catch {}
   if (persistPointer) try { unlinkSync(pointer); } catch {}
   const factory = async ({ cwd, sessionManager, sessionStartEvent }) => {
@@ -199,30 +189,15 @@ export async function createRuntime({ cwd = process.cwd(), agentDir = getAgentDi
   };
   const listSessions = async () => {
     const own = sessionDir ? await SessionManager.listAll(sessionDir) : [];
-    const sessions = live();
     const root = join(agentDir, 'sessions');
     const dirs = await readdir(root, { withFileTypes: true }).catch(e => { if (e.code === 'ENOENT') return []; throw e; });
     const shared = (await Promise.all([root, ...dirs.filter(d => d.isDirectory()).map(d => join(root, d.name))].map(dir => SessionManager.listAll(dir).catch(() => [])))).flat();
     const files = [...own, ...shared.filter(s => !own.some(o => o.path === s.path))];
-    const rows = files.map(s => {
-      const held = owner(s.path, sessions);
-      const outsideOwn = Boolean(ownArchive && sessionDir && !inside(s.path));
-      return {
-        id: s.id, path: s.path, cwd: s.cwd, name: s.name, firstMessage: s.firstMessage,
-        modified: s.modified, messageCount: s.messageCount,
-        copyOnResume: Boolean(held) || outsideOwn,
-        liveOwner: held && { pid: held.pid, name: held.name, startedAt: held.startedAt },
-      };
-    });
-    for (const item of sessions) {
-      if (rows.some(s => s.path === item.sessionFile || s.liveOwner?.pid === item.pid)) continue;
-      rows.push({
-        id: item.sessionId ?? `tui-${item.pid}`, path: item.sessionFile, cwd: item.cwd, name: item.name,
-        firstMessage: item.firstMessage, modified: item.startedAt, messageCount: item.messageCount,
-        copyOnResume: true, liveOwner: { pid: item.pid, name: item.name, startedAt: item.startedAt },
-      });
-    }
-    return rows;
+    return files.map(s => ({
+      id: s.id, path: s.path, cwd: s.cwd, name: s.name, firstMessage: s.firstMessage,
+      modified: s.modified, messageCount: s.messageCount,
+      copyOnResume: Boolean(ownArchive && sessionDir && !inside(s.path)),
+    }));
   };
   async function resume(path) {
     assertIdle();
@@ -294,10 +269,8 @@ export async function createRuntime({ cwd = process.cwd(), agentDir = getAgentDi
     return { ...stats, cacheHitRate, usingSubscription };
   }
   function snapshot() {
-    if (attached) return attached.snapshot();
     const s = runtime.session;
     const loader = runtime.services.resourceLoader;
-    const held = owner(s.sessionFile);
     return {
       sessionId: s.sessionId, sessionFile: s.sessionFile, cwd: runtime.cwd,
       name: s.sessionManager.getSessionName(), model: s.model ? { id: s.model.id, provider: s.model.provider, name: s.model.name, contextWindow: s.model.contextWindow } : null, thinkingLevel: s.thinkingLevel,
@@ -307,7 +280,6 @@ export async function createRuntime({ cwd = process.cwd(), agentDir = getAgentDi
       streaming: !s.isIdle || Boolean(s.isCompacting),
       operation: s.isCompacting ? 'compacting' : operation, failed,
       ...(auth ? { auth: auth.snapshot() } : {}),
-      takenOver: held && { pid: held.pid, name: held.name },
       commands: [...(s.extensionRunner?.getRegisteredCommands() ?? []).map(c => ({ name: c.invocationName, description: c.description })), ...s.promptTemplates.map(p => ({ name: p.name, description: p.description })), ...loader.getSkills().skills.map(s => ({ name: `skill:${s.name}`, description: s.description }))],
       messages: viewMessages(s), partial, runningTools: Object.values(runningTools),
       queue: { steering: s.getSteeringMessages(), followUp: s.getFollowUpMessages() },
@@ -317,43 +289,15 @@ export async function createRuntime({ cwd = process.cwd(), agentDir = getAgentDi
       diagnostics: [...runtime.diagnostics, ...(runtime.modelFallbackMessage ? [{ type: 'warning', message: runtime.modelFallbackMessage }] : [])],
     };
   }
-  // Watching a terminal session: the GUI's own runtime keeps running untouched
-  // underneath, so detaching returns to exactly the session it was in.
-  async function attach(pid) {
-    const target = live().find(item => item.pid === pid);
-    if (!target) throw new Error('That terminal session is no longer advertising itself');
-    detach();
-    const client = connectLive({ socketPath: target.socketPath, pid: target.pid, onChange: changed });
-    try { await client.opened; } catch (error) { client.close(); throw new Error(`Could not attach to pid ${pid}: ${error.message}`); }
-    attached = client; changed();
-    return publicLiveSession(target);
-  }
-  function detach() {
-    if (!attached) return;
-    attached.close(); attached = null; changed();
-  }
-
   async function command(c) {
-    // Watching is a window, not a jail. Session switching is GUI chrome:
-    // it must not be forwarded to the terminal (which does not implement attach/new/resume).
-    const shell = new Set(['detach', 'sessions', 'live', 'attach', 'new', 'resume']);
-    if (attached && !shell.has(c.type)) {
-      if (attached.state.closed && c.type !== 'snapshot') { detach(); throw new Error('The terminal session ended; you are back on your own session.'); }
-      return attached.command(c);
-    }
     if (c.type === 'resume') {
       await resume(c.path);
-      detach();
       return;
     }
-    if (attached && c.type === 'new') detach();
     const s = runtime.session;
     switch (c.type) {
       case 'snapshot': return snapshot();
       case 'sessions': return listSessions();
-      case 'live': return live().map(publicLiveSession);
-      case 'attach': return attach(c.pid);
-      case 'detach': detach(); return;
       case 'auth_providers': if (!auth) throw new Error('GUI login is not enabled for this service'); return auth.providers();
       case 'auth_accounts': if (!auth) throw new Error('GUI login is not enabled for this service'); return auth.accounts();
       case 'auth_login': if (!auth) throw new Error('GUI login is not enabled for this service'); return auth.login(c.provider, c.method);
@@ -369,10 +313,6 @@ export async function createRuntime({ cwd = process.cwd(), agentDir = getAgentDi
         if (auth?.busy) throw new Error('Finish or cancel sign-in before sending a prompt');
         if (failed || operation) throw new Error('Runtime unavailable');
         if (preflights) throw new Error('Another prompt is awaiting acceptance; wait or abort');
-        // Checked per prompt, not once at startup: a terminal can claim this
-        // session at any moment, and the second writer is the one that corrupts.
-        const held = owner(s.sessionFile);
-        if (held) throw new Error(`A terminal Pi (pid ${held.pid}) is writing this session. Resume it here to work on a copy, or start a new session.`);
         const images = Array.isArray(c.images) ? c.images.filter(img => img && img.type === 'image' && typeof img.data === 'string' && typeof img.mimeType === 'string').slice(0, 8) : [];
         const text = absorbUploads(typeof c.text === 'string' ? c.text : '', c.files, runtime.cwd);
         if ((!text.trim() && !images.length) || text.length > 200000) throw new Error('Prompt must be 1–200000 characters, or include an image');
@@ -436,5 +376,5 @@ export async function createRuntime({ cwd = process.cwd(), agentDir = getAgentDi
       default: throw new Error(`Unsupported command: ${c.type}`);
     }
   }
-  return { events, snapshot, command, attach, detach, session: () => runtime.session, async close() { versionCheck.abort(); await auth?.cancel(); detach(); adapter.reset(); await runtime.session.abort(); savePointer(); unsubscribe?.(); await runtime.dispose(); } };
+  return { events, snapshot, command, session: () => runtime.session, async close() { versionCheck.abort(); await auth?.cancel(); adapter.reset(); await runtime.session.abort(); savePointer(); unsubscribe?.(); await runtime.dispose(); } };
 }

@@ -9,15 +9,10 @@
 // agent read off the disk, and it lands in this document.
 
 import { mountAuth } from './auth.js';
-import { createDictation, attachHoldSpace } from './dictation.js';
-import { capturePng } from './capture.js';
-import { mountWorldWindows } from './review-window.js';
 import { SETTING_DEFS, displayValue, cycleValue } from './settings-fields.js';
-import { assistantTextFromMessage, composerBlockReason, latestCompletedAssistant } from './session-logic.js';
+import { assistantTextFromMessage, latestCompletedAssistant } from './session-logic.js';
 import { postUpload, uploadPercent, MAX_UPLOAD_BYTES } from './uploads.js';
-import { takeSharedFiles, clearSharedFiles } from './share-target.js';
-import { meterBar, percentLabel, readingAge, resetText } from './usage.js';
-import { faceFor } from './agent-faces.js';
+import { faceFor, commandsFor, permissionFor } from './agent-faces.js';
 import { registerKeyBinding } from './pi-card.js';
 
 const el = (tag, text, className) => {
@@ -274,7 +269,6 @@ function derivedStartupSections(resources = {}) {
 
 export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 	const { output, input, dialog, widgets, slashMenu, modelStatus, modelName, spend, thinking, permission, sessionTitle, sessionSource, sessionCwd, context, screen } = elements;
-	let themeRev = 0;
 	let socket = null, state = null, serial = 0, lastEditor = null, spin = 0, spinner = null;
 	const pending = new Map();
 	const guiListeners = new Set();
@@ -289,11 +283,6 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 	// privilege or the quietest denial one keystroke away.
 	const CLAUDE_PERMISSION_MODES = ['default', 'acceptEdits', 'plan'];
 	const permissionLabel = mode => ({ default: 'permissions', acceptEdits: 'accept edits', plan: 'plan' }[mode] ?? mode ?? 'permissions');
-	const world = personal ? mountWorldWindows({
-		host: (id, title) => hooks.slot?.(id, title),
-		release: (id) => hooks.release?.(id),
-		onOpen: () => { hooks.onWindowOpen?.(); },
-	}) : { spawn: async () => {}, close: () => {}, sync: () => {} };
 	const inputZone = input?.closest?.('#entry-input-zone');
 	let work = document.getElementById('entry-work');
 	if (inputZone && !work) {
@@ -355,19 +344,22 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 	let doneAudio = null;
 	function unlockDoneSound() {
 		if (!AudioCtx) return;
-		if (!doneAudio) doneAudio = new AudioCtx();
-		if (doneAudio.state === 'suspended') void doneAudio.resume();
+		try {
+			if (!doneAudio) doneAudio = new AudioCtx();
+			if (doneAudio.state === 'suspended') void doneAudio.resume().catch(() => {});
+		} catch {}
 	}
-	function playDoneSound() {
-		window.__gueyDoneSounds = (window.__gueyDoneSounds || 0) + 1; // browser test reads this
+	function playTone(kind) {
+		const counter = kind === 'blocked' ? '__gueyBlockedSounds' : '__gueyDoneSounds';
+		window[counter] = (window[counter] || 0) + 1; // browser tests read this
 		try {
 			unlockDoneSound();
 			if (!doneAudio || doneAudio.state === 'suspended') return;
 			const osc = doneAudio.createOscillator();
 			const gain = doneAudio.createGain();
 			const now = doneAudio.currentTime;
-			osc.type = 'sine';
-			osc.frequency.value = 880;
+			osc.type = kind === 'blocked' ? 'triangle' : 'sine';
+			osc.frequency.value = kind === 'blocked' ? 440 : 880;
 			gain.gain.setValueAtTime(0.05, now);
 			gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
 			osc.connect(gain);
@@ -376,6 +368,8 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 			osc.stop(now + 0.2);
 		} catch {}
 	}
+	function playDoneSound() { playTone('done'); }
+	function playBlockedSound() { playTone('blocked'); }
 	function focusedTabId() {
 		return (state?.tabs ?? []).find(tab => tab.focused)?.id ?? null;
 	}
@@ -408,6 +402,8 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 			try { new Notification(personal ? 'imperfect' : 'Guey', { body: 'done', silent: false }); } catch {}
 		}
 	}
+	function pingBlocked() { playBlockedSound(); }
+	let previousTabStates = null;
 	function connect() {
 		if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) return;
 		clearTimeout(reconnectTimer);
@@ -424,28 +420,24 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 					failed: message.failed ?? null,
 					answer: message.answer ?? null,
 				};
-				if (info.tabId == null || info.tabId === focusedTabId()) pingDone();
+				// A settle is a tab event, not a view event: even the tab already on screen
+				// needs the same finish signal as one being watched elsewhere.
+				pingDone();
 				for (const fn of turnListeners) {
 					try { fn(info); } catch {}
 				}
 			}
 			if (message.type === 'snapshot') {
+				const nextTabs = message.data?.tabs ?? [];
+				if (previousTabStates) {
+					for (const tab of nextTabs) {
+						if (tab.status === 'blocked' && previousTabStates.get(tab.id) !== 'blocked') pingBlocked();
+					}
+				}
+				previousTabStates = new Map(nextTabs.map(tab => [tab.id, tab.status]));
 				state = message.data;
 				render();
 				emitGui();
-				if (personal) world.sync(state.windows);
-			}
-			if (message.type === 'control' && message.name === 'capture') {
-				capturePng()
-					.then(shot => { if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ id: message.id, type: 'control-result', ...shot })); })
-					.catch(error => { if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ id: message.id, type: 'control-result', error: error.message })); });
-			}
-			if (message.type === 'control' && (message.name === 'window-open' || message.name === 'window-close')) {
-				const job = message.name === 'window-open'
-					? world.spawn(message.window || {})
-					: Promise.resolve(world.close(message.windowId));
-				job.then(() => { if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ id: message.id, type: 'control-result' })); })
-					.catch(error => { if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ id: message.id, type: 'control-result', error: error.message })); });
 			}
 			if (message.type === 'response') {
 				const waiter = pending.get(message.id);
@@ -522,9 +514,9 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 		closeSessionRail();
 		return command('tab-focus', { tabId });
 	}
-	function newTab(agent = 'pi') {
+	function newTab() {
 		closeSessionRail();
-		return command('tab-new', { agent });
+		return command('tab-new');
 	}
 	const STATUS_PRIORITY = { blocked: 0, working: 1, done: 2, unknown: 3, idle: 4 };
 	function sortedTabs() {
@@ -533,7 +525,7 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 	}
 	let railIndex = 0;
 	function railChoices() {
-		return ['new', 'new-claude', ...sortedTabs().map(tab => tab.id)];
+		return ['new', ...sortedTabs().map(tab => tab.id)];
 	}
 	function paintHerdrRail() {
 		if (!sessionRail) return;
@@ -550,24 +542,11 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 			railKeyboard = false;
 			paintSessionRail();
 		};
-		const spaceTabs = sortedTabs();
-		const spaceState = spaceTabs.map(tab => tab.status).sort((a, b) => (STATUS_PRIORITY[a] ?? 3) - (STATUS_PRIORITY[b] ?? 3))[0] ?? 'unknown';
-		const spaces = el('section', null, 'session-rail-group session-rail-spaces');
-		const spaceRow = el('div', null, 'session-rail-space');
-		spaceRow.append(statusDot(spaceState), el('span', spaceTabs[0]?.workspace || 'workspace', 'session-rail-workspace'));
-		spaces.append(el('p', 'spaces', 'session-rail-group-title'), spaceRow);
 		const agents = el('section', null, 'session-rail-group session-rail-agents');
-		agents.append(el('p', 'agents · tabs', 'session-rail-group-title'));
 		const neu = el('button', '+ new', 'session-rail-new');
 		neu.type = 'button';
 		neu.classList.toggle('cursor', choices[railIndex] === 'new');
-		neu.onclick = () => newTab('pi').catch(fail);
-		// The second harness is a second row, not a mode hidden behind the
-		// first: a person should be able to see that this machine has two.
-		const neuClaude = el('button', '+ new Claude', 'session-rail-new');
-		neuClaude.type = 'button';
-		neuClaude.classList.toggle('cursor', choices[railIndex] === 'new-claude');
-		neuClaude.onclick = () => newTab('claude').catch(fail);
+		neu.onclick = () => newTab().catch(fail);
 		const tabs = sortedTabs();
 		const closable = tabs.length > 1;
 		for (const tab of tabs) {
@@ -579,12 +558,8 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 			open.type = 'button';
 			const first = el('span', null, 'session-rail-row');
 			first.append(statusDot(tab.status), el('span', tab.workspace || 'workspace', 'session-rail-workspace'), el('span', tabTitle(tab), 'session-rail-title'));
-		const second = el('span', tab.agent || 'unknown', 'session-rail-agent');
-		// Claude's Herdr override adds terminal_title_stripped here. The browser
-		// has no second terminal title beside the tab label, so repeating it would
-		// make the row less truthful; the agent name is the remaining real value.
 		const stateText = el('span', tab.status || 'unknown', 'session-rail-state');
-			open.append(first, second, stateText);
+			open.append(first, stateText);
 			open.onclick = () => enterTab(tab.id).catch(fail);
 			const close = el('button', 'X', 'session-rail-close');
 			close.type = 'button';
@@ -599,10 +574,7 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 			row.append(open, close);
 			agents.append(row);
 		}
-		// Herdr's space template has branch/git_status rows. This machine has no
-		// branch or git reader at the harness boundary, so those false values stay
-		// out of the row instead of becoming decoration that lies.
-		sessionRail.replaceChildren(toggle, spaces, agents, neu, neuClaude);
+		sessionRail.replaceChildren(toggle, agents, neu);
 		sessionRail.querySelector('.cursor')?.scrollIntoView({ block: 'nearest' });
 	}
 	function paintQuakeRail() {
@@ -613,11 +585,7 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 		const neu = el('button', '+ new', 'session-rail-new');
 		neu.type = 'button';
 		neu.classList.toggle('cursor', choices[railIndex] === 'new');
-		neu.onclick = () => newTab('pi').catch(fail);
-		const neuClaude = el('button', '+ new Claude', 'session-rail-new');
-		neuClaude.type = 'button';
-		neuClaude.classList.toggle('cursor', choices[railIndex] === 'new-claude');
-		neuClaude.onclick = () => newTab('claude').catch(fail);
+		neu.onclick = () => newTab().catch(fail);
 		const list = el('div', null, 'session-rail-list');
 		const tabs = state?.tabs ?? [];
 		const closable = tabs.length > 1;
@@ -628,7 +596,7 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 			const open = el('button', null, 'session-rail-open');
 			open.type = 'button';
 			open.append(el('span', tabTitle(tab), 'session-rail-title'));
-			const note = tab.agent === 'claude' ? `claude · ${tab.busy ? 'working' : 'idle'}` : (tab.busy ? 'working' : 'idle');
+			const note = tab.busy ? 'working' : 'idle';
 			open.append(el('span', note, 'session-rail-note'));
 			open.onclick = () => enterTab(tab.id).catch(fail);
 			const close = el('button', 'X', 'session-rail-close');
@@ -644,7 +612,7 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 			row.append(open, close);
 			list.append(row);
 		}
-		sessionRail.replaceChildren(heading, neu, neuClaude, list);
+		sessionRail.replaceChildren(heading, neu, list);
 		sessionRail.querySelector('.cursor')?.scrollIntoView({ block: 'nearest' });
 	}
 	function paintSessionRail() {
@@ -658,6 +626,18 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 		dot.setAttribute('aria-label', status || 'unknown');
 		return dot;
 	}
+	function mobileTabDots() {
+		const row = el('span', null, 'session-rail-mobile-tabs');
+		row.setAttribute('aria-label', 'tabs');
+		for (const tab of state?.tabs ?? []) {
+			const dot = statusDot(tab.status);
+			dot.classList.add('session-rail-dot-mobile');
+			dot.classList.toggle('focused', Boolean(tab.focused));
+			dot.dataset.tabId = tab.id;
+			row.append(dot);
+		}
+		return row;
+	}
 	function moveRail(delta) {
 		const n = railChoices().length;
 		if (!n) return;
@@ -666,8 +646,7 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 	}
 	function activateRail() {
 		const id = railChoices()[railIndex];
-		if (id === 'new') newTab('pi').catch(fail);
-		else if (id === 'new-claude') newTab('claude').catch(fail);
+		if (id === 'new') newTab().catch(fail);
 		else if (id) enterTab(id).catch(fail);
 	}
 	function cycleTab(delta) {
@@ -695,10 +674,10 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 		if (sessionRail.parentElement !== terminal) terminal.append(sessionRail);
 		railKeyboard = true;
 		sessionRail.classList.add('open');
-		// Two new-tab rows stand before the agents now, so the cursor lands on the
-		// agent a person is actually in, not one above it.
+		// One new-tab row stands before the agents, so the cursor lands on the
+		// tab a person is actually in, not on + new.
 		const focused = sortedTabs().findIndex(tab => tab.focused);
-		railIndex = focused >= 0 ? focused + 2 : 0;
+		railIndex = focused >= 0 ? focused + 1 : 0;
 		paintSessionRail();
 		sessionRail.hidden = false;
 		requestAnimationFrame(() => sessionRail.classList.add('open'));
@@ -900,9 +879,7 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 		if (startup?.quiet) return;
 		if (!startup && ((state.messages ?? []).length || state.partial)) return;
 		const expanded = expandAll;
-		// The harness introduces itself in its own words. Everything below this
-		// header is shared; this is the one place the agent is not.
-		const face = faceFor(state.agent);
+		const face = faceFor();
 		const header = el('div', null, 'entry-startup');
 		const logo = el('div', null, 'entry-startup-logo');
 		logo.append(el('span', face.name, 'entry-startup-name'));
@@ -972,35 +949,22 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 		const compacting = state?.operation === 'compacting';
 		inputZone.classList.toggle('working', busy);
 		if (personal) {
-			work.hidden = false;
 			work.replaceChildren();
 			if (compacting) {
+				work.hidden = false;
 				spinner = el('span', WORK_SPIN[spin % WORK_SPIN.length], 'entry-spinner');
-				work.append(spinner, el('span', 'Compacting context... (escape to cancel)', 'entry-work-status'));
+				work.append(spinner, el('span', 'Compacting context... (escape to cancel)', 'entry-work-status'), mobileTabDots());
+				return;
+			}
+			if (busy) {
+				work.hidden = false;
+				spinner = el('span', WORK_SPIN[spin % WORK_SPIN.length], 'entry-spinner');
+				work.append(spinner, el('span', 'Working', 'entry-work-status'), mobileTabDots());
 				return;
 			}
 			spinner = null;
-			if (modelName) {
-				// Until the agent's first frame arrives there is no model to name,
-				// and the standing label is the harness. Naming Pi there put the
-				// wrong agent on the bar of every Claude tab before its first prompt.
-				modelName.textContent = state?.model?.id ?? faceFor(state?.agent).name;
-				work.append(modelName);
-			}
-				if (thinking) {
-					const level = state?.thinkingLevel;
-					thinking.textContent = level && level !== 'off' ? level : '';
-					work.append(thinking);
-				}
-				if (permission && state?.agent === 'claude') {
-					permission.textContent = permissionLabel(state.permissionMode);
-					work.append(permission);
-				}
-				if (context) {
-				context.textContent = contextChip(state?.stats ?? {});
-				if (context.textContent) work.append(el('span', '', 'entry-work-gap'));
-				work.append(context);
-			}
+			work.hidden = false;
+			work.append(mobileTabDots());
 			return;
 		}
 		work.hidden = !busy;
@@ -1011,11 +975,6 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 	}
 
 	function renderStatus() {
-		const sheet = document.getElementById('tui-theme');
-		if (sheet && state.themeRev != null && Number(state.themeRev) !== themeRev) {
-			themeRev = state.themeRev;
-			sheet.href = `/theme.css?r=${themeRev}`;
-		}
 		const live = state.live;
 		document.body.classList.toggle('watching', Boolean(live));
 		document.body.dataset.thinking = state.thinkingLevel || 'off';
@@ -1025,7 +984,7 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 		sessionCwd.textContent = '';
 		const provider = state.model?.provider;
 			if (personal) {
-				modelName.textContent = state.model?.id ?? faceFor(state.agent).name;
+				modelName.textContent = state.model?.id ?? faceFor().name;
 				thinking.textContent = state.thinkingLevel && state.thinkingLevel !== 'off' ? state.thinkingLevel : '';
 				if (permission) {
 					permission.textContent = state.agent === 'claude' ? permissionLabel(state.permissionMode) : '';
@@ -1134,57 +1093,17 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 		if (hooks.canFocus?.()) input.focus();
 	}
 
-	function showUsage(report = {}) {
-		const now = Date.now();
-		overlay = { kind: 'usage' };
-		dialog.hidden = false;
-		dialog.className = 'usage-panel';
-		const frame = document.createDocumentFragment();
-		frame.append(el('p', 'usage', 'entry-dialog-title'));
-		for (const provider of report.providers ?? []) {
-			const block = el('div', null, 'usage-provider');
-			const age = readingAge(provider.fetchedAt, now);
-			const head = el('p', null, 'usage-provider-name');
-			head.append(el('span', provider.name || provider.id || 'provider'));
-			if (provider.plan) head.append(el('span', ` · ${provider.plan}`, 'usage-plan'));
-			if (age.stale) head.append(el('span', ` · ${age.label}`, 'usage-stale'));
-			block.append(head);
-			if (!provider.windows?.length) {
-				block.append(el('p', provider.note || 'no meter', 'usage-empty'));
-			} else {
-				for (const window of provider.windows) {
-					const row = el('div', null, 'usage-window');
-					row.append(el('p', window.label || 'limit', 'usage-window-label'));
-					const meter = el('p', null, 'usage-meter');
-					meter.append(el('span', meterBar(window.percent), 'usage-bar'));
-					meter.append(el('span', `  ${percentLabel(window.percent)}`, 'usage-percent'));
-					row.append(meter);
-					row.append(el('p', resetText(window.resetsAt, now), 'usage-reset'));
-					block.append(row);
-				}
-				if (provider.note) block.append(el('p', provider.note, 'usage-note'));
-			}
-			frame.append(block);
-		}
-		frame.append(el('p', 'esc closes', 'entry-dialog-hint'));
-		dialog.replaceChildren(frame);
-		dialog.tabIndex = 0;
-		dialog.onkeydown = event => {
-			if (event.key === 'Escape') { event.preventDefault(); closeDialog(); }
-		};
-		dialog.focus();
-	}
-
-	function showDialog({ kind, title, hint, rows, onPick, onMove, onCancel, selected, search = rows.length > 8 }) {
+	function showDialog({ kind, title, hint, detail, className = '', rows, onPick, onMove, onCancel, selected, search = rows.length > 8 }) {
 		overlay = { kind, title, onCancel };
 		dialog.hidden = false;
-		dialog.className = search ? 'compact-select' : '';
+		dialog.className = [search ? 'compact-select' : '', className].filter(Boolean).join(' ');
 		let filter = '', active = Math.max(0, rows.findIndex(row => row.label === selected));
 		const paint = () => {
 			const matches = rows.filter(row => row.label.toLowerCase().includes(filter.toLowerCase()));
 			active = Math.max(0, Math.min(active, matches.length - 1));
 			const frame = document.createDocumentFragment();
 			frame.append(el('p', title, 'entry-dialog-title'));
+			if (detail) frame.append(el('div', detail, 'entry-dialog-detail'));
 			if (search) {
 				const box = el('input', null, 'compact-search');
 				box.value = filter; box.placeholder = 'filter';
@@ -1426,7 +1345,8 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 			return;
 		}
 		if (ask.method === 'confirm') {
-			showDialog({ kind: 'extension', title: ask.title, hint: ask.message ?? '', search: false,
+			const permission = permissionFor(state?.agent);
+			showDialog({ kind: 'extension', title: ask.title, detail: permission ? ask.message : '', hint: permission?.hint ?? ask.message ?? '', className: permission?.className, search: false,
 				rows: [{ label: 'yes', pick: () => answer({ confirmed: true }) }, { label: 'no', pick: () => answer({ confirmed: false }) }] });
 			return;
 		}
@@ -1449,6 +1369,23 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 				const models = await command('models');
 				showDialog({ kind: 'model', title: 'model', rows: models.map(m => ({ label: `${m.provider}/${m.id}`, note: m.name && m.name !== m.id ? m.name : m.description, pick: () => command('model', { provider: m.provider, modelId: m.id }) })) });
 			}],
+		['/harness', 'auto, or pin an engine this tab is allowed to use', async argument => {
+			const verb = String(argument ?? '').trim().toLowerCase();
+			if (verb) {
+				await command('harness', { engine: verb });
+				return;
+			}
+			const info = await command('harness');
+			const rows = [
+				{ label: 'auto', note: info.policy === 'auto' ? 'now' : '', pick: () => command('harness', { engine: 'auto' }) },
+				...info.allowed.map(engine => ({
+					label: engine,
+					note: info.current === engine ? 'this tab' : '',
+					pick: () => command('harness', { engine }),
+				})),
+			];
+			showDialog({ kind: 'harness', title: 'harness', hint: `policy ${info.policy} · this tab ${info.current}`, rows });
+		}],
 		['/effort', 'set effort for the current Claude model', async () => {
 			const model = state?.model;
 			const levels = model?.supportedEffortLevels ?? [];
@@ -1461,10 +1398,9 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 			for (const session of rows) {
 				const title = session.name ?? session.firstMessage?.slice(0, 80) ?? session.id;
 				const when = new Date(session.modified).toLocaleString();
-				if (session.liveOwner) choices.push({ label: `▶ ${title}`, note: `watch live · terminal pid ${session.liveOwner.pid}`, pick: () => command('attach', { pid: session.liveOwner.pid }) });
-				choices.push({ label: title, note: `${session.liveOwner ? 'open a copy' : 'resume'} · ${session.cwd} · ${when}`, pick: () => command('resume', { path: session.path }) });
+				choices.push({ label: title, note: `resume · ${session.cwd} · ${when}`, pick: () => command('resume', { path: session.path }) });
 			}
-			showDialog({ kind: 'resume', title: 'sessions', hint: '▶ watches a running terminal · the rest open here', rows: choices });
+			showDialog({ kind: 'resume', title: 'sessions', hint: 'enter resumes · esc closes', rows: choices });
 		}],
 		['/new', 'start a session', () => command('new')],
 		['/name', 'name this session · /name some words', argument => {
@@ -1478,21 +1414,8 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 			showFlash('Reloaded keybindings, extensions, skills, prompts, themes, and context files');
 		}],
 		['/tab', 'open the tabs window', () => openSessionRail()],
-			...(personal ? [
-				['/usage', 'Claude, Codex, and Grok subscription meters', async () => {
-				showFlash('reading usage…');
-				let report;
-				try {
-					report = await command('usage');
-				} catch {
-					const res = await fetch('/antiburn-report.json', { cache: 'no-store' });
-					if (!res.ok) throw new Error('/usage needs a local usage reading');
-					report = await res.json();
-				}
-				showFlash('');
-				showUsage(report);
-			}],
-			['/guey-reload', 'reload this page (new HTML, CSS, JS)', () => { location.reload(); }],
+		...(personal ? [
+			['/guey-reload', 'reload this page', () => { location.reload(); }],
 		] : []),
 		['/guey', 'reload the page, or restart the process · /guey reload | /guey restart', async (argument) => {
 			const verb = String(argument ?? '').trim().toLowerCase();
@@ -1501,7 +1424,6 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 			throw new Error('/guey wants reload or restart');
 		}],
 		['/guey-restart', 'restart this Guey process (loads new server code)', () => restartGuey()],
-		['/detach', 'stop watching the terminal', () => command('detach')],
 		['/thinking', 'thinking level', async () => {
 			const info = await command('thinking');
 			showDialog({ kind: 'thinking', title: 'thinking', rows: (info.available ?? []).map(level => ({
@@ -1525,17 +1447,6 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 				label: row.text.slice(0, 80) || row.entryId, pick: () => command('fork', { entryId: row.entryId }),
 			})) });
 		}],
-		['/theme', 'Color theme for the interface', async () => {
-			const info = await command('themes');
-			const saved = info.saved ?? state.theme;
-			showDialog({
-				kind: 'theme', title: 'Theme', hint: personal ? 'Select garden or night. The device palette is ignored.' : 'Select a theme, or choose Automatic to follow terminal appearance.',
-				selected: saved,
-				rows: info.names.map(name => ({ label: name, note: name === saved ? 'saved' : '', pick: () => command('theme', { name, persist: true }) })),
-				onMove: row => command('theme', { name: row.label }),
-				onCancel: () => command('theme', { name: saved }),
-			});
-		}],
 		['/settings', 'Open settings menu', async () => {
 			showStockSettings(await command('settings'));
 		}],
@@ -1547,7 +1458,7 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 		}],
 	];
 
-	const slashView = () => faceFor(state?.agent).slashView;
+	const slashView = () => commandsFor(state?.agent);
 
 	function catalog() {
 			const extra = (state?.agent === 'claude' ? [] : state?.commands ?? []).map(item => {
@@ -1570,7 +1481,7 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 		for (const row of extra) {
 			if (!ordered.some(item => item[0] === row[0])) ordered.push(row);
 		}
-			for (const name of ['/tab', '/guey', '/guey-restart', ...(personal ? ['/usage', '/guey-reload'] : [])]) {
+			for (const name of ['/tab', '/guey', '/guey-restart', ...(personal ? ['/guey-reload'] : [])]) {
 			if (byName.has(name) && !ordered.some(item => item[0] === name)) ordered.push(byName.get(name));
 		}
 		return ordered;
@@ -1763,42 +1674,6 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 		paintPending();
 		hooks.onDraftChange?.();
 	}
-	let shareGate = Promise.resolve();
-	function consumeIncomingShares() {
-		const run = async () => {
-			const files = await takeSharedFiles();
-			if (!files.length) return;
-			await clearSharedFiles();
-			hooks.onIncomingShare?.();
-			await attachFiles(files);
-			try {
-				if (new URLSearchParams(location.search).has('shared')) {
-					history.replaceState(null, '', `${location.pathname}${location.hash}`);
-				}
-			} catch { /* ignore */ }
-		};
-		shareGate = shareGate.then(run, run);
-		return shareGate;
-	}
-	if (personal) {
-		consumeIncomingShares();
-		addEventListener('guey:take-shares', () => consumeIncomingShares());
-		addEventListener('pageshow', () => consumeIncomingShares());
-		navigator.serviceWorker?.addEventListener('message', event => {
-			if (event.data?.type === 'guey-share') consumeIncomingShares();
-		});
-		if ('launchQueue' in window) {
-			window.launchQueue.setConsumer(async launch => {
-				const files = [];
-				for (const handle of launch.files ?? []) {
-					try { files.push(await handle.getFile()); } catch { /* skipped */ }
-				}
-				if (!files.length) return;
-				hooks.onIncomingShare?.();
-				await attachFiles(files);
-			});
-		}
-	}
 	function pasteFiles(bag) {
 		if (!bag) return [];
 		const listed = [...(bag.files ?? [])].filter(Boolean);
@@ -1871,42 +1746,6 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 		}
 	}
 
-	async function promptFromVoice(text) {
-		const pinnedSession = state?.sessionId ?? null;
-		const pinnedTab = focusedTabId();
-		const draft = input.value;
-		const block = composerBlockReason({
-			draft,
-			attachments: attachments.length,
-			slashOpen: Boolean(slashMenu && !slashMenu.hidden),
-			busy: Boolean(state?.busy),
-		});
-		if (block) return { accepted: false, error: block, sessionId: pinnedSession, tabId: pinnedTab };
-		const trimmed = String(text ?? '').trim();
-		if (!trimmed) return { accepted: false, error: 'empty', sessionId: pinnedSession, tabId: pinnedTab };
-		if (trimmed.startsWith('/')) return { accepted: false, error: 'slash commands are not ordinary voice prompts', sessionId: pinnedSession, tabId: pinnedTab };
-		if (state?.sessionId !== pinnedSession || focusedTabId() !== pinnedTab) {
-			return { accepted: false, error: 'session changed', expected: pinnedSession, sessionId: state?.sessionId ?? null, tabId: focusedTabId() };
-		}
-		input.value = trimmed;
-		input.dispatchEvent(new Event('input', { bubbles: true }));
-		hooks.onDraftChange?.();
-		if (state?.sessionId !== pinnedSession || focusedTabId() !== pinnedTab) {
-			input.value = draft;
-			input.dispatchEvent(new Event('input', { bubbles: true }));
-			hooks.onDraftChange?.();
-			return { accepted: false, error: 'session changed', expected: pinnedSession, sessionId: state?.sessionId ?? null, tabId: focusedTabId() };
-		}
-		const result = await submit(undefined, { expectedSessionId: pinnedSession, expectedTabId: pinnedTab });
-		return {
-			...result,
-			sessionId: state?.sessionId ?? null,
-			tabId: focusedTabId(),
-			expected: pinnedSession,
-			focusChanged: state?.sessionId !== pinnedSession || focusedTabId() !== pinnedTab,
-		};
-	}
-
 	function moveSlash(delta) {
 		if (slashMenu.hidden) return false;
 		const draft = input.value;
@@ -1932,8 +1771,6 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 		event.preventDefault();
 		moveSlash(event.deltaY > 0 ? 1 : -1);
 	}, { passive: false });
-	const dictation = personal ? createDictation(input) : { start: () => {}, stop: () => {} };
-	if (personal) attachHoldSpace(input, dictation);
 	registerKeyBinding({
 		label: 'Ctrl+O', description: 'expand tool output', code: 'KeyO', ctrl: true, target: input,
 		handler: () => { expandAll = !expandAll; render(); },
@@ -1958,8 +1795,13 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 		},
 	});
 	registerKeyBinding({
-		label: 'Enter', description: 'send prompt or command', code: 'Enter', target: input,
+		label: 'Enter', description: 'send prompt or steer while working', code: 'Enter', target: input,
 		when: event => !event?.isComposing && !sessionRailOpen() && !overlay, handler: () => submit(),
+	});
+	registerKeyBinding({
+		label: 'Alt+Enter', description: 'queue as follow-up (composer has text)', code: 'Enter', alt: true, target: input,
+		when: () => Boolean(input.value.trim()) && document.activeElement === input && !overlay && !sessionRailOpen(),
+		handler: () => submit('followUp'),
 	});
 	input.addEventListener('keydown', event => {
 		if (sessionRailOpen() && ['ArrowDown', 'ArrowUp', 'ArrowRight', 'ArrowLeft'].includes(event.key) && !event.altKey) {
@@ -2028,12 +1870,10 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 		if (socket?.readyState === WebSocket.OPEN) hello();
 		else connect();
 	});
-	if (personal && 'serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 	connect();
 
 	return {
 		submit,
-		dictation,
 		isLive: () => socket?.readyState === WebSocket.OPEN,
 		isBusy: () => Boolean(state?.busy),
 		guiSnapshot,
@@ -2046,7 +1886,6 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 			turnListeners.add(fn);
 			return () => turnListeners.delete(fn);
 		},
-		promptFromVoice,
 		composerStatus: () => ({
 			draft: input.value,
 			attachments: attachments.length,
@@ -2067,10 +1906,6 @@ export function mountGueyPi({ elements, hooks = {}, personal = true }) {
 		openTabs: () => openSessionRail(),
 		closeTabs: () => closeSessionRail(),
 		setHerdrFace,
-		openWindow: (spec) => command('window-open', { window: spec }),
-		closeWindow: (id) => command('window-close', { windowId: id }),
-		setTheme: (name, persist = true) => command('theme', { name, persist }),
-		windows: () => state?.windows ?? [],
 		attachFiles,
 	};
 }

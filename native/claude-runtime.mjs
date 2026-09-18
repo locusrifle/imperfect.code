@@ -191,7 +191,10 @@ export async function createClaudeRuntime({
   function describeToolInput(input) {
     if (!input || typeof input !== 'object' || !Object.keys(input).length) return '';
     try {
-      const text = JSON.stringify(input, null, 2);
+      const text = Object.entries(input).map(([key, value]) => {
+        const readable = typeof value === 'string' ? value : JSON.stringify(value);
+        return `${key}: ${readable}`;
+      }).join('\n');
       return text.length > 2000 ? `${text.slice(0, 2000)}…` : text;
     } catch { return ''; }
   }
@@ -231,7 +234,9 @@ export async function createClaudeRuntime({
         const content = blocksFromClaude(msg.message?.content);
         for (const block of content) if (block.type === 'toolCall') {
           toolNames.set(block.id, block.name);
-          runningTools = { ...runningTools, [block.id]: { id: block.id, name: block.name, arguments: block.arguments } };
+          // The transcript keeps Pi's block shape; the live-tool list has its
+          // own host contract, which the shared renderer also uses for Pi.
+          runningTools = { ...runningTools, [block.id]: { toolCallId: block.id, toolName: block.name, args: block.arguments } };
         }
         if (content.length) messages = [...messages, { role: 'assistant', content, ...(msg.error ? { errorMessage: String(msg.error.message ?? msg.error) } : {}) }];
         changed();

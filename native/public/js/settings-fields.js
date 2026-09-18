@@ -38,7 +38,6 @@ export const SETTING_DEFS = [
 	{ key: 'fullscreenExitOutput', label: 'Fullscreen exit output', description: 'Print the transcript or only a session resume hint when exiting fullscreen mode', kind: 'enum', values: ['transcript', 'resume-hint'], def: 'transcript' },
 	{ key: 'fullscreenScrollbar', label: 'Fullscreen scrollbar', description: 'Scrollbar behavior in fullscreen mode; has no effect in regular mode', kind: 'enum', values: ['auto', 'always', 'hidden'], def: 'auto' },
 	{ key: 'fullscreenCopyOnSelect', label: 'Fullscreen copy on select', description: 'Automatically copy selected text in fullscreen mode; disable to copy selections with Ctrl+X', kind: 'bool', def: false },
-	{ key: 'theme', label: 'Theme', description: 'Color theme for the interface', kind: 'theme', def: 'garden' },
 ];
 
 export function displayValue(def, raw, extra = {}) {
@@ -50,7 +49,6 @@ export function displayValue(def, raw, extra = {}) {
 		const count = Object.keys(extra.modelThinkingLevels ?? raw ?? {}).length;
 		return count ? `${count} configured` : 'none';
 	}
-	if (def.kind === 'theme') return String(raw ?? extra.theme ?? def.def);
 	return String(raw ?? def.def);
 }
 

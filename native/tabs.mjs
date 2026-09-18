@@ -2,6 +2,7 @@ import { EventEmitter } from 'node:events';
 import { basename } from 'node:path';
 import { createRuntime } from './runtime.mjs';
 import { createClaudeRuntime } from './claude-runtime.mjs';
+import { resolveClaudeAuth } from './claude-credentials.mjs';
 import { answerEvidence } from './public/js/session-logic.js';
 
 function messageText(content) {
@@ -94,7 +95,38 @@ export async function createTabHost(options = {}) {
   let seq = 1;
   const tabs = [{ id: 't1', runtime: first, agent: 'pi', wasTurn: turnActive(first.snapshot()), unseenSettled: false }];
   let focused = 't1';
+  let harnessPolicy = 'auto';
   const current = () => tabs.find(tab => tab.id === focused) ?? tabs[0];
+
+  function claudeAuth() {
+    if (!shared.agentDir) return { key: null, source: null };
+    return resolveClaudeAuth(shared.agentDir);
+  }
+  function allowedHarnesses(tab = current()) {
+    const auth = claudeAuth();
+    const hasClaude = Boolean(auth.source);
+    const claudeKey = auth.source === 'stored' || auth.source === 'ambient';
+    const claudeSub = auth.source === 'login' || auth.source === 'token';
+    const model = tab?.runtime.snapshot()?.model;
+    const onClaudeModel = tab?.agent === 'claude' || model?.provider === 'claude-agent';
+    if (onClaudeModel && claudeSub && !claudeKey) return ['claude'];
+    const engines = ['pi'];
+    if (hasClaude) engines.push('claude');
+    return engines;
+  }
+  function engineForModel(model) {
+    if (harnessPolicy === 'pi' || harnessPolicy === 'claude') return harnessPolicy;
+    if (!model) return current().agent;
+    if (model.provider === 'claude-agent') return 'claude';
+    if (model.provider === 'anthropic') {
+      const auth = claudeAuth();
+      const claudeKey = auth.source === 'stored' || auth.source === 'ambient';
+      const claudeSub = auth.source === 'login' || auth.source === 'token';
+      if (claudeSub && !claudeKey) return 'claude';
+      return 'pi';
+    }
+    return 'pi';
+  }
 
   function bind(tab) {
     tab.runtime.events.on('change', () => {
@@ -120,10 +152,54 @@ export async function createTabHost(options = {}) {
     // The host is the authority on which agent a tab is, not the runtime: a
     // face is chosen from this, so it must be right even for a runtime that
     // never says what it is.
-    return { ...tab.runtime.snapshot(), agent: tab.agent, tabs: tabs.map(item => summary(item, item.id === focused)) };
+    return { ...tab.runtime.snapshot(), agent: tab.agent, harness: harnessPolicy, tabs: tabs.map(item => summary(item, item.id === focused)) };
   }
 
   async function command(c) {
+    if (c.type === 'harness') {
+      if (!c.engine) return { policy: harnessPolicy, current: current().agent, allowed: allowedHarnesses() };
+      if (c.engine === 'auto') {
+        harnessPolicy = 'auto';
+        events.emit('change');
+        return { policy: harnessPolicy, current: current().agent, allowed: allowedHarnesses() };
+      }
+      if (!allowedHarnesses().includes(c.engine)) throw new Error('That harness is not allowed with the current credentials');
+      harnessPolicy = c.engine;
+      if (current().agent !== c.engine) return command({ type: 'tab-new', agent: c.engine });
+      events.emit('change');
+      return { policy: harnessPolicy, current: current().agent, allowed: allowedHarnesses() };
+    }
+    if (c.type === 'models') {
+      const rows = [];
+      const seen = new Set();
+      const add = list => {
+        for (const model of list ?? []) {
+          const key = `${model.provider}/${model.id}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          rows.push(model);
+        }
+      };
+      const piTab = tabs.find(item => item.agent === 'pi');
+      if (piTab) add(await piTab.runtime.command({ type: 'models' }));
+      if (claudeAuth().source) {
+        try {
+          const claudeTab = tabs.find(item => item.agent === 'claude');
+          if (claudeTab) add(await claudeTab.runtime.command({ type: 'models' }));
+          else {
+            const tmp = await make({ fresh: true, persistPointer: false }, 'claude');
+            try { add(await tmp.command({ type: 'models' })); }
+            finally { await tmp.close(); }
+          }
+        } catch { /* no Claude credential that can list models */ }
+      }
+      return rows;
+    }
+    if (c.type === 'model') {
+      const engine = engineForModel({ provider: c.provider, id: c.modelId });
+      if (engine !== current().agent) await command({ type: 'tab-new', agent: engine });
+      return current().runtime.command(c);
+    }
     if (c.type === 'tab-focus') {
       const tab = tabs.find(item => item.id === c.tabId);
       if (!tab) throw new Error('Unknown tab');
@@ -133,7 +209,7 @@ export async function createTabHost(options = {}) {
       return summary(tab, true);
     }
     if (c.type === 'tab-new') {
-      const agent = c.agent === 'claude' ? 'claude' : 'pi';
+      const agent = c.agent === 'claude' || c.agent === 'pi' ? c.agent : current().agent;
       // A Claude tab with no key throws before it is ever pushed, so a refused
       // new tab leaves the rail exactly as it was rather than half-open.
       const runtime = await make({ fresh: true, persistPointer: false }, agent);

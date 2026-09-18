@@ -1,6 +1,6 @@
 {
-  "name": "imperfect-computer",
-  "version": "0.3.0",
+  "name": "imperfect",
+  "version": "0.4.0",
   "private": true,
   "license": "AGPL-3.0-only",
   "type": "module",
@@ -9,33 +9,21 @@
   },
   "scripts": {
     "start": "node start.mjs",
-    "test": "node --test native/test/native.test.mjs native/test/live.test.mjs native/test/product.test.mjs native/test/tabs.test.mjs native/test/session-logic.test.mjs native/test/graph.test.mjs native/test/graph-layout.test.mjs native/test/image-lab.test.mjs native/test/wallpapers.test.mjs native/test/two-harnesses.test.mjs test/*.test.mjs",
-    "test:auth": "node --test native/test/auth.test.mjs native/test/claude-auth.test.mjs",
-    "test:browser": "node --test native/test/browser.test.mjs",
-    "test:install": "node --test test/install.test.mjs test/runtime-subprocess.test.mjs test/ingress.test.mjs",
-    "test:all": "node --test native/test/*.test.mjs test/*.test.mjs",
-    "pack": "node install/imperfect.mjs pack",
-    "check": "node install/imperfect.mjs check"
+    "test": "node --test native/test/agent-faces.test.mjs native/test/auth.test.mjs native/test/claude-auth.test.mjs native/test/session-logic.test.mjs native/test/tabs.test.mjs native/test/two-harnesses.test.mjs test/environment.test.mjs test/uploads.test.mjs",
+    "test:all": "npm test"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.273",
     "@earendil-works/pi-coding-agent": "0.85.1",
-    "@earendil-works/pi-server": "0.85.1",
-    "html2canvas": "^1.4.1",
-    "html2canvas-pro": "^2.4.1",
     "ws": "8.21.3"
   },
   "pi": {
     "extensions": [
-      "./extensions/guey-live",
       "./extensions/imperfect-environment"
-    ],
-    "themes": [
-      "./themes"
     ]
   },
   "devDependencies": {
     "playwright": "1.63.0"
   },
-  "description": "The imperfect computer machine app (imperfect.os). Pi GUI on the supported SDK."
+  "description": "A local graphical harness for Noah's imperfect computer."
 }

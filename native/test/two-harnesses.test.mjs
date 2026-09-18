@@ -206,9 +206,9 @@ test('the tab host runs both harnesses at once and says which is which', async (
     await host.command({ type: 'tab-focus', tabId: tabs[1].id });
     assert.equal(host.snapshot().agent, 'claude');
 
-    // An unnamed agent is still Pi, so nothing that already called tab-new breaks.
+    // + new does not pick a brand. It continues the engine this tab already has.
     await host.command({ type: 'tab-new' });
-    assert.equal(host.snapshot().tabs[2].agent, 'pi');
+    assert.equal(host.snapshot().tabs[2].agent, 'claude');
   } finally { await host.close(); await rm(root, { recursive: true, force: true }); }
 });
 
@@ -233,7 +233,8 @@ test('the permission dialog names the tool and shows what it would run', async (
     await wait(async () => runtime.snapshot().ui.dialogs.length > 0);
     let dialog = runtime.snapshot().ui.dialogs[0];
     assert.equal(dialog.title, 'Run Bash?', 'the tool is named, not "a tool"');
-    assert.match(dialog.message, /rm -rf \/tmp\/x/, 'the person can see what would run');
+    assert.match(dialog.message, /command: rm -rf \/tmp\/x/, 'the person can see what would run');
+    assert.doesNotMatch(dialog.message, /[{}]/, 'the detail is not a raw JSON blob');
     runtime.command({ type: 'dialog', dialogId: dialog.id, confirmed: true });
     assert.deepEqual(await plain, { behavior: 'allow', updatedInput: { command: 'rm -rf /tmp/x' } });
 
@@ -256,5 +257,19 @@ test('the permission dialog names the tool and shows what it would run', async (
     await wait(async () => runtime.snapshot().ui.dialogs.length > 0);
     ac.abort();
     assert.equal((await aborted).behavior, 'deny', 'an aborted request is not left hanging');
+  } finally { await runtime.close(); await rm(root, { recursive: true, force: true }); }
+});
+
+test('Claude live tool rows use the shared running-tool contract', async () => {
+  const { root, agentDir, cwd } = await workspace();
+  const queryImpl = fakeQuery([{ type: 'assistant', session_id: 's1', message: { content: [
+    { type: 'tool_use', id: 'tu-live', name: 'Read', input: { file_path: '/etc/hostname' } },
+  ] } }]);
+  const runtime = await createClaudeRuntime({ cwd, agentDir, queryImpl, listSessionsImpl: async () => [] });
+  try {
+    await wait(() => runtime.snapshot().messages.some(entry => entry.role === 'assistant'));
+    assert.deepEqual(runtime.snapshot().runningTools, [{
+      toolCallId: 'tu-live', toolName: 'Read', args: { file_path: '/etc/hostname' },
+    }]);
   } finally { await runtime.close(); await rm(root, { recursive: true, force: true }); }
 });

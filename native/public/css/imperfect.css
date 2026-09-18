@@ -1,396 +1,63 @@
-/* Omarchy's wallpaper is the canvas. The drop is Pi's TUI: half the viewport on
-   a pointer, 70% on a phone so the custom keys can stand on the remaining 30%.
-   Every colour below comes from the Omarchy theme the server reads; the literal
-   values are the shell's own now; Omarchy no longer supplies a theme here. */
 html:has(body.imperfect),
 body.imperfect {
-  touch-action: none;
-  overscroll-behavior: none;
-  /* Omarchy supplied these until it was removed on 2026-09-14, and every use of them across the
-     shell fell back to a dark literal invented on the spot -- which is why the machine still
-     looked like a different product from the door. They are the brand's now, and they are set
-     here once, so no fallback below is ever reached and there is one place to change them. */
-  --om-bg: var(--panel);
-  --om-bg-dark: var(--panel-raised);
-  --om-bg-darker: var(--paper);
-  --om-fg: var(--panel-text);
-  --om-fg-bright: var(--panel-bright);
-  --om-fg-dim: var(--panel-rule);
-  --om-muted: var(--muted);
-  --om-accent: var(--orange);
-  --om-selection: var(--panel-band);
-  --om-border: var(--orange);
-  --om-border-idle: var(--panel-rule);
-
-  --scene-void: var(--om-bg);
-  --accent: var(--om-accent);
-  --strand-a: var(--om-muted);
-  --strand-b: var(--om-accent);
-  --major: var(--ic-grid-major, 24px);
-  --tui-pageBg: var(--scene-void);
-  --tui-cardBg: var(--om-bg-dark, color-mix(in srgb, var(--scene-void) 88%, #fff));
-  --tui-userMessageBg: var(--om-selection, color-mix(in srgb, var(--scene-void) 72%, #000));
-  --tui-text: var(--om-fg, #cacccc);
-  --tui-userMessageText: var(--om-fg-bright, #f7f1fb);
-  --tui-muted: var(--om-muted, #b39cbe);
-  --tui-dim: var(--om-fg-dim, #8a6d98);
-  --pi-bg: var(--scene-void);
-  --pi-bg-raised: var(--tui-cardBg);
-  --pi-text: var(--om-fg, #cacccc);
-  --pi-text-bright: var(--om-fg-bright, #f7f1fb);
-  --pi-muted: var(--om-muted, #b39cbe);
-  --pi-dim: var(--om-fg-dim, #6e4d7c);
-  --pi-cursor: var(--om-fg-bright, #f7f1fb);
-  --pi-user: var(--tui-userMessageBg);
-  /* shell.css paints the ground behind the wallpaper layer. */
-  background-image: none;
-}
-body.imperfect::before { content: none; }
-body {
+  --scene-void: var(--panel);
+  --tui-pageBg: var(--panel);
+  --tui-cardBg: var(--panel-raised);
+  --tui-userMessageBg: var(--panel-band);
+  --tui-text: var(--panel-text);
+  --tui-userMessageText: var(--panel-bright);
+  --tui-muted: var(--muted);
+  --tui-dim: var(--panel-rule);
+  --pi-bg: var(--panel);
+  --pi-bg-raised: var(--panel-raised);
+  --pi-text: var(--panel-text);
+  --pi-text-bright: var(--panel-bright);
+  --pi-muted: var(--muted);
+  --pi-dim: var(--panel-rule);
+  --pi-cursor: var(--panel-bright);
+  --pi-user: var(--panel-band);
+  --entry-terminal-height: 50dvh;
+  overflow: hidden;
+  background: var(--paper) url('/media/cosmos.png') center / cover no-repeat fixed;
   font-size: 13px;
   line-height: 1.5;
-  --entry-terminal-height: 50dvh;
 }
 
-/* A laptop keeps the half-height drop. A touch screen gets more of it, because the 30% that used
-   to belong to the custom key sheet went back to the viewport when that sheet was deleted on
-   2026-09-14 -- and the OS keyboard now resizes the layout viewport rather than covering it, so
-   dvh shrinks with the keys and the composer stays above them. */
-@media (pointer: coarse) {
-	body.imperfect { --entry-terminal-height: 70dvh; }
-}
-
-#terminal-entry { touch-action: none; }
-#entry-terminal, #entry-output, .entry-screen {
-  touch-action: pan-y;
-}
-#entry-input { touch-action: manipulation; }
-#session-rail { touch-action: pan-y; }
-body.imperfect .session-rail-close {
-  width: 2.75em;
-  min-height: 2.75em;
-}
-
-body.imperfect .drop-handle { cursor: grab; }
-body.imperfect #entry-spend { display: none; }
-body.imperfect .entry-status { display: none; }
-
-/* Herdr is a fullscreen shell window. It borrows the live terminal and live
-   session rail; the quake selectors remain responsible for their old
-   half-height face. */
-body.imperfect .herdr-face {
-  --tui-pageBg: #000; --tui-bg: #000; --pi-bg: #000;
-  --tui-text: #ddd; --pi-text: #ddd; --tui-muted: #888; --pi-muted: #888;
-  --tui-dim: #555; --pi-dim: #555; --tui-accent: #4f8cff; --pi-accent: #4f8cff;
-  --tui-selectedBg: #17243d; --tui-border: #333; --pi-rule: #333;
-  --tui-error: #e06c75; --tui-success: #98c379;
-  display: grid;
-  grid-template-columns: minmax(13rem, 17rem) minmax(0, 1fr);
-  grid-template-areas: "sidebar main";
-  overflow: hidden;
-  background: #000;
-  color: var(--tui-text);
-}
-body.imperfect .herdr-face > #entry-terminal {
-  position: relative; inset: auto; grid-area: main; width: auto; height: auto;
-  max-height: none; min-width: 0; min-height: 0; transform: none; box-shadow: none;
-  background: #000;
-}
-body.imperfect .herdr-face .drop-handle { display: none; }
-body.imperfect .herdr-face > #session-rail {
-  position: relative; inset: auto; grid-area: sidebar; z-index: 1; box-sizing: border-box;
-  min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 0.55em;
-  padding: 0.7em 0.6em; overflow: auto; transform: none;
-  border-right: 1px solid var(--tui-border); background: #000; color: var(--tui-text);
-}
-body.imperfect .herdr-face > #session-rail.open { width: auto; }
-body.imperfect .herdr-face > #session-rail:not(.open) {
-  width: 2.75rem; align-items: center; padding-inline: 0.35rem; overflow-x: hidden;
-}
-body.imperfect .herdr-face > #session-rail:not(.open) .session-rail-spaces,
-body.imperfect .herdr-face > #session-rail:not(.open) .session-rail-group-title,
-body.imperfect .herdr-face > #session-rail:not(.open) .session-rail-new,
-body.imperfect .herdr-face > #session-rail:not(.open) .session-rail-agent,
-body.imperfect .herdr-face > #session-rail:not(.open) .session-rail-state,
-body.imperfect .herdr-face > #session-rail:not(.open) .session-rail-workspace,
-body.imperfect .herdr-face > #session-rail:not(.open) .session-rail-title,
-body.imperfect .herdr-face > #session-rail:not(.open) .session-rail-close { display: none; }
-body.imperfect .herdr-face > #session-rail:not(.open) .session-rail-agents { display: contents; }
-body.imperfect .herdr-face > #session-rail:not(.open) .session-rail-item,
-body.imperfect .herdr-face > #session-rail:not(.open) .session-rail-open { width: 100%; }
-body.imperfect .herdr-face > #session-rail:not(.open) .session-rail-open { padding: 0.35em; }
-body.imperfect .herdr-face > #session-rail:not(.open) .session-rail-row { justify-content: center; }
-body.imperfect .herdr-face .session-rail-toggle {
-  align-self: flex-start; appearance: none; border: 0; padding: 0.1em 0.35em;
-  background: transparent; color: var(--tui-muted); font: inherit; cursor: pointer;
-}
-body.imperfect .herdr-face .session-rail-group { display: grid; gap: 0.25em; }
-body.imperfect .herdr-face .session-rail-group-title {
-  margin: 0; color: var(--tui-accent); font-size: 0.78em; letter-spacing: 0.08em; text-transform: uppercase;
-}
-body.imperfect .herdr-face .session-rail-space,
-body.imperfect .herdr-face .session-rail-row {
-  display: flex; align-items: center; min-width: 0; gap: 0.55em;
-}
-body.imperfect .herdr-face .session-rail-space { padding: 0.35em 0.4em; }
-body.imperfect .herdr-face .session-rail-workspace,
-body.imperfect .herdr-face .session-rail-title {
-  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-body.imperfect .herdr-face .session-rail-workspace { color: var(--tui-muted); }
-body.imperfect .herdr-face .session-rail-list { display: contents; }
-body.imperfect .herdr-face .session-rail-item {
-  display: flex; align-items: flex-start; min-width: 0; gap: 0.3em; border: 0;
-}
-body.imperfect .herdr-face .session-rail-item.cursor,
-body.imperfect .herdr-face .session-rail-item.active { background: var(--tui-selectedBg); }
-body.imperfect .herdr-face .session-rail-open {
-  flex: 1; min-width: 0; padding: 0.38em 0.4em; text-align: left;
-}
-body.imperfect .herdr-face .session-rail-item.active .session-rail-title { color: var(--tui-accent); }
-body.imperfect .herdr-face .session-rail-agent { display: block; color: var(--tui-text); font-size: 0.92em; }
-body.imperfect .herdr-face .session-rail-state {
-  position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);
-  clip-path: inset(50%); white-space: nowrap;
-}
-body.imperfect .herdr-face .session-rail-new {
-  display: block; width: 100%; padding: 0.38em 0.4em; border: 0; background: transparent;
-  color: var(--tui-accent); font: inherit; text-align: left; cursor: pointer;
-}
-body.imperfect .herdr-face .session-rail-close {
-  flex: none; width: 2em; min-height: 2em; padding: 0.35em 0; border: 0;
-  background: transparent; color: var(--tui-muted); font: inherit; cursor: pointer;
-}
-body.imperfect .herdr-face .session-rail-close:disabled { opacity: 0.35; cursor: default; }
-body.imperfect .herdr-face .session-rail-dot {
-  display: inline-block; flex: 0 0 0.62em; width: 0.62em; height: 0.62em;
-  border-radius: 50%; background: var(--tui-muted);
-}
-body.imperfect .herdr-face .session-rail-dot[data-state="working"] { background: var(--tui-accent); }
-body.imperfect .herdr-face .session-rail-dot[data-state="blocked"] { background: var(--tui-error); }
-body.imperfect .herdr-face .session-rail-dot[data-state="done"] { background: var(--tui-success); }
-body.imperfect .herdr-face .session-rail-dot[data-state="unknown"] { background: var(--tui-dim); }
-@media (max-width: 700px) {
-  body.imperfect .herdr-face {
-    grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, auto) minmax(0, 1fr);
-    grid-template-areas: "sidebar" "main";
-  }
-  body.imperfect .herdr-face > #session-rail {
-    width: auto; max-height: min(38%, 13rem); border-right: 0; border-bottom: 1px solid var(--tui-border);
-  }
-  body.imperfect .herdr-face > #session-rail:not(.open) {
-    width: auto; min-height: 2.75rem; max-height: 2.75rem; flex-direction: row;
-    align-items: center; overflow-x: auto; overflow-y: hidden;
-  }
-  body.imperfect .herdr-face > #session-rail:not(.open) .session-rail-agents { display: flex; flex-direction: row; }
-  body.imperfect .herdr-face > #session-rail:not(.open) .session-rail-item { width: auto; }
-  body.imperfect .herdr-face > #session-rail:not(.open) .session-rail-open { width: auto; }
-}
-
-body.imperfect #entry-input-zone {
-  min-height: 0;
-  margin: 0;
-  padding: 0;
-}
-body.imperfect #entry-input-zone::before { display: none; }
-body.imperfect #entry-input-zone::after {
-  left: 0;
-  right: 0;
-}
-body.imperfect #entry-work {
-  position: relative;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 0;
+#harness-reach {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 10;
   width: 100%;
-  min-height: 1.35em;
-  margin: 0;
-  padding: 0 var(--entry-gutter, var(--ic-grid-major, 24px));
-  color: var(--tui-muted, var(--pi-muted));
-  font-style: normal;
-}
-body.imperfect #entry-work[hidden] { display: flex; }
-body.imperfect #entry-work::before { content: none; }
-body.imperfect #entry-work::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(50% - 1px);
-  bottom: auto;
-  flex: none;
-  border-top: 1px solid var(--stock-think-border, var(--tui-accent));
-  height: 0;
-}
-body.imperfect #entry-work .entry-spinner,
-body.imperfect #entry-work .entry-work-status,
-body.imperfect #entry-work #entry-pi-label,
-body.imperfect #entry-work #entry-thinking,
-body.imperfect #entry-work #entry-permission,
-body.imperfect #entry-work #entry-context {
-  position: relative;
-  z-index: 1;
-  background: var(--tui-pageBg, var(--pi-bg));
-  line-height: 1;
-}
-body.imperfect #entry-work .entry-spinner {
-  width: auto;
-  margin: 0;
-  padding: 0 0.35em 0 0;
-  font-family: var(--font-pi);
-  font-size: 11px;
-  font-style: normal;
-  font-weight: 400;
-}
-body.imperfect #entry-work #entry-pi-label,
-body.imperfect #entry-work #entry-thinking,
-body.imperfect #entry-work #entry-permission,
-body.imperfect #entry-work #entry-context {
-  display: block;
-  appearance: none;
+  height: 16px;
   border: 0;
-  margin: 0;
-  font-family: "Departure Mono", "Commit Mono", ui-monospace, monospace;
-  font-size: 10px;
-  font-weight: 400;
-  letter-spacing: 0.04em;
-  line-height: 1;
-  text-transform: uppercase;
+  background: transparent;
+  cursor: pointer;
 }
-body.imperfect #entry-work #entry-pi-label { margin-left: -1ch; padding: 0 0.4em 0 1ch; }
-body.imperfect #entry-work #entry-thinking { padding: 0 0.4em; }
-body.imperfect #entry-work #entry-permission { padding: 0 0.4em; }
-body.imperfect #entry-work #entry-context { margin-left: auto; margin-right: -1ch; padding: 0 1ch 0 0.4em; }
-body.imperfect #entry-work .entry-work-gap {
-  flex: 1 1 auto;
-  min-width: calc(var(--entry-gutter, var(--ic-grid-major, 24px)) - 1ch);
-  height: 1px;
-  align-self: center;
+#harness-reach[hidden] { display: none; }
+
+body.imperfect #entry-terminal {
+  color: var(--pi-text);
+  background: var(--pi-bg);
+  border-bottom: 1px solid var(--pi-accent);
 }
-body.imperfect #entry-thinking:empty,
-body.imperfect #entry-permission:empty,
-body.imperfect #entry-context:empty { display: none; }
-body.imperfect #entry-input-zone.working #entry-work,
-body.imperfect #entry-input-zone.working #entry-pi-label,
-body.imperfect #entry-input-zone.working #entry-thinking,
-body.imperfect #entry-input-zone.working #entry-permission,
-body.imperfect #entry-input-zone.working #entry-context,
-body.imperfect #entry-input-zone.working .entry-work-status {
-  color: var(--tui-accent, var(--pi-accent));
-}
-body.imperfect #entry-work .entry-work-status {
-  padding: 0 0.6em;
-  font-family: var(--font-pi);
-  font-size: 11px;
-  font-style: italic;
-  letter-spacing: 0;
-  text-transform: none;
-}
-body.imperfect .entry-model-line { display: none; }
-body.imperfect .entry-input-stack {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 0.45em;
-  width: 100%;
-  min-height: 2.7em;
-  height: auto;
-  padding: 0.55em calc(var(--ic-grid-major, 24px) + env(safe-area-inset-right, 0px)) 0.85em calc(var(--ic-grid-major, 24px) + env(safe-area-inset-left, 0px));
-}
-body.imperfect .entry-prompt { display: none; }
-body.imperfect .entry-input-mirror {
-  flex: 1 1 auto;
-  min-width: 0;
-  min-height: 1.35em;
-  line-height: 1.35;
-}
-body.imperfect #entry-input {
-  flex: none;
-  align-self: stretch;
-  min-width: 0;
-  min-height: 1.35em;
-  height: 1.35em;
-  max-height: 30dvh;
-  line-height: 1.35;
-  padding: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
-  scrollbar-width: none;
-}
-body.imperfect .mobile-input-display {
-  color: var(--pi-text-bright, #f7f1fb);
-  -webkit-text-fill-color: var(--pi-text-bright, #f7f1fb);
-  line-height: 1.35;
-  overflow: hidden;
-}
-body.imperfect #entry-input::-webkit-scrollbar { display: none; }
-body.imperfect #entry-output .entry-queue {
-  padding-left: 0;
-  padding-right: 0;
-}
-body.imperfect .entry-attach {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 1.2em;
-  min-height: 1.2em;
-  width: 1.2em;
-  height: 1.2em;
-  align-self: center !important;
-  line-height: 1;
-}
-body.imperfect .entry-attach span {
-  display: grid;
-  place-items: center;
-  line-height: 1;
-}
-body.imperfect #entry-pi-label,
-body.imperfect #entry-thinking,
-body.imperfect #entry-context {
-  flex: 0 0 auto;
-  margin: 0;
-  color: inherit;
-  white-space: nowrap;
-}
-body.imperfect #entry-terminal{
-  background: var(--scene-void, #000);
-  color: var(--pi-text, #eadff0);
-}
-#entry-terminal {
-  border-bottom: 1px solid var(--tui-accent, var(--pi-accent));
-  --pi-bg: var(--tui-pageBg, var(--pi-bg));
-  --pi-bg-raised: var(--tui-pageBg, var(--pi-bg-raised));
-  --pi-text: var(--tui-text, var(--pi-text));
-  --pi-text-bright: var(--tui-userMessageText, var(--pi-text-bright));
-  --pi-muted: var(--tui-muted, var(--pi-muted));
-  --pi-dim: var(--tui-dim, var(--pi-dim));
-  --pi-accent: var(--tui-accent, var(--pi-accent));
-  --pi-cursor: var(--tui-text, var(--pi-cursor));
-  --pi-user: var(--tui-userMessageBg, var(--pi-user));
-  --pi-tool: var(--tui-toolPendingBg, var(--pi-tool));
-  --pi-tool-ok: var(--tui-toolSuccessBg, var(--pi-tool-ok));
-  --pi-tool-error: var(--tui-toolErrorBg, var(--pi-tool-error));
-  --pi-error: var(--tui-error, var(--pi-error));
-  --pi-working: var(--tui-warning, var(--pi-working));
-  --pi-rule: var(--tui-border, var(--pi-rule));
-}
+body.imperfect .entry-prompt { display: flex; }
+body.imperfect #entry-input-zone { padding-bottom: 12px; }
+body.imperfect #entry-spend,
+body.imperfect .entry-status { display: none; }
+body.imperfect .drop-handle { cursor: pointer; }
+
 .entry-attach {
   appearance: none;
-  -webkit-appearance: none;
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  padding: 0;
-  font: inherit;
-  position: relative;
-  flex: 0 0 auto;
   display: grid;
   place-items: center;
-  min-width: 44px;
-  min-height: 44px;
+  flex: 0 0 auto;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: var(--pi-accent);
+  font: inherit;
   cursor: pointer;
 }
 #entry-files {
@@ -400,15 +67,8 @@ body.imperfect #entry-terminal{
   opacity: 0;
   pointer-events: none;
 }
-.entry-attach.has-files span { color: var(--pi-text-bright); }
-.entry-plus {
-  position: relative;
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-}
+.entry-plus { position: relative; display: flex; align-items: center; }
 .entry-pending {
-  flex: 0 0 auto;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -416,41 +76,21 @@ body.imperfect #entry-terminal{
 }
 .entry-pending[hidden] { display: none; }
 .entry-pending-chip {
-  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 0;
+  min-height: 36px;
   padding: 0;
-  min-height: 44px;
   border: 1px solid var(--pi-accent);
-  background: transparent;
+  background: var(--pi-bg);
   color: var(--pi-text);
   font: inherit;
   cursor: pointer;
 }
-.entry-pending-chip .entry-image {
-  display: block;
-  width: 56px;
-  height: 56px;
-  object-fit: cover;
-}
-.entry-pending-chip span {
-  max-width: 12rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  padding: 0 8px;
-}
-.entry-pending-chip.is-uploading { opacity: 0.9; }
-.entry-pending-progress {
-  font-variant-numeric: tabular-nums;
-  color: var(--pi-accent);
-}
-.entry-pending-remove {
-  padding: 0 10px 0 0;
-  color: var(--pi-accent);
-}
+.entry-pending-chip .entry-image { width: 48px; height: 48px; object-fit: cover; }
+.entry-pending-chip span { max-width: 12rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 8px; }
+.entry-pending-progress,
+.entry-pending-remove { color: var(--pi-accent); }
 .entry-line.user .entry-image,
 #entry-output > .entry-image {
   display: block;
@@ -458,161 +98,10 @@ body.imperfect #entry-terminal{
   max-height: 40vh;
   width: auto;
   height: auto;
-  margin: 0.6em 0 0;
+  margin-top: 0.6em;
   border: 1px solid var(--pi-accent);
 }
-
-/* OS keyboard covers the bottom; slash grows up so it stays readable. */
-@media (pointer: coarse), (max-width: 700px) {
-  #slash-menu {
-    max-height: min(36dvh, calc(10 * 1.42em));
-    overflow-y: auto;
-  }
-}
-#entry-input[data-dictating]::placeholder { color: var(--pi-accent); }
-#entry-input[data-dictating] { caret-color: var(--pi-accent); }
-
-/* Watching a terminal is a different footing, and the screen should say so
-   without a banner: the panel is ruled in the accent while it is not ours. */
-body.watching #entry-terminal { box-shadow: inset 0 0 0 1px var(--pi-accent); }
-body.watching #entry-source { color: var(--pi-accent); }
-
-/* Jobs sit above the composer as a strip, not a debug dump in the transcript. */
-.entry-widgets {
-  flex: 0 0 auto;
-  padding: 0 var(--ic-grid-major, 24px) 6px;
-  color: var(--pi-muted);
-  letter-spacing: 0.02em;
-}
+.entry-widgets { padding: 0 var(--ic-grid-major, 24px) 6px; color: var(--pi-muted); }
 .entry-widgets[hidden] { display: none; }
 .entry-widget { margin: 0; }
-.entry-widget-line {
-  font-variant-numeric: tabular-nums;
-  color: var(--pi-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* The graph is another surface that owns the viewport, so it fills the same
-   screen as the pager and its lowest nodes remain tappable. */
-#knowledge-graph-host {
-  position: fixed;
-  inset: 0;
-  z-index: 8;
-  pointer-events: none;
-}
-#knowledge-graph {
-  width: 100%;
-  height: 100%;
-  background: transparent;
-  touch-action: none;
-}
-#knowledge-graph .edge {
-  fill: none;
-  stroke: var(--tui-border, #8a8);
-  stroke-width: 1;
-  vector-effect: non-scaling-stroke;
-}
-#knowledge-cards {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-#knowledge-cards .node {
-  position: absolute;
-  pointer-events: auto;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-  margin: 0;
-  padding: calc(var(--ic-grid-major, 24px) * 0.15);
-  border: 0;
-  appearance: none;
-  -webkit-appearance: none;
-  background: var(--tui-pageBg, var(--garden, transparent));
-  color: var(--tui-text, var(--ink));
-  box-shadow: inset 0 0 0 1px var(--tui-border, var(--panel-rule));
-  cursor: pointer;
-  overflow: hidden;
-  text-align: center;
-  font: inherit;
-}
-#knowledge-cards .node.root,
-#knowledge-cards .node.opened,
-#knowledge-cards .node.expanded {
-  background: var(--tui-pageBg, var(--garden, transparent));
-  color: var(--tui-text, var(--ink));
-}
-#knowledge-cards .node.missing { opacity: 0.55; }
-#knowledge-cards .node.expanded {
-  z-index: 2;
-  text-align: left;
-  overflow: auto;
-  align-items: stretch;
-}
-#knowledge-cards .node:focus-visible {
-  outline: 2px solid var(--tui-accent, #c45c26);
-  outline-offset: 2px;
-}
-#knowledge-cards .node-label {
-  color: var(--tui-text, var(--ink));
-  font-family: ui-monospace, monospace;
-  font-size: calc(var(--ic-grid-major, 24px) * 0.5);
-  line-height: 1.15;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-#knowledge-cards .node.expanded .node-label { display: none; }
-#knowledge-cards .node-body {
-  display: none;
-  color: var(--tui-text, var(--ink));
-  overflow: auto;
-  flex: 1;
-  text-align: left;
-  font: 14px/1.5 ui-monospace, monospace;
-  padding: 8px;
-  overflow-wrap: anywhere;
-  cursor: text;
-}
-#knowledge-cards .node.expanded .node-body { display: block; }
-.knowledge-md { white-space: pre-wrap; }
-#knowledge-document h1 { font-size: 18px; margin: 0 0 12px; }
-#knowledge-graph-close,
-#knowledge-close, #knowledge-back {
-  position: absolute;
-  top: auto;
-  bottom: 0;
-  width: var(--ic-grid-major, 24px);
-  height: var(--ic-grid-major, 24px);
-  border: 0;
-  background: var(--tui-accent, var(--orange));
-  color: var(--paper);
-  cursor: pointer;
-  pointer-events: auto;
-}
-#knowledge-graph-close { right: 0; }
-#knowledge-close { right: var(--ic-grid-major, 24px); }
-#knowledge-back {
-  right: calc(var(--ic-grid-major, 24px) * 2);
-  width: calc(var(--ic-grid-major, 24px) * 3);
-}
-.knowledge-wiki {
-  background: none;
-  border: 0;
-  color: inherit;
-  padding: 0;
-  cursor: pointer;
-  font: inherit;
-  text-decoration: underline;
-}
-.knowledge-error { color: var(--tui-error, var(--pi-error)); }
-
-/* The drop and the phone keys sit on the painting. */
+.entry-widget-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

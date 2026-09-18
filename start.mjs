@@ -15,25 +15,16 @@ if (config.person) process.env.IMPERFECT_PERSON = config.person;
 const app = await createGueyServer({
   host: config.host,
   port: config.port,
-  product: config.product,
-  brand: config.brand,
   cwd: p.workspace,
   stateDir: p.state,
   agentDir: p.agent,
   sessionDir: p.sessions,
   authentication: config.authentication,
   ownArchive: config.ownArchive,
-  liveSessions: config.liveSessions,
-  filesRoot: p.workspace,
-  knowledgeRoot: p.workspace,
-  uiDir: p.ui,
   origins: config.origins,
   serviceOptions: {
     resourceLoaderOptions: {
-      additionalExtensionPaths: [
-        join(here, 'extensions/imperfect-environment'),
-        join(here, 'extensions/image-lab'),
-      ],
+      additionalExtensionPaths: [join(here, 'extensions/imperfect-environment')],
     },
   },
 });

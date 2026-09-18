@@ -642,6 +642,22 @@ body.pi-harness {
 }
 .entry-dialog-title { margin-bottom: 10px; color: var(--pi-text); }
 #entry-dialog > p:empty { display: none; }
+.entry-dialog-detail {
+  margin: 0 0 10px;
+  padding: 0.65em 0.8em;
+  border: 1px solid var(--pi-dim);
+  color: var(--pi-text-bright);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+#entry-dialog.claude-permission {
+  max-width: min(54ch, 100%);
+  border: 1px solid var(--pi-accent);
+}
+#entry-dialog.claude-permission .entry-dialog-title {
+  color: var(--pi-accent);
+  font-weight: 600;
+}
 #entry-dialog .entry-dialog-actions { display: flex; flex-direction: column; gap: 0; margin: 0; }
 #entry-dialog button {
   appearance: none;

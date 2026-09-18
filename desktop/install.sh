@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Put the machine in a window. Same start.mjs as the hosted computer.
-# The Box/root installer is still install/imperfect.mjs — this is not that.
+# Put the machine in a window around start.mjs.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -21,12 +20,8 @@ $PREFIX/machine.json if missing, and opens the machine in a Tauri window.
 Need a checkout first?
 
   git clone $REPO
-  cd imperfect.computer
+  cd imperfect.os
   ./desktop/install.sh
-
-Hosted computers still install with:
-
-  sudo node install/imperfect.mjs install ...
 EOF
 }
 

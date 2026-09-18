@@ -1,11 +1,19 @@
 // Native HTML adapter for Pi's AuthInteraction. No OAuth logic or secret storage.
 const node = (tag, text, className) => { const e = document.createElement(tag); if (text != null) e.textContent = text; if (className) e.className = className; return e; };
 const button = (text, action) => { const e = node('button', text); e.type = 'button'; e.onclick = action; return e; };
-function link(url, label) {
+function link(url, label, open) {
   try {
     const parsed = new URL(url);
     if (!['https:', 'http:'].includes(parsed.protocol)) return node('span', 'Unsupported authorization link');
-    const a = node('a', label ?? 'Open sign-in page'); a.href = parsed.href; a.target = '_blank'; a.rel = 'noopener noreferrer'; return a;
+    const a = node('a', label ?? 'Open sign-in page'); a.href = parsed.href; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    // Loopback is this machine's own window: a Tauri webview, not a browser.
+    // target=_blank has no tab to create there. The phone is a real browser; leave it.
+    if (open) a.addEventListener('click', event => {
+      if (location.hostname !== '127.0.0.1' && location.hostname !== 'localhost') return;
+      event.preventDefault();
+      void open(parsed.href);
+    });
+    return a;
   } catch { return node('span', 'Invalid authorization link'); }
 }
 
@@ -30,7 +38,7 @@ const offeredMethods = provider => provider.methods.filter(m => !(m.type === 'oa
 // the first one found a list without it. It gets its own way in.
 const CLAUDE_ID = 'claude-agent';
 
-const BRAND = (typeof window !== 'undefined' && window.GUEY_BRAND) || 'Guey';
+const BRAND = 'imperfect';
 
 export function mountAuth({ command, chooseModel }) {
   const panel = node('dialog', null, 'guey-auth'); panel.id = 'guey-auth';
@@ -72,8 +80,12 @@ export function mountAuth({ command, chooseModel }) {
   const open = () => { if (!panel.open) panel.showModal(); };
   const close = () => { if (state?.id) dismissed.add(state.id); panel.close(); body.replaceChildren(); view = ''; promptId = null; };
   async function cancel() {
-    if (state?.busy) { cancelling = true; await send('auth_cancel'); cancelling = false; }
-    else { close(); await send('auth_dismiss'); }
+    // Close first. Waiting on the socket is how this panel trapped a person
+    // when the machine behind it was dead.
+    const busy = state?.busy;
+    close();
+    if (busy) await send('auth_cancel');
+    else await send('auth_dismiss');
   }
   panel.addEventListener('cancel', event => { event.preventDefault(); void cancel(); });
   function picker(rows, heading, footer = 'Choose a provider to continue.') {
@@ -182,9 +194,10 @@ export function mountAuth({ command, chooseModel }) {
     title.textContent = state.providerName ?? 'Pi sign-in'; message.textContent = state.message ?? '';
     progress.replaceChildren(...(state.events ?? []).map(e => {
       const row = node('div', null, 'auth-event');
-      if (e.type === 'auth_url') { row.append(link(e.url)); if (e.instructions) row.append(node('p', e.instructions)); }
-      else if (e.type === 'device_code') { row.append(node('p', 'Enter this code on the provider’s page:'), node('code', e.userCode, 'auth-device-code'), link(e.verificationUri, 'Open device verification')); }
-      else { row.append(node('p', e.message)); for (const l of e.links ?? []) row.append(link(l.url, l.label)); }
+      const open = href => send('open_url', { url: href });
+      if (e.type === 'auth_url') { row.append(link(e.url, null, open)); if (e.instructions) row.append(node('p', e.instructions)); }
+      else if (e.type === 'device_code') { row.append(node('p', 'Enter this code on the provider’s page:'), node('code', e.userCode, 'auth-device-code'), link(e.verificationUri, 'Open device verification', open)); }
+      else { row.append(node('p', e.message)); for (const l of e.links ?? []) row.append(link(l.url, l.label, open)); }
       return row;
     }));
     const p = state.prompt;
